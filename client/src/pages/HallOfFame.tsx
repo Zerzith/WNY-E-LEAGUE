@@ -3,31 +3,46 @@ import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, Users } from "lucide-react";
 import { type Team } from "@shared/schema";
-
-// Mock data generator for Hall of Fame if API is empty
-const MOCK_TEAMS: Team[] = [
-  { id: 1, name: "IT Tiger", game: "Valorant", logoUrl: null, members: [], status: "approved", createdAt: new Date() },
-  { id: 2, name: "Mechanic Force", game: "RoV", logoUrl: null, members: [], status: "approved", createdAt: new Date() },
-  { id: 3, name: "Business Queens", game: "Valorant", logoUrl: null, members: [], status: "approved", createdAt: new Date() },
-];
+import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export default function HallOfFame() {
-  // Ideally this fetches from API or Firestore
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Simulating fetch
-    setTimeout(() => {
-      setTeams(MOCK_TEAMS);
+    // Fetch approved teams from Firestore
+    const q = query(collection(db, "teams"), where("status", "==", "approved"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const teamData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as any));
+      setTeams(teamData);
       setLoading(false);
-    }, 1000);
+    }, (error) => {
+      console.error("Error fetching teams:", error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   if (loading) {
     return (
       <div className="h-[50vh] flex items-center justify-center">
         <Loader2 className="w-10 h-10 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (teams.length === 0) {
+    return (
+      <div className="container mx-auto px-4 py-12">
+        <div className="text-center">
+          <h1 className="text-4xl font-display font-bold text-white mb-2">ทำเนียบทีมแข่ง</h1>
+          <p className="text-muted-foreground">ยังไม่มีทีมที่อนุมัติ</p>
+        </div>
       </div>
     );
   }
@@ -62,12 +77,11 @@ export default function HallOfFame() {
                 </span>
               </div>
               <div className="space-y-2">
-                <div className="text-sm text-white/50">สมาชิกทีม:</div>
+                <div className="text-sm text-white/50">สมาชิกทีม: {team.members?.length || 0} คน</div>
                 <div className="flex -space-x-2">
-                   {/* Avatar bubbles */}
-                   {[1,2,3,4,5].map(i => (
-                     <div key={i} className="w-8 h-8 rounded-full bg-secondary border border-card flex items-center justify-center text-xs text-white">
-                        P{i}
+                   {team.members?.slice(0, 5).map((member, i) => (
+                     <div key={i} className="w-8 h-8 rounded-full bg-secondary border border-card flex items-center justify-center text-xs text-white" title={member}>
+                        {member.charAt(0).toUpperCase()}
                      </div>
                    ))}
                 </div>

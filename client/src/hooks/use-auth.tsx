@@ -1,25 +1,36 @@
 import { useState, useEffect, createContext, useContext, ReactNode } from "react";
-import { User as FirebaseUser, onAuthStateChanged, signOut as firebaseSignOut } from "firebase/auth";
+import { User as FirebaseUser, onAuthStateChanged, signOut as firebaseSignOut, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { useLocation } from "wouter";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
 interface AuthContextType {
   user: (FirebaseUser & { role?: string }) | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   signOut: async () => {},
+  signInWithGoogle: async () => {},
 });
+
+const googleProvider = new GoogleAuthProvider();
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<(FirebaseUser & { role?: string }) | null>(null);
   const [loading, setLoading] = useState(true);
   const [, setLocation] = useLocation();
+  
+  // Configure Google Auth Provider
+  if (typeof window !== "undefined") {
+    googleProvider.setCustomParameters({
+      prompt: "select_account"
+    });
+  }
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -35,17 +46,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     return () => unsubscribe();
   }, []);
+  
+
 
   const signOut = async () => {
     await firebaseSignOut(auth);
     setLocation("/login");
   };
 
+  const signInWithGoogle = async () => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      
+      // Check if user exists in Firestore
+      const userDoc = await getDoc(doc(db, "users", result.user.uid));
+      
+      // If user doesn't exist, create a new user record
+      if (!userDoc.exists()) {
+        await setDoc(doc(db, "users", result.user.uid), {
+          displayName: result.user.displayName || "",
+          email: result.user.email,
+          role: "user",
+          createdAt: new Date().toISOString()
+        });
+      }
+      
+      setLocation("/");
+    } catch (error) {
+      console.error("Google Sign-In Error:", error);
+      throw error;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signOut, signInWithGoogle }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+};
