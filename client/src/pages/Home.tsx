@@ -1,19 +1,48 @@
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Trophy, Users, Calendar } from "lucide-react";
+import { ArrowRight, Trophy, Users, Calendar, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { useEffect, useState } from "react";
+import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 // Unsplash images with descriptive comments
 // Hero background: Abstract tech/gaming background with blue lighting
 const HERO_BG = "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2070&auto=format&fit=crop";
-// Game card 1: Valorant style / Tactical shooter
-const GAME_IMG_1 = "https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&h=600&fit=crop"; // Placeholder
-// Game card 2: MOBA style
-const GAME_IMG_2 = "https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=800&h=600&fit=crop"; // Placeholder
+
+interface Event {
+  id: string;
+  title: string;
+  game: string;
+  date: string;
+  bannerUrl?: string;
+  maxTeams?: number;
+  status?: string;
+}
 
 export default function Home() {
   const { user } = useAuth();
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Fetch upcoming events from Firestore
+    const q = query(collection(db, "events"), where("status", "==", "upcoming"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const eventData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as any));
+      setEvents(eventData.slice(0, 3)); // Show only first 3 events
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching events:", error);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   return (
     <div className="min-h-screen">
@@ -80,46 +109,52 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              { title: "Valorant", date: "15 OCT 2024", img: GAME_IMG_1, tag: "FPS" },
-              { title: "RoV Mobile", date: "20 OCT 2024", img: GAME_IMG_2, tag: "MOBA" },
-              { title: "FC 24", date: "25 OCT 2024", img: HERO_BG, tag: "SPORTS" },
-            ].map((game, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
-                className="group relative h-80 rounded-2xl overflow-hidden border border-white/10 bg-background hover:border-accent/50 transition-all cursor-pointer"
-              >
-                <img 
-                  src={game.img} 
-                  alt={game.title}
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 opacity-60 group-hover:opacity-40"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
-                
-                <div className="absolute bottom-0 left-0 p-6 w-full">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="px-2 py-1 rounded-md bg-accent/20 text-accent text-xs font-bold border border-accent/20 backdrop-blur-md">
-                      {game.tag}
-                    </span>
-                    <span className="flex items-center gap-1 text-xs text-white/70">
-                      <Calendar className="w-3 h-3" /> {game.date}
-                    </span>
+          {loading ? (
+            <div className="flex items-center justify-center h-80">
+              <Loader2 className="w-10 h-10 animate-spin text-primary" />
+            </div>
+          ) : events.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">ยังไม่มีการแข่งขันที่กำลังจะมาถึง</p>
+            </div>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {events.map((event, i) => (
+                <motion.div
+                  key={event.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                  className="group relative h-80 rounded-2xl overflow-hidden border border-white/10 bg-background hover:border-accent/50 transition-all cursor-pointer"
+                >
+                  <img 
+                    src={event.bannerUrl || HERO_BG}
+                    alt={event.title}
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 opacity-60 group-hover:opacity-40"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+                  
+                  <div className="absolute bottom-0 left-0 p-6 w-full">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="px-2 py-1 rounded-md bg-accent/20 text-accent text-xs font-bold border border-accent/20 backdrop-blur-md">
+                        {event.game}
+                      </span>
+                      <span className="flex items-center gap-1 text-xs text-white/70">
+                        <Calendar className="w-3 h-3" /> {event.date}
+                      </span>
+                    </div>
+                    <h3 className="text-2xl font-display font-bold text-white mb-2 group-hover:text-accent transition-colors">
+                      {event.title}
+                    </h3>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground group-hover:text-white transition-colors">
+                      <Users className="w-4 h-4" /> {event.maxTeams || 0} ทีม
+                    </div>
                   </div>
-                  <h3 className="text-2xl font-display font-bold text-white mb-2 group-hover:text-accent transition-colors">
-                    {game.title} Championship
-                  </h3>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground group-hover:text-white transition-colors">
-                    <Users className="w-4 h-4" /> 32 ทีม
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
