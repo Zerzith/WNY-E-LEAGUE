@@ -9,7 +9,8 @@
     "vercel-build": "npm run build",
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "setup-firebase": "echo 'Firebase Admin SDK setup complete. Add FIREBASE_ADMIN_SDK env var to Vercel.'"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.9",
@@ -57,6 +58,7 @@
     "express": "^5.0.1",
     "express-session": "^1.18.1",
     "firebase": "^12.8.0",
+    "firebase-admin": "^12.7.0",
     "framer-motion": "^11.18.2",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.453.0",
