@@ -1,0 +1,43 @@
+graph TD
+    Start([เริ่มต้น]) --> CheckUser{ผู้ใช้มี<br/>บัญชีหรือไม่?}
+    
+    CheckUser -->|ไม่มี| Register[สมัครสมาชิก]
+    CheckUser -->|มีแล้ว| Login[เข้าสู่ระบบ]
+    
+    Register --> RegForm[กรอกฟอร์ม<br/>- ชื่อ-นามสกุล<br/>- รหัสนักศึกษา<br/>- อีเมล<br/>- รหัสผ่าน]
+    RegForm --> CreateAuth[Firebase:<br/>createUserWithEmailAndPassword]
+    CreateAuth --> UpdateProfile[อัปเดต Profile<br/>displayName]
+    UpdateProfile --> SaveFirestore[บันทึกข้อมูลใน<br/>Firestore users]
+    SaveFirestore --> ShowToastReg[แสดง Toast<br/>สมัครสมาชิกสำเร็จ]
+    ShowToastReg --> RedirectHome[Redirect ไปหน้าแรก]
+    
+    Login --> LoginForm[กรอกฟอร์ม<br/>- อีเมล<br/>- รหัสผ่าน]
+    LoginForm --> SignIn[Firebase:<br/>signInWithEmailAndPassword]
+    SignIn --> CheckAuth{ตรวจสอบ<br/>ข้อมูล}
+    CheckAuth -->|ถูกต้อง| GetRole[ดึง role จาก<br/>Firestore]
+    CheckAuth -->|ผิด| ShowError[แสดง Error<br/>ภาษาไทย]
+    ShowError --> LoginForm
+    GetRole --> UpdateContext[อัปเดต<br/>AuthContext]
+    UpdateContext --> ShowToastLogin[แสดง Toast<br/>เข้าสู่ระบบสำเร็จ]
+    ShowToastLogin --> RedirectHome
+    
+    RedirectHome --> HomePage[หน้าแรก]
+    HomePage --> CheckRole{ตรวจสอบ<br/>Role}
+    CheckRole -->|user| UserMenu[เมนูผู้ใช้ทั่วไป<br/>- หน้าแรก<br/>- ตารางคะแนน<br/>- แชทสด]
+    CheckRole -->|admin| AdminMenu[เมนู Admin<br/>+ จัดการระบบ]
+    
+    UserMenu --> Logout{ต้องการ<br/>ออกจากระบบ?}
+    AdminMenu --> Logout
+    Logout -->|ใช่| SignOut[Firebase:<br/>signOut]
+    Logout -->|ไม่| UserMenu
+    SignOut --> ClearContext[ล้าง AuthContext]
+    ClearContext --> RedirectLogin[Redirect ไป /login]
+    RedirectLogin --> Start
+    
+    style Start fill:#4CAF50,stroke:#2E7D32,color:#fff
+    style Register fill:#2196F3,stroke:#1565C0,color:#fff
+    style Login fill:#2196F3,stroke:#1565C0,color:#fff
+    style HomePage fill:#FF9800,stroke:#E65100,color:#fff
+    style SignOut fill:#F44336,stroke:#C62828,color:#fff
+    style ShowError fill:#F44336,stroke:#C62828,color:#fff
+    style AdminMenu fill:#9C27B0,stroke:#6A1B9A,color:#fff

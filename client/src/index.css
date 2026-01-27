@@ -1,0 +1,75 @@
+@import url('https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Rajdhani:wght@500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Esports Theme - Blue/Dark Aesthetic */
+  --font-sans: 'Kanit', sans-serif; /* Thai-friendly font */
+  --font-display: 'Rajdhani', sans-serif; /* Gaming/Tech look */
+
+  --background: 222 47% 11%;     /* #0f172a - Slate 900 */
+  --foreground: 210 40% 98%;     /* #f8fafc - Slate 50 */
+
+  --card: 217 33% 17%;           /* #1e293b - Slate 800 */
+  --card-foreground: 210 40% 98%;
+
+  --popover: 222 47% 11%;
+  --popover-foreground: 210 40% 98%;
+
+  --primary: 211 100% 25%;       /* #004080 - Deep Blue */
+  --primary-foreground: 210 40% 98%;
+
+  --secondary: 217 19% 27%;      /* #334155 - Slate 700 */
+  --secondary-foreground: 210 40% 98%;
+
+  --muted: 217 19% 27%;
+  --muted-foreground: 215 20% 65%; /* #94a3b8 - Slate 400 */
+
+  --accent: 199 89% 48%;         /* #0ea5e9 - Sky 500 (Electric Blue) */
+  --accent-foreground: 210 40% 98%;
+
+  --destructive: 0 62% 30%;
+  --destructive-foreground: 210 40% 98%;
+
+  --border: 217 33% 17%;
+  --input: 217 33% 17%;
+  --ring: 211 100% 50%;          /* Brighter blue for focus rings */
+
+  --radius: 0.5rem;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-primary selection:text-white;
+    font-family: var(--font-sans);
+    background-image: 
+      radial-gradient(circle at 50% 0%, rgba(14, 165, 233, 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 100% 100%, rgba(0, 64, 128, 0.2) 0%, transparent 50%);
+    background-attachment: fixed;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    @apply font-bold tracking-tight uppercase text-white drop-shadow-sm;
+  }
+}
+
+@layer utilities {
+  .text-glow {
+    text-shadow: 0 0 20px rgba(14, 165, 233, 0.5);
+  }
+  
+  .glass-panel {
+    @apply bg-card/60 backdrop-blur-md border border-white/10 shadow-xl;
+  }
+
+  .esports-gradient {
+    @apply bg-gradient-to-r from-[#004080] to-[#0ea5e9];
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}

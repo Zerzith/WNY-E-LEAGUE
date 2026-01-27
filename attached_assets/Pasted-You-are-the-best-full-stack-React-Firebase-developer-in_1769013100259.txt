@@ -1,0 +1,119 @@
+You are the best full-stack React + Firebase developer in 2026, specializing in educational and esports projects for Thai technical colleges. Build a COMPLETE, professional, responsive, modern single-page web application (SPA) called "วิทยาลัยเทคนิควังน้ำเย็น Esports Management System" using ONLY these technologies:
+
+Tech stack (ห้ามเปลี่ยนหรือเพิ่มอย่างอื่น):
+- Vite + React 18+ (with TypeScript optional but recommended)
+- Tailwind CSS v3 (responsive, mobile-first, esports gaming style with primary color #004080 blue)
+- Framer Motion for all animations
+- React Router v6
+- Firebase v9+ modular SDK (Auth + Firestore + FCM for push notifications)
+- Cloudinary for ALL image uploads and display (unsigned upload preset, auto optimize: format, quality, resize)
+- Additional libraries: sonner (toast notifications), emoji-picker-react, react-tournament-bracket (or custom bracket component), axios, headful-ui, heroicons
+
+UI & Language:
+- ภาษาไทยทั้งหมดใน UI (labels, buttons, alerts, errors, success messages)
+- Code comments: English
+- Modern esports/gaming theme: dark mode optional, clean cards, gradients, responsive grid
+- All text in Thai, e.g., "ล็อกอิน", "ลงทะเบียนทีม", "ตารางคะแนนเรียลไทม์", "แชทสด", "แจ้งเตือน"
+
+Authentication (รองรับ 3 วิธี + Error handling ละเอียดมาก):
+1. รหัสนักเรียน + รหัสผ่าน (ใช้ fake email: `${studentId.toLowerCase()}@wangnamyen.tech`)
+2. Google Sign-In (signInWithPopup)
+3. Email + Password ธรรมดา (optional แต่มีปุ่มให้เลือก)
+
+Error handling สำหรับ Auth (แสดง toast ภาษาไทยที่เข้าใจง่ายด้วย sonner):
+- สร้างฟังก์ชัน mapFirebaseErrorToThaiMessage(errorCode) ที่ map error code เป็นข้อความภาษาไทย เช่น:
+  - auth/invalid-email → "รูปแบบอีเมลหรือรหัสนักเรียนไม่ถูกต้อง"
+  - auth/user-not-found → "ไม่พบผู้ใช้ กรุณาตรวจสอบรหัสนักเรียน"
+  - auth/wrong-password → "รหัสผ่านไม่ถูกต้อง"
+  - auth/email-already-in-use → "รหัสนักเรียนหรืออีเมลนี้ถูกใช้แล้ว"
+  - auth/weak-password → "รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร"
+  - auth/popup-closed-by-user → "ยกเลิกการล็อกอิน Google"
+  - auth/account-exists-with-different-credential → "บัญชีนี้เคยสมัครด้วยวิธีอื่น กรุณาใช้ Google หรือรหัสนักเรียนเดิม"
+  - auth/too-many-requests → "พยายามล็อกอินบ่อยเกินไป กรุณารอ 1-2 นาทีแล้วลองใหม่"
+  - auth/network-request-failed → "เชื่อมต่ออินเทอร์เน็ตมีปัญหา กรุณาตรวจสอบ Wi-Fi"
+  - อื่น ๆ → fallback "เกิดข้อผิดพลาด: {error.message} กรุณาลองใหม่"
+
+เมื่อ error เกิด → แสดง toast สีแดง + icon error + ข้อความภาษาไทย
+
+ฟีเจอร์หลักที่ต้องมีครบ (real-time + animation + admin control):
+1. Header/Navbar (fixed, responsive):
+   - ชื่อวิทยาลัย + โลโก้ text
+   - ลิงก์: หน้าแรก, การแข่งขัน, ลงทะเบียนทีม, ตารางคะแนนสด, แชทสด, แจ้งเตือน (bell icon + badge), ล็อกอิน/ออกจากระบบ
+   - Dark mode toggle
+   - Notification Bell (FCM) แสดงแจ้งเตือนเมื่อมีแมตช์เริ่ม/จบ/คะแนนเปลี่ยน/mention ในแชท
+
+2. Home (/): Banner วิทยาลัย + รายการการแข่งขันที่กำลังจะมาถึง (Firestore "events") + โปสเตอร์จาก Cloudinary
+
+3. Login (/login): 
+   - ปุ่มใหญ่ "ล็อกอินด้วย Google"
+   - ฟอร์ม "ล็อกอินด้วยรหัสนักเรียน"
+   - ฟอร์ม "ล็อกอินด้วยอีเมล"
+   - ลิงก์ "สมัครสมาชิก" (สำหรับรหัสนักเรียนหรือ email)
+   - แสดง toast error ทุกกรณีตามด้านบน
+
+4. Register Team (/register-team): Protected
+   - ชื่อทีม, เกม (dropdown: Valorant, PUBG Mobile, Free Fire, LoL, etc.)
+   - สมาชิก (ชื่อจริง, ชื่อในเกม, ชั้นปี, แผนก, comma separated)
+   - อัปโหลดโลโก้ทีม → Cloudinary → บันทึก URL ใน "teams"
+   - ส่งข้อมูลไป Google Forms (via webhook) หรือ export Excel ได้ (admin)
+
+5. Tournament Bracket (/bracket): 
+   - Single elimination bracket (8/16/32 ทีม) ใช้ react-tournament-bracket หรือ custom
+   - Admin จัดการลากวางทีม, กำหนดผู้ชนะแต่ละรอบ
+   - Animation เมื่ออัปเดต (Framer Motion)
+   - แสดงผู้ชนะใหญ่ + บันทึกใน Hall of Fame
+
+6. Live Scoreboard (/scoreboard): 
+   - onSnapshot real-time จาก "matches" {eventId, teamA/B, scoreA/B, status, game, round, winner}
+   - Framer Motion: count-up animation + scale bounce + "+1" pop-up เมื่อคะแนนเปลี่ยน
+   - Admin: ปุ่ม +1, จบแมตช์, auto set winner
+
+7. Live Chat (/chat): 
+   - Real-time "live_chat" {text, userId, displayName, timestamp, eventId, reactions: {👍: [uid1,...]}}
+   - Auto scroll to bottom
+   - emoji-picker-react (reactions mode)
+   - Toggle reaction (add/remove uid)
+   - แสดงจำนวน + tooltip รายชื่อคนกด (optional)
+   - ป้องกันคำหยาบ (filter list)
+
+8. Admin Dashboard (/admin): Protected (role === "admin")
+   - CRUD events, teams, matches
+   - จัดการ bracket
+   - อัปเดตคะแนนเรียลไทม์
+   - สร้าง/แก้ไข user (bulk import optional)
+   - ดูสถิติผู้เล่น/ทีม (wins, losses, MVP)
+
+9. Hall of Fame (/hall-of-fame): 
+   - แสดงแชมป์ทุกฤดูกาล + รูปถ้วย + โลโก้ทีม + วันที่
+
+10. Notification (FCM):
+    - ส่งแจ้งเตือนเมื่อแมตช์เริ่ม/จบ/คะแนนเปลี่ยน/mention ในแชท
+    - แสดงใน bell icon + modal ประวัติแจ้งเตือน
+
+โครงสร้างโฟลเดอร์:
+src/
+├── components/ (Header, PrivateRoute, AnimatedScore, LiveChat, BracketComponent, NotificationBell, ToastWrapper)
+├── pages/ (Home, Login, RegisterTeam, TournamentBracket, Scoreboard, AdminDashboard, HallOfFame)
+├── context/ (AuthContext)
+├── services/ (firebase.js, cloudinary.js, notification.js)
+├── App.jsx (Router + AuthProvider + Toaster + FCM setup)
+├── main.jsx
+
+รวมไฟล์ที่ต้องสร้าง:
+- package.json (dependencies snippet)
+- .env.example (VITE_FIREBASE_xxx + VITE_CLOUDINARY_CLOUD_NAME + VITE_CLOUDINARY_UPLOAD_PRESET)
+- tailwind.config.js (custom animations for score pop, bounce)
+- Firebase rules sample (allow read public, write auth + role check)
+- FCM setup (VAPID keys, web push instructions)
+- Deployment: npm run build → firebase deploy (hosting)
+
+คิดทีละขั้นตอน:
+1. Data models (users, teams, events, matches, live_chat with reactions)
+2. Auth flow + error mapper function
+3. Real-time listeners (onSnapshot)
+4. Components & animations
+5. Admin protections & polish UI
+
+Generate FULL code in markdown with code blocks for EVERY file. Make it the most complete, beautiful esports management system for a Thai technical college project – ready for A+ final year project!
+
+Start generating now!
