@@ -7,12 +7,11 @@ import { db, auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Upload, Camera, Check, X, Loader2 } from "lucide-react";
-import axios from "axios";
+import { Camera, Check, X, Loader2 } from "lucide-react";
 
 // Cloudinary config
 const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`;
-const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "unsigned_preset";
+const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "wangnamyenesport";
 
 interface UserProfile {
   displayName: string;
@@ -74,6 +73,12 @@ export default function Profile() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage({ type: "error", text: "ขนาดไฟล์ต้องไม่เกิน 5MB" });
+      return;
+    }
+
     // Show preview immediately
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -84,19 +89,36 @@ export default function Profile() {
     // Upload to Cloudinary
     setIsUploadingPhoto(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("upload_preset", UPLOAD_PRESET);
+      const uploadFormData = new FormData();
+      uploadFormData.append("file", file);
+      uploadFormData.append("upload_preset", UPLOAD_PRESET);
 
-      const res = await axios.post(CLOUDINARY_URL, formData);
-      const cloudinaryUrl = res.data.secure_url;
-      
-      setFormData({ ...formData, photoURL: cloudinaryUrl });
+      const response = await fetch(CLOUDINARY_URL, {
+        method: "POST",
+        body: uploadFormData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Upload failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      const cloudinaryUrl = data.secure_url;
+
+      // Update form data with new photo URL
+      setFormData((prev) => ({
+        ...prev,
+        photoURL: cloudinaryUrl,
+      }));
+
       setMessage({ type: "success", text: "อัปโหลดรูปภาพสำเร็จ" });
       setTimeout(() => setMessage(null), 2000);
     } catch (error) {
       console.error("Error uploading photo:", error);
-      setMessage({ type: "error", text: "ไม่สามารถอัปโหลดรูปภาพได้" });
+      setMessage({
+        type: "error",
+        text: `ไม่สามารถอัปโหลดรูปภาพได้: ${error instanceof Error ? error.message : "Unknown error"}`,
+      });
       setPhotoPreview(profile?.photoURL || "");
     } finally {
       setIsUploadingPhoto(false);
@@ -105,14 +127,14 @@ export default function Profile() {
 
   const handleSaveProfile = async () => {
     if (!user || !auth.currentUser) return;
-    
+
     setIsSaving(true);
     try {
       // Prepare auth profile update (only include non-empty values)
       const authUpdate: any = {};
       if (formData.displayName) authUpdate.displayName = formData.displayName;
       if (formData.photoURL) authUpdate.photoURL = formData.photoURL;
-      
+
       // Update Firebase Auth profile
       if (Object.keys(authUpdate).length > 0) {
         await updateProfile(auth.currentUser, authUpdate);
@@ -128,7 +150,7 @@ export default function Profile() {
         team: formData.team || "",
         updatedAt: serverTimestamp(),
       };
-      
+
       await updateDoc(doc(db, "users", user.uid), firestoreData);
 
       setProfile(formData);
