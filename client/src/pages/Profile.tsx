@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { updateProfile, updateEmail } from "firebase/auth";
 import { db, auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
@@ -78,14 +78,14 @@ export default function Profile() {
   };
 
   const handleSaveProfile = async () => {
-    if (!user) return;
+    if (!user || !auth.currentUser) return;
     
     setIsSaving(true);
     try {
       // Update Firebase Auth profile
-      await updateProfile(auth.currentUser!, {
+      await updateProfile(auth.currentUser, {
         displayName: formData.displayName,
-        photoURL: formData.photoURL,
+        photoURL: formData.photoURL || undefined,
       });
 
       // Update Firestore document
@@ -93,10 +93,10 @@ export default function Profile() {
         displayName: formData.displayName,
         email: formData.email,
         studentId: formData.studentId,
-        photoURL: formData.photoURL,
-        bio: formData.bio,
-        team: formData.team,
-        updatedAt: new Date(),
+        photoURL: formData.photoURL || "",
+        bio: formData.bio || "",
+        team: formData.team || "",
+        updatedAt: serverTimestamp(),
       });
 
       setProfile(formData);
@@ -105,7 +105,8 @@ export default function Profile() {
       setTimeout(() => setMessage(null), 3000);
     } catch (error) {
       console.error("Error saving profile:", error);
-      setMessage({ type: "error", text: "ไม่สามารถบันทึกข้อมูลได้" });
+      const errorMessage = error instanceof Error ? error.message : "ไม่สามารถบันทึกข้อมูลได้";
+      setMessage({ type: "error", text: errorMessage });
     } finally {
       setIsSaving(false);
     }

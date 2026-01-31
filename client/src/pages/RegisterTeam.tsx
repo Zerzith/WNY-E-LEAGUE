@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useCreateTeam } from "@/hooks/use-teams";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { collection, query, where, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,17 +25,27 @@ interface Member {
   department: string;
 }
 
+interface Tournament {
+  id: string;
+  title: string;
+  game: string;
+  date: string;
+}
+
 export default function RegisterTeam() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const createTeam = useCreateTeam();
 
+  const [tournaments, setTournaments] = useState<Tournament[]>([]);
+  const [selectedTournament, setSelectedTournament] = useState("");
   const [teamName, setTeamName] = useState("");
   const [game, setGame] = useState("");
   const [gameMode, setGameMode] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [isLoadingTournaments, setIsLoadingTournaments] = useState(true);
   const [members, setMembers] = useState<Member[]>([
     { name: "", gameName: "", grade: "", department: "" }
   ]);
@@ -45,6 +57,27 @@ export default function RegisterTeam() {
   };
 
   const currentGameRules = gameRules[game as keyof typeof gameRules] || { min: 1, max: 6, sub: 0 };
+
+  // Load tournaments from Firestore
+  useEffect(() => {
+    const q = query(
+      collection(db, "events"),
+      where("status", "in", ["upcoming", "ongoing"])
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const tournamentsData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        title: doc.data().title,
+        game: doc.data().game,
+        date: doc.data().date,
+      } as Tournament));
+      setTournaments(tournamentsData);
+      setIsLoadingTournaments(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   // Redirect if not logged in
   if (!user) {
@@ -74,7 +107,7 @@ export default function RegisterTeam() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!teamName || !game || (game === "Free Fire" && !gameMode)) {
+    if (!teamName || !game || !selectedTournament || (game === "Free Fire" && !gameMode)) {
       toast({ title: "กรุณากรอกข้อมูลให้ครบถ้วน", variant: "destructive" });
       return;
     }
@@ -97,22 +130,25 @@ export default function RegisterTeam() {
         logoUrl = res.data.secure_url;
       }
 
-      const teamData: InsertTeam = {
-        name: teamName,
-        game,
-        gameMode,
-        logoUrl,
+      // Add registration to Firestore instead of creating a team
+      await addDoc(collection(db, "registrations"), {
+        eventId: selectedTournament,
+        userId: user.uid,
+        teamName: teamName,
+        game: game,
+        gameMode: gameMode,
+        logoUrl: logoUrl,
         members: members,
         status: "pending",
-      };
+        createdAt: serverTimestamp(),
+      });
 
-      await createTeam.mutateAsync(teamData);
       toast({ title: "ลงทะเบียนทีมสำเร็จ รอการตรวจสอบ", variant: "default" });
       setLocation("/");
 
     } catch (error) {
       console.error(error);
-      toast({ title: "อัปโหลดรูปล้มเหลว หรือ การสร้างทีมผิดพลาด", variant: "destructive" });
+      toast({ title: "อัปโหลดรูปล้มเหลว หรือ การลงทะเบียนผิดพลาด", variant: "destructive" });
     } finally {
       setIsUploading(false);
     }
@@ -123,10 +159,39 @@ export default function RegisterTeam() {
       <Card className="bg-card border-white/10 shadow-xl">
         <CardHeader>
           <CardTitle className="text-2xl font-display text-white">ลงทะเบียนทีมแข่ง</CardTitle>
-          <CardDescription>กรอกข้อมูลทีมและสมาชิกเพื่อสมัครเข้าร่วมการแข่งขัน</CardDescription>
+          <CardDescription>เลือกรายการแข่งขัน และกรอกข้อมูลทีมและสมาชิก</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Tournament Selection */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-primary">เลือกรายการแข่งขัน</h3>
+              {isLoadingTournaments ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-5 h-5 animate-spin text-primary mr-2" />
+                  <span className="text-muted-foreground">กำลังโหลดรายการแข่งขัน...</span>
+                </div>
+              ) : tournaments.length === 0 ? (
+                <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-yellow-300">
+                  ยังไม่มีรายการแข่งขันที่เปิดรับสมัคร
+                </div>
+              ) : (
+                <Select value={selectedTournament} onValueChange={setSelectedTournament}>
+                  <SelectTrigger className="bg-background/50">
+                    <SelectValue placeholder="เลือกรายการแข่งขัน" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tournaments.map((tournament) => (
+                      <SelectItem key={tournament.id} value={tournament.id}>
+                        {tournament.title} - {tournament.game} ({tournament.date})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {/* Team Information */}
             <div className="space-y-4">
               <h3 className="text-lg font-medium text-primary">ข้อมูลทีม</h3>
               <div className="grid md:grid-cols-2 gap-4">
@@ -138,6 +203,7 @@ export default function RegisterTeam() {
                     value={teamName}
                     onChange={(e) => setTeamName(e.target.value)}
                     className="bg-background/50"
+                    required
                   />
                 </div>
                 <div className="space-y-2">
@@ -197,6 +263,7 @@ export default function RegisterTeam() {
               </div>
             </div>
 
+            {/* Team Members */}
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <div>
@@ -284,7 +351,7 @@ export default function RegisterTeam() {
             <Button 
               type="submit" 
               className="w-full h-12 text-lg bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20"
-              disabled={isUploading || createTeam.isPending}
+              disabled={isUploading || createTeam.isPending || !selectedTournament}
             >
               {(isUploading || createTeam.isPending) && <Loader2 className="w-5 h-5 mr-2 animate-spin" />}
               ยืนยันการลงทะเบียน
