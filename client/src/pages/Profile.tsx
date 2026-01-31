@@ -11,7 +11,7 @@ import { Camera, Check, X, Loader2 } from "lucide-react";
 
 // Cloudinary config
 const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`;
-const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "wangnamyenesport";
+const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "Wagnamyenesport";
 
 interface UserProfile {
   displayName: string;
