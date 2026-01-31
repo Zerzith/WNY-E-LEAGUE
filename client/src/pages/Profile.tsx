@@ -108,22 +108,28 @@ export default function Profile() {
     
     setIsSaving(true);
     try {
+      // Prepare auth profile update (only include non-empty values)
+      const authUpdate: any = {};
+      if (formData.displayName) authUpdate.displayName = formData.displayName;
+      if (formData.photoURL) authUpdate.photoURL = formData.photoURL;
+      
       // Update Firebase Auth profile
-      await updateProfile(auth.currentUser, {
-        displayName: formData.displayName,
-        photoURL: formData.photoURL || undefined,
-      });
+      if (Object.keys(authUpdate).length > 0) {
+        await updateProfile(auth.currentUser, authUpdate);
+      }
 
-      // Update Firestore document
-      await updateDoc(doc(db, "users", user.uid), {
-        displayName: formData.displayName,
-        email: formData.email,
-        studentId: formData.studentId,
+      // Update Firestore document (ensure no undefined values)
+      const firestoreData: any = {
+        displayName: formData.displayName || "",
+        email: formData.email || "",
+        studentId: formData.studentId || "",
         photoURL: formData.photoURL || "",
         bio: formData.bio || "",
         team: formData.team || "",
         updatedAt: serverTimestamp(),
-      });
+      };
+      
+      await updateDoc(doc(db, "users", user.uid), firestoreData);
 
       setProfile(formData);
       setIsEditing(false);
