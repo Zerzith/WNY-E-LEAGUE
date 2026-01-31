@@ -9,7 +9,8 @@ import {
   LogOut, 
   LogIn,
   LayoutDashboard,
-  ShieldCheck
+  ShieldCheck,
+  User
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -96,6 +97,15 @@ export function Navigation() {
                 <span className="text-sm font-bold text-white leading-none">{user.displayName || 'Gamer'}</span>
                 <span className="text-xs text-accent uppercase">Online</span>
               </div>
+              <Link href="/profile">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="text-muted-foreground hover:text-accent hover:bg-accent/10"
+                >
+                  <User className="w-5 h-5" />
+                </Button>
+              </Link>
               <Button 
                 variant="ghost" 
                 size="icon" 

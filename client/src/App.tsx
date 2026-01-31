@@ -15,6 +15,8 @@ import Scoreboard from "@/pages/Scoreboard";
 import Bracket from "@/pages/Bracket";
 import HallOfFame from "@/pages/HallOfFame";
 import Chat from "@/pages/Chat";
+import Profile from "@/pages/Profile";
+import EventDetail from "@/pages/EventDetail";
 import AdminDashboard from "@/pages/AdminDashboard";
 import NotFound from "@/pages/not-found";
 
@@ -28,6 +30,8 @@ function Router() {
       <Route path="/bracket" component={Bracket} />
       <Route path="/hall-of-fame" component={HallOfFame} />
       <Route path="/chat" component={Chat} />
+      <Route path="/profile" component={Profile} />
+      <Route path="/event/:id" component={EventDetail} />
       <Route path="/admin" component={AdminDashboard} />
       <Route component={NotFound} />
     </Switch>
