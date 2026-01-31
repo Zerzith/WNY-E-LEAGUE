@@ -2,12 +2,17 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
-import { updateProfile, updateEmail } from "firebase/auth";
+import { updateProfile } from "firebase/auth";
 import { db, auth } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Upload, Camera, Check, X, Loader2 } from "lucide-react";
+import axios from "axios";
+
+// Cloudinary config
+const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`;
+const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "unsigned_preset";
 
 interface UserProfile {
   displayName: string;
@@ -24,6 +29,7 @@ export default function Profile() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [formData, setFormData] = useState<UserProfile>({
     displayName: "",
     email: "",
@@ -64,16 +70,36 @@ export default function Profile() {
     }
   }, [user]);
 
-  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64 = reader.result as string;
-        setPhotoPreview(base64);
-        setFormData({ ...formData, photoURL: base64 });
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    // Show preview immediately
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPhotoPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    // Upload to Cloudinary
+    setIsUploadingPhoto(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", UPLOAD_PRESET);
+
+      const res = await axios.post(CLOUDINARY_URL, formData);
+      const cloudinaryUrl = res.data.secure_url;
+      
+      setFormData({ ...formData, photoURL: cloudinaryUrl });
+      setMessage({ type: "success", text: "อัปโหลดรูปภาพสำเร็จ" });
+      setTimeout(() => setMessage(null), 2000);
+    } catch (error) {
+      console.error("Error uploading photo:", error);
+      setMessage({ type: "error", text: "ไม่สามารถอัปโหลดรูปภาพได้" });
+      setPhotoPreview(profile?.photoURL || "");
+    } finally {
+      setIsUploadingPhoto(false);
     }
   };
 
@@ -152,9 +178,14 @@ export default function Profile() {
               {isEditing && (
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="absolute bottom-0 right-0 bg-primary p-2 rounded-full hover:bg-primary/80 transition"
+                  disabled={isUploadingPhoto}
+                  className="absolute bottom-0 right-0 bg-primary p-2 rounded-full hover:bg-primary/80 transition disabled:opacity-50"
                 >
-                  <Camera className="w-5 h-5" />
+                  {isUploadingPhoto ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Camera className="w-5 h-5" />
+                  )}
                 </button>
               )}
               <input
@@ -162,6 +193,7 @@ export default function Profile() {
                 type="file"
                 accept="image/*"
                 onChange={handlePhotoChange}
+                disabled={isUploadingPhoto}
                 className="hidden"
               />
             </div>
@@ -248,7 +280,7 @@ export default function Profile() {
               <>
                 <Button
                   onClick={handleSaveProfile}
-                  disabled={isSaving}
+                  disabled={isSaving || isUploadingPhoto}
                   className="flex-1 bg-green-600 hover:bg-green-700"
                 >
                   {isSaving ? (
@@ -271,6 +303,7 @@ export default function Profile() {
                   }}
                   variant="outline"
                   className="flex-1"
+                  disabled={isSaving || isUploadingPhoto}
                 >
                   <X className="w-4 h-4 mr-2" />
                   ยกเลิก
