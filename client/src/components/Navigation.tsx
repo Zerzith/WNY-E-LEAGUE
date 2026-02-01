@@ -1,6 +1,7 @@
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
+import { AvatarCustom } from "@/components/ui/avatar-custom";
 import { 
   Trophy, 
   Gamepad2, 
@@ -8,8 +9,7 @@ import {
   MessageCircle, 
   LogOut, 
   LogIn,
-  ShieldCheck,
-  User
+  ShieldCheck
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -102,18 +102,15 @@ export function Navigation() {
                 <span className="text-sm font-bold text-white leading-none whitespace-nowrap">{user.displayName || 'Gamer'}</span>
                 <span className="text-[10px] text-accent uppercase font-bold">Online</span>
               </div>
-              <div className="flex flex-col items-center lg:hidden">
-                 <span className="text-[10px] font-bold text-white leading-none max-w-[50px] truncate">{user.displayName || 'Gamer'}</span>
-                 <span className="text-[8px] text-accent uppercase font-bold">ONLINE</span>
-              </div>
               <Link href="/profile">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="w-8 h-8 sm:w-10 sm:h-10 text-muted-foreground hover:text-accent hover:bg-accent/10"
-                >
-                  <User className="w-4 h-4 sm:w-5 sm:h-5" />
-                </Button>
+                <div className="cursor-pointer hover:scale-105 transition-transform">
+                  <AvatarCustom 
+                    src={user.photoURL} 
+                    name={user.displayName || "Gamer"} 
+                    size="sm" 
+                    className="ring-2 ring-primary/20"
+                  />
+                </div>
               </Link>
               <Button 
                 variant="ghost" 

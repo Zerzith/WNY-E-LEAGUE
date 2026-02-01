@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { useCreateTeam } from "@/hooks/use-teams";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { collection, query, where, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
@@ -10,11 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, Upload, Plus, Trash2 } from "lucide-react";
-import { type InsertTeam } from "@shared/schema";
+import { AvatarCustom } from "@/components/ui/avatar-custom";
+import { Loader2, Upload, Plus, Trash2, ShieldCheck, Users, Gamepad2 } from "lucide-react";
 import axios from "axios";
 
-// Cloudinary config
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "djubsqri6";
 const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "wangnamyenesport";
 const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
@@ -37,7 +35,6 @@ export default function RegisterTeam() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const createTeam = useCreateTeam();
 
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [selectedTournament, setSelectedTournament] = useState("");
@@ -45,6 +42,7 @@ export default function RegisterTeam() {
   const [game, setGame] = useState("");
   const [gameMode, setGameMode] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string>("");
   const [isUploading, setIsUploading] = useState(false);
   const [isLoadingTournaments, setIsLoadingTournaments] = useState(true);
   const [members, setMembers] = useState<Member[]>([
@@ -59,28 +57,25 @@ export default function RegisterTeam() {
 
   const currentGameRules = gameRules[game as keyof typeof gameRules] || { min: 1, max: 6, sub: 0 };
 
-  // Load tournaments from Firestore
   useEffect(() => {
-    const q = query(
-      collection(db, "events"),
-      where("status", "in", ["upcoming", "ongoing"])
-    );
-
+    const q = query(collection(db, "events"), where("status", "in", ["upcoming", "ongoing"]));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const tournamentsData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        title: doc.data().title,
-        game: doc.data().game,
-        date: doc.data().date,
-      } as Tournament));
-      setTournaments(tournamentsData);
+      setTournaments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tournament)));
       setIsLoadingTournaments(false);
     });
-
     return () => unsubscribe();
   }, []);
 
-  // Redirect if not logged in
+  useEffect(() => {
+    if (logoFile) {
+      const reader = new FileReader();
+      reader.onloadend = () => setLogoPreview(reader.result as string);
+      reader.readAsDataURL(logoFile);
+    } else {
+      setLogoPreview("");
+    }
+  }, [logoFile]);
+
   if (!user) {
     setLocation("/login");
     return null;
@@ -94,9 +89,7 @@ export default function RegisterTeam() {
 
   const handleRemoveMember = (index: number) => {
     if (members.length > 1) {
-      const newMembers = [...members];
-      newMembers.splice(index, 1);
-      setMembers(newMembers);
+      setMembers(members.filter((_, i) => i !== index));
     }
   };
 
@@ -108,269 +101,159 @@ export default function RegisterTeam() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!teamName || !game || !selectedTournament || (game === "Free Fire" && !gameMode)) {
+    if (!teamName || !game || !selectedTournament) {
       toast({ title: "กรุณากรอกข้อมูลให้ครบถ้วน", variant: "destructive" });
       return;
     }
 
-    if (members.length < currentGameRules.min) {
-      toast({ title: `ต้องการสมาชิกอย่างน้อย ${currentGameRules.min} คน`, variant: "destructive" });
-      return;
-    }
-
     let logoUrl = "";
-
     try {
+      setIsUploading(true);
       if (logoFile) {
-        setIsUploading(true);
         const formData = new FormData();
         formData.append("file", logoFile);
         formData.append("upload_preset", UPLOAD_PRESET);
-
-        console.log("Uploading to Cloudinary:", CLOUDINARY_URL);
         const res = await axios.post(CLOUDINARY_URL, formData);
         logoUrl = res.data.secure_url;
-        console.log("Upload success:", logoUrl);
       }
 
-      // Add registration to Firestore
       await addDoc(collection(db, "registrations"), {
         eventId: selectedTournament,
         userId: user.uid,
-        teamName: teamName,
-        game: game,
-        gameMode: gameMode,
-        logoUrl: logoUrl,
-        members: members,
+        teamName,
+        game,
+        gameMode,
+        logoUrl,
+        members,
         status: "pending",
         createdAt: serverTimestamp(),
       });
 
-      toast({ title: "ลงทะเบียนทีมสำเร็จ รอการตรวจสอบ", variant: "default" });
+      toast({ title: "ลงทะเบียนทีมสำเร็จ รอการตรวจสอบ" });
       setLocation("/");
-
     } catch (error: any) {
-      console.error("Upload/Registration error:", error);
-      let errorMessage = "การลงทะเบียนผิดพลาด";
-      
-      if (error.response) {
-        // Cloudinary error
-        errorMessage = `Cloudinary Error: ${error.response.data?.error?.message || error.message}`;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      
-      toast({ title: errorMessage, variant: "destructive" });
+      toast({ title: "เกิดข้อผิดพลาดในการลงทะเบียน", variant: "destructive" });
     } finally {
       setIsUploading(false);
     }
   };
 
   return (
-    <div className="container mx-auto px-4 py-12 max-w-3xl">
-      <Card className="bg-card border-white/10 shadow-xl">
-        <CardHeader>
-          <CardTitle className="text-2xl font-display text-white">ลงทะเบียนทีมแข่ง</CardTitle>
-          <CardDescription>เลือกรายการแข่งขัน และกรอกข้อมูลทีมและสมาชิก</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-8">
-            {/* Tournament Selection */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium text-primary">เลือกรายการแข่งขัน</h3>
-              {isLoadingTournaments ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="w-5 h-5 animate-spin text-primary mr-2" />
-                  <span className="text-muted-foreground">กำลังโหลดรายการแข่งขัน...</span>
-                </div>
-              ) : tournaments.length === 0 ? (
-                <div className="p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-yellow-300">
-                  ยังไม่มีรายการแข่งขันที่เปิดรับสมัคร
-                </div>
-              ) : (
+    <div className="container mx-auto px-4 py-12 max-w-4xl">
+      <div className="flex items-center gap-3 mb-8">
+        <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+          <ShieldCheck className="text-white w-7 h-7" />
+        </div>
+        <div>
+          <h1 className="text-3xl font-bold text-white font-display tracking-tight uppercase">ลงทะเบียนทีมแข่ง</h1>
+          <p className="text-muted-foreground">เข้าร่วมการแข่งขัน WNY Esports Tournament</p>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-8">
+          <Card className="bg-card/50 border-white/10 backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2"><Gamepad2 className="w-5 h-5 text-primary" /> ข้อมูลการแข่งขัน</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label>เลือกรายการแข่งขัน</Label>
                 <Select value={selectedTournament} onValueChange={setSelectedTournament}>
-                  <SelectTrigger className="bg-background/50">
+                  <SelectTrigger className="bg-background/50 border-white/10">
                     <SelectValue placeholder="เลือกรายการแข่งขัน" />
                   </SelectTrigger>
                   <SelectContent>
-                    {tournaments.map((tournament) => (
-                      <SelectItem key={tournament.id} value={tournament.id}>
-                        {tournament.title} - {tournament.game} ({tournament.date})
-                      </SelectItem>
+                    {tournaments.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.title} ({t.game})</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-              )}
-            </div>
+              </div>
 
-            {/* Team Information */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium text-primary">ข้อมูลทีม</h3>
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="teamName">ชื่อทีม</Label>
-                  <Input 
-                    id="teamName" 
-                    placeholder="ใส่ชื่อทีมเท่ๆ..." 
-                    value={teamName}
-                    onChange={(e) => setTeamName(e.target.value)}
-                    className="bg-background/50"
-                    required
-                  />
+                  <Label>ชื่อทีม</Label>
+                  <Input value={teamName} onChange={e => setTeamName(e.target.value)} placeholder="ชื่อทีมของคุณ" className="bg-background/50 border-white/10" />
                 </div>
                 <div className="space-y-2">
                   <Label>เกมที่ลงแข่ง</Label>
-                  <Select onValueChange={(val) => { setGame(val); setGameMode(""); }} value={game}>
-                    <SelectTrigger className="bg-background/50">
+                  <Select value={game} onValueChange={setGame}>
+                    <SelectTrigger className="bg-background/50 border-white/10">
                       <SelectValue placeholder="เลือกเกม" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="Valorant">Valorant</SelectItem>
-                      <SelectItem value="RoV">RoV Mobile</SelectItem>
+                      <SelectItem value="RoV">RoV</SelectItem>
                       <SelectItem value="Free Fire">Free Fire</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
+            </CardContent>
+          </Card>
 
-              {game === "Free Fire" && (
-                <div className="space-y-2">
-                  <Label>โหมดการเล่น</Label>
-                  <Select onValueChange={setGameMode} value={gameMode}>
-                    <SelectTrigger className="bg-background/50">
-                      <SelectValue placeholder="เลือกโหมด" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="CS-MODE">4v4 (CS-MODE)</SelectItem>
-                      <SelectItem value="BR-MODE">BATTLE ROYALE (BR-MODE)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-              
-              <div className="space-y-2">
-                <Label>โลโก้ทีม</Label>
-                <div className="border-2 border-dashed border-white/10 rounded-lg p-6 flex flex-col items-center justify-center bg-background/20 hover:bg-background/40 transition-colors cursor-pointer text-muted-foreground hover:text-white">
-                  <input 
-                    type="file" 
-                    className="hidden" 
-                    id="logo-upload"
-                    accept="image/*"
-                    onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
-                  />
-                  <Label htmlFor="logo-upload" className="cursor-pointer flex flex-col items-center gap-2 w-full h-full">
-                    {logoFile ? (
-                      <div className="text-center">
-                        <span className="text-accent">{logoFile.name}</span>
-                        <p className="text-xs mt-1">คลิกเพื่อเปลี่ยนรูปภาพ</p>
-                      </div>
-                    ) : (
-                      <>
-                        <Upload className="w-8 h-8" />
-                        <span>คลิกเพื่ออัปโหลดโลโก้</span>
-                      </>
-                    )}
-                  </Label>
-                </div>
-              </div>
-            </div>
-
-            {/* Team Members */}
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <div>
-                  <h3 className="text-lg font-medium text-primary">รายชื่อสมาชิก</h3>
-                  <p className="text-xs text-muted-foreground">
-                    ต้องการ {currentGameRules.min} คน (รวมสำรองได้สูงสุด {currentGameRules.max} คน)
-                  </p>
-                </div>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={handleAddMember}
-                  disabled={members.length >= currentGameRules.max}
-                >
-                  <Plus className="w-4 h-4 mr-2" /> เพิ่มสมาชิก
-                </Button>
-              </div>
-
+          <Card className="bg-card/50 border-white/10 backdrop-blur-sm">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="flex items-center gap-2"><Users className="w-5 h-5 text-primary" /> รายชื่อสมาชิก</CardTitle>
+              <Button type="button" variant="outline" size="sm" onClick={handleAddMember} disabled={members.length >= currentGameRules.max}>
+                <Plus className="w-4 h-4 mr-2" /> เพิ่มสมาชิก
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
               {members.map((member, index) => (
-                <div key={index} className="p-4 rounded-lg bg-background/30 border border-white/5 space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium text-white">
-                      สมาชิกคนที่ {index + 1} 
-                      {index === 0 ? " (หัวหน้าทีม)" : (index >= currentGameRules.min ? " (ตัวสำรอง)" : "")}
-                    </span>
-                    {index > 0 && (
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
-                        onClick={() => handleRemoveMember(index)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                  <div className="grid md:grid-cols-2 gap-4">
+                <div key={index} className="p-4 rounded-lg bg-white/5 border border-white/5 space-y-4 relative group">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>ชื่อ-นามสกุล</Label>
-                      <Input 
-                        value={member.name}
-                        onChange={(e) => handleMemberChange(index, "name", e.target.value)}
-                        placeholder="นายสมชาย ใจดี"
-                        className="bg-background/50 h-9"
-                        required
-                      />
+                      <Label className="text-xs">ชื่อ-นามสกุล</Label>
+                      <Input value={member.name} onChange={e => handleMemberChange(index, 'name', e.target.value)} placeholder="ชื่อจริง" className="bg-background/50 border-white/10 h-9" />
                     </div>
                     <div className="space-y-2">
-                      <Label>ชื่อในเกม (IGN)</Label>
-                      <Input 
-                        value={member.gameName}
-                        onChange={(e) => handleMemberChange(index, "gameName", e.target.value)}
-                        placeholder="Somchai007"
-                        className="bg-background/50 h-9"
-                        required
-                      />
+                      <Label className="text-xs">ชื่อในเกม (IGN)</Label>
+                      <Input value={member.gameName} onChange={e => handleMemberChange(index, 'gameName', e.target.value)} placeholder="In-game Name" className="bg-background/50 border-white/10 h-9" />
                     </div>
                     <div className="space-y-2">
-                      <Label>ระดับชั้น</Label>
-                      <Input 
-                        value={member.grade}
-                        onChange={(e) => handleMemberChange(index, "grade", e.target.value)}
-                        placeholder="ปวช. 3/1"
-                        className="bg-background/50 h-9"
-                        required
-                      />
+                      <Label className="text-xs">ระดับชั้น</Label>
+                      <Input value={member.grade} onChange={e => handleMemberChange(index, 'grade', e.target.value)} placeholder="เช่น ปวช.3" className="bg-background/50 border-white/10 h-9" />
                     </div>
                     <div className="space-y-2">
-                      <Label>แผนกวิชา</Label>
-                      <Input 
-                        value={member.department}
-                        onChange={(e) => handleMemberChange(index, "department", e.target.value)}
-                        placeholder="เทคโนโลยีสารสนเทศ"
-                        className="bg-background/50 h-9"
-                        required
-                      />
+                      <Label className="text-xs">แผนกวิชา</Label>
+                      <Input value={member.department} onChange={e => handleMemberChange(index, 'department', e.target.value)} placeholder="เช่น เทคโนโลยีสารสนเทศ" className="bg-background/50 border-white/10 h-9" />
                     </div>
                   </div>
+                  {members.length > 1 && (
+                    <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveMember(index)} className="absolute top-2 right-2 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
                 </div>
               ))}
-            </div>
+            </CardContent>
+          </Card>
+        </div>
 
-            <Button 
-              type="submit" 
-              className="w-full h-12 text-lg bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20"
-              disabled={isUploading || createTeam.isPending || !selectedTournament}
-            >
-              {(isUploading || createTeam.isPending) && <Loader2 className="w-5 h-5 mr-2 animate-spin" />}
-              ยืนยันการลงทะเบียน
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+        <div className="space-y-8">
+          <Card className="bg-card/50 border-white/10 backdrop-blur-sm sticky top-24">
+            <CardHeader>
+              <CardTitle>โลโก้ทีม</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center gap-6">
+              <AvatarCustom src={logoPreview} name={teamName || "Team"} size="xl" className="ring-4 ring-primary/20" />
+              <div className="w-full">
+                <input type="file" id="logo-upload" className="hidden" accept="image/*" onChange={e => setLogoFile(e.target.files?.[0] || null)} />
+                <Button type="button" variant="outline" className="w-full" onClick={() => document.getElementById('logo-upload')?.click()}>
+                  <Upload className="w-4 h-4 mr-2" /> {logoFile ? "เปลี่ยนรูปภาพ" : "อัปโหลดโลโก้"}
+                </Button>
+              </div>
+              <div className="w-full pt-6 border-t border-white/5">
+                <Button type="submit" className="w-full bg-primary hover:bg-primary/80 h-12 text-lg font-bold uppercase tracking-wider" disabled={isUploading}>
+                  {isUploading ? <><Loader2 className="w-5 h-5 animate-spin mr-2" /> กำลังส่งข้อมูล...</> : "ยืนยันการลงทะเบียน"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </form>
     </div>
   );
 }

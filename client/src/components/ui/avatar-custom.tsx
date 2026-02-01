@@ -1,0 +1,64 @@
+import React from "react";
+
+interface AvatarCustomProps {
+  src?: string | null;
+  name: string;
+  size?: "xs" | "sm" | "md" | "lg" | "xl";
+  className?: string;
+}
+
+export function AvatarCustom({ src, name, size = "md", className = "" }: AvatarCustomProps) {
+  const sizeClasses = {
+    xs: "w-6 h-6 text-[10px]",
+    sm: "w-8 h-8 text-xs",
+    md: "w-10 h-10 text-sm",
+    lg: "w-16 h-16 text-xl",
+    xl: "w-24 h-24 text-3xl",
+  };
+
+  const getInitials = (name: string) => {
+    if (!name) return "?";
+    return name.charAt(0).toUpperCase();
+  };
+
+  const getRandomColor = (name: string) => {
+    const colors = [
+      "bg-blue-500",
+      "bg-purple-500",
+      "bg-pink-500",
+      "bg-indigo-500",
+      "bg-cyan-500",
+      "bg-emerald-500",
+      "bg-amber-500",
+      "bg-rose-500",
+    ];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  };
+
+  if (src && src.trim() !== "") {
+    return (
+      <div className={`${sizeClasses[size]} rounded-full overflow-hidden border border-white/10 flex-shrink-0 ${className}`}>
+        <img 
+          src={src} 
+          alt={name} 
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            (e.target as HTMLImageElement).style.display = 'none';
+            (e.target as HTMLImageElement).parentElement!.classList.add(getRandomColor(name));
+            (e.target as HTMLImageElement).parentElement!.innerHTML = `<span class="font-bold text-white">${getInitials(name)}</span>`;
+          }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className={`${sizeClasses[size]} rounded-full flex items-center justify-center border border-white/10 flex-shrink-0 ${getRandomColor(name)} ${className}`}>
+      <span className="font-bold text-white">{getInitials(name)}</span>
+    </div>
+  );
+}

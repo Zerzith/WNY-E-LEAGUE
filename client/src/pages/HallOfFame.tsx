@@ -1,17 +1,33 @@
 import { useEffect, useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
-import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, Users } from "lucide-react";
-import { type Team } from "@shared/schema";
 import { collection, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AvatarCustom } from "@/components/ui/avatar-custom";
+import { Loader2, Trophy, Users, ShieldCheck } from "lucide-react";
+import { motion } from "framer-motion";
+
+interface TeamMember {
+  name: string;
+  gameName: string;
+  grade: string;
+  department: string;
+  isSubstitute?: boolean;
+}
+
+interface Team {
+  id: string;
+  name: string;
+  game: string;
+  logoUrl?: string;
+  members: TeamMember[];
+  status: string;
+}
 
 export default function HallOfFame() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch approved teams from Firestore
     const q = query(collection(db, "teams"), where("status", "==", "approved"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const teamData = snapshot.docs.map(doc => ({
@@ -36,63 +52,81 @@ export default function HallOfFame() {
     );
   }
 
-  if (teams.length === 0) {
-    return (
-      <div className="container mx-auto px-4 py-12">
-        <div className="text-center">
-          <h1 className="text-4xl font-display font-bold text-white mb-2">ทำเนียบทีมแข่ง</h1>
-          <p className="text-muted-foreground">ยังไม่มีทีมที่อนุมัติ</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="container mx-auto px-4 py-12">
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-display font-bold text-white mb-2">ทำเนียบทีมแข่ง</h1>
-        <p className="text-muted-foreground">ทีมที่เข้าร่วมการแข่งขันทั้งหมด</p>
-      </div>
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center mb-12"
+      >
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/20 mb-4">
+          <Trophy className="w-8 h-8 text-primary" />
+        </div>
+        <h1 className="text-4xl font-display font-bold text-white mb-2 uppercase tracking-wider">ทำเนียบทีม</h1>
+        <p className="text-muted-foreground">รายชื่อทีมที่ผ่านการคัดเลือกและเข้าร่วมการแข่งขัน</p>
+      </motion.div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {teams.map((team) => (
-          <Card key={team.id} className="bg-card border-white/10 overflow-hidden hover:border-primary/50 transition-colors group">
-            <div className="h-24 bg-gradient-to-r from-secondary to-background relative">
-              <div className="absolute -bottom-8 left-6 w-16 h-16 rounded-xl bg-card border-2 border-white/10 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                {team.logoUrl ? (
-                  <img src={team.logoUrl} alt={team.name} className="w-full h-full object-cover rounded-xl" />
-                ) : (
-                  <Users className="w-8 h-8 text-muted-foreground" />
-                )}
-              </div>
-            </div>
-            <CardContent className="pt-12">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-xl font-bold text-white">{team.name}</h3>
-                  <p className="text-sm text-muted-foreground">{team.game}</p>
-                </div>
-                <span className="px-2 py-1 bg-green-500/10 text-green-500 text-xs rounded border border-green-500/20 uppercase">
-                  {team.status}
-                </span>
-              </div>
-              <div className="space-y-2">
-                <div className="text-sm text-white/50">สมาชิกทีม: {team.members?.length || 0} คน</div>
-	                <div className="flex -space-x-2">
-	                   {team.members?.slice(0, 5).map((member: any, i: number) => {
-	                     const name = typeof member === 'string' ? member : (member.name || member.gameName || "P");
-	                     return (
-	                       <div key={i} className="w-8 h-8 rounded-full bg-secondary border border-card flex items-center justify-center text-xs text-white" title={name}>
-	                          {name.charAt(0).toUpperCase()}
-	                       </div>
-	                     );
-	                   })}
-	                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {teams.length === 0 ? (
+        <div className="text-center py-20 bg-card/30 rounded-xl border border-dashed border-white/10">
+          <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-20" />
+          <p className="text-muted-foreground">ยังไม่มีทีมที่ได้รับการอนุมัติในขณะนี้</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {teams.map((team, index) => (
+            <motion.div
+              key={team.id}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: index * 0.1 }}
+            >
+              <Card className="bg-card/50 border-white/10 overflow-hidden hover:border-primary/50 transition-all group">
+                <div className="h-2 bg-primary w-full" />
+                <CardHeader className="flex flex-row items-center gap-4 pb-2">
+                  <AvatarCustom src={team.logoUrl} name={team.name} size="lg" className="ring-2 ring-primary/20" />
+                  <div>
+                    <CardTitle className="text-xl text-white group-hover:text-primary transition-colors">{team.name}</CardTitle>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="px-2 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider">
+                        {team.game}
+                      </span>
+                      <span className="flex items-center gap-1 text-[10px] text-emerald-500 font-bold uppercase">
+                        <ShieldCheck className="w-3 h-3" /> Approved
+                      </span>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="mt-4">
+                    <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3 flex items-center gap-2">
+                      <Users className="w-3 h-3" /> สมาชิกในทีม
+                    </h4>
+                    <div className="space-y-2">
+                      {team.members && team.members.map((member, i) => (
+                        <div key={i} className="flex items-center justify-between p-2 rounded bg-white/5 hover:bg-white/10 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <AvatarCustom name={member.name} size="xs" />
+                            <div>
+                              <div className="text-sm font-medium text-white leading-none">{member.name}</div>
+                              <div className="text-[10px] text-muted-foreground mt-1">{member.gameName}</div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-[10px] text-accent font-bold uppercase">{member.department}</div>
+                            {member.isSubstitute && (
+                              <span className="text-[8px] bg-amber-500/20 text-amber-500 px-1 rounded ml-1">SUB</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
