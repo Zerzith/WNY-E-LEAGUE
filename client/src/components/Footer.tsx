@@ -1,3 +1,5 @@
+import { Link } from "wouter";
+
 export function Footer() {
   return (
     <footer className="border-t border-white/10 bg-black/20 backdrop-blur-sm mt-auto">
@@ -12,13 +14,19 @@ export function Footer() {
             </p>
           </div>
           <div className="flex gap-6 text-sm text-muted-foreground">
-            <a href="#" className="hover:text-accent transition-colors">เกี่ยวกับเรา</a>
-            <a href="#" className="hover:text-accent transition-colors">ติดต่อ</a>
-            <a href="#" className="hover:text-accent transition-colors">นโยบายความเป็นส่วนตัว</a>
+            <Link href="/about">
+              <span className="hover:text-accent transition-colors cursor-pointer">เกี่ยวกับเรา</span>
+            </Link>
+            <Link href="/contact">
+              <span className="hover:text-accent transition-colors cursor-pointer">ติดต่อ</span>
+            </Link>
+            <Link href="/privacy">
+              <span className="hover:text-accent transition-colors cursor-pointer">นโยบายความเป็นส่วนตัว</span>
+            </Link>
           </div>
         </div>
         <div className="mt-8 pt-8 border-t border-white/5 text-center text-xs text-muted-foreground/50">
-          © 2024 WNY Esports. All rights reserved.
+          © 2026 WNY Esports. All rights reserved.
         </div>
       </div>
     </footer>

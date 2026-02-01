@@ -18,6 +18,9 @@ import Chat from "@/pages/Chat";
 import Profile from "@/pages/Profile";
 import EventDetail from "@/pages/EventDetail";
 import AdminDashboard from "@/pages/AdminDashboard";
+import About from "@/pages/About";
+import Contact from "@/pages/Contact";
+import Privacy from "@/pages/Privacy";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -33,6 +36,9 @@ function Router() {
       <Route path="/profile" component={Profile} />
       <Route path="/event/:id" component={EventDetail} />
       <Route path="/admin" component={AdminDashboard} />
+      <Route path="/about" component={About} />
+      <Route path="/contact" component={Contact} />
+      <Route path="/privacy" component={Privacy} />
       <Route component={NotFound} />
     </Switch>
   );
