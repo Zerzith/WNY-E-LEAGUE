@@ -4,8 +4,7 @@ import { useCreateTeam } from "@/hooks/use-teams";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { collection, query, where, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { db, storage } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +12,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, Upload, Plus, Trash2 } from "lucide-react";
 import { type InsertTeam } from "@shared/schema";
+import axios from "axios";
+
+// Cloudinary config
+const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "djubsqri6";
+const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "wangnamyenesport";
+const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
 
 interface Member {
   name: string;
@@ -116,22 +121,16 @@ export default function RegisterTeam() {
     let logoUrl = "";
 
     try {
-      // Upload logo to Firebase Storage instead of Cloudinary
       if (logoFile) {
         setIsUploading(true);
-        
-        // Create a unique filename
-        const timestamp = Date.now();
-        const filename = `team-logos/${user.uid}_${timestamp}_${logoFile.name}`;
-        const storageRef = ref(storage, filename);
-        
-        // Upload the file
-        await uploadBytes(storageRef, logoFile);
-        
-        // Get the download URL
-        logoUrl = await getDownloadURL(storageRef);
-        
-        console.log("Logo uploaded successfully:", logoUrl);
+        const formData = new FormData();
+        formData.append("file", logoFile);
+        formData.append("upload_preset", UPLOAD_PRESET);
+
+        console.log("Uploading to Cloudinary:", CLOUDINARY_URL);
+        const res = await axios.post(CLOUDINARY_URL, formData);
+        logoUrl = res.data.secure_url;
+        console.log("Upload success:", logoUrl);
       }
 
       // Add registration to Firestore
@@ -151,19 +150,14 @@ export default function RegisterTeam() {
       setLocation("/");
 
     } catch (error: any) {
-      console.error("Registration error:", error);
+      console.error("Upload/Registration error:", error);
+      let errorMessage = "การลงทะเบียนผิดพลาด";
       
-      // Improved error handling with specific messages
-      let errorMessage = "เกิดข้อผิดพลาดในการลงทะเบียน";
-      
-      if (error.code === 'storage/unauthorized') {
-        errorMessage = "ไม่มีสิทธิ์อัปโหลดรูปภาพ กรุณาเข้าสู่ระบบใหม่";
-      } else if (error.code === 'storage/canceled') {
-        errorMessage = "การอัปโหลดถูกยกเลิก";
-      } else if (error.code === 'storage/unknown') {
-        errorMessage = "เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ กรุณาลองใหม่";
+      if (error.response) {
+        // Cloudinary error
+        errorMessage = `Cloudinary Error: ${error.response.data?.error?.message || error.message}`;
       } else if (error.message) {
-        errorMessage = `เกิดข้อผิดพลาด: ${error.message}`;
+        errorMessage = error.message;
       }
       
       toast({ title: errorMessage, variant: "destructive" });
