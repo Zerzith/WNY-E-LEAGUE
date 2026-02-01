@@ -1,14 +1,12 @@
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Trophy, Users, Calendar, Loader2 } from "lucide-react";
+import { ArrowRight, Trophy, Users, Calendar, Loader2, Megaphone } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, query, where } from "firebase/firestore";
+import { collection, onSnapshot, query, where, orderBy, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
-// Unsplash images with descriptive comments
-// Hero background: Abstract tech/gaming background with blue lighting
 const HERO_BG = "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2070&auto=format&fit=crop";
 
 interface Event {
@@ -21,50 +19,51 @@ interface Event {
   status?: string;
 }
 
+interface News {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: any;
+  author: string;
+}
+
 export default function Home() {
   const { user } = useAuth();
   const [events, setEvents] = useState<Event[]>([]);
+  const [news, setNews] = useState<News[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch upcoming events from Firestore
-    const q = query(collection(db, "events"), where("status", "==", "upcoming"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const eventData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as any));
-      setEvents(eventData.slice(0, 3)); // Show only first 3 events
-      setLoading(false);
-    }, (error) => {
-      console.error("Error fetching events:", error);
+    // Fetch upcoming events
+    const qEvents = query(collection(db, "events"), where("status", "==", "upcoming"), limit(3));
+    const unsubEvents = onSnapshot(qEvents, (snapshot) => {
+      setEvents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
+    });
+
+    // Fetch latest news
+    const qNews = query(collection(db, "news"), orderBy("createdAt", "desc"), limit(3));
+    const unsubNews = onSnapshot(qNews, (snapshot) => {
+      setNews(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubEvents();
+      unsubNews();
+    };
   }, []);
 
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
-      <section className="relative h-[80vh] flex items-center justify-center overflow-hidden">
-        {/* Background Image with Overlay */}
+      <section className="relative h-[85vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <img 
-            src={HERO_BG} 
-            alt="Esports Arena" 
-            className="w-full h-full object-cover opacity-30"
-          />
+          <img src={HERO_BG} alt="Esports Arena" className="w-full h-full object-cover opacity-30" />
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-primary/10" />
         </div>
 
-        {/* Content */}
         <div className="container relative z-10 text-center px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-          >
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }}>
             <h2 className="text-accent font-bold tracking-widest text-lg md:text-xl mb-4 uppercase">
               Wang Nam Yen Technical College
             </h2>
@@ -94,13 +93,37 @@ export default function Home() {
         </div>
       </section>
 
+      {/* News Section */}
+      {news.length > 0 && (
+        <section className="py-16 bg-accent/5 border-y border-white/5">
+          <div className="container mx-auto px-4">
+            <div className="flex items-center gap-3 mb-8">
+              <Megaphone className="text-accent w-6 h-6" />
+              <h2 className="text-2xl font-bold text-white">ข่าวสารและประกาศ</h2>
+            </div>
+            <div className="grid md:grid-cols-3 gap-6">
+              {news.map((item) => (
+                <div key={item.id} className="bg-card/50 border border-white/10 p-6 rounded-2xl hover:border-accent/50 transition-all">
+                  <p className="text-xs text-accent font-bold mb-2">
+                    {item.createdAt?.toDate?.().toLocaleDateString('th-TH') || "ประกาศใหม่"}
+                  </p>
+                  <h3 className="text-xl font-bold text-white mb-3">{item.title}</h3>
+                  <p className="text-muted-foreground text-sm line-clamp-3 mb-4">{item.content}</p>
+                  <p className="text-xs text-muted-foreground italic">โดย {item.author}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Featured Games */}
-      <section className="py-24 bg-card/30 border-y border-white/5 backdrop-blur-sm">
+      <section className="py-24">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row justify-between items-end mb-12 gap-4">
             <div>
-              <h2 className="text-3xl font-display font-bold text-white">เกมที่เปิดรับสมัคร</h2>
-              <p className="text-muted-foreground mt-2">การแข่งขันที่กำลังจะมาถึง</p>
+              <h2 className="text-3xl font-display font-bold text-white">การแข่งขันที่เปิดรับสมัคร</h2>
+              <p className="text-muted-foreground mt-2">เข้าร่วมการแข่งขันที่กำลังจะมาถึง</p>
             </div>
             <Link href="/hall-of-fame">
               <Button variant="link" className="text-accent hover:text-accent/80 p-0 h-auto">
@@ -110,15 +133,15 @@ export default function Home() {
           </div>
 
           {loading ? (
-            <div className="flex items-center justify-center h-80">
+            <div className="flex items-center justify-center h-64">
               <Loader2 className="w-10 h-10 animate-spin text-primary" />
             </div>
           ) : events.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">ยังไม่มีการแข่งขันที่กำลังจะมาถึง</p>
+            <div className="text-center py-12 bg-card/20 rounded-3xl border border-dashed border-white/10">
+              <p className="text-muted-foreground">ยังไม่มีการแข่งขันที่เปิดรับสมัครในขณะนี้</p>
             </div>
           ) : (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-3 gap-8">
               {events.map((event, i) => (
                 <motion.div
                   key={event.id}
@@ -126,29 +149,36 @@ export default function Home() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1 }}
-                  className="group relative h-80 rounded-2xl overflow-hidden border border-white/10 bg-background hover:border-accent/50 transition-all cursor-pointer"
+                  className="group relative h-96 rounded-3xl overflow-hidden border border-white/10 bg-background hover:border-accent/50 transition-all"
                 >
                   <img 
                     src={event.bannerUrl || HERO_BG}
                     alt={event.title}
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110 opacity-60 group-hover:opacity-40"
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-60"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
                   
-                  <div className="absolute bottom-0 left-0 p-6 w-full">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="px-2 py-1 rounded-md bg-accent/20 text-accent text-xs font-bold border border-accent/20 backdrop-blur-md">
+                  <div className="absolute bottom-0 left-0 p-8 w-full">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="px-3 py-1 rounded-full bg-accent text-black text-xs font-bold">
                         {event.game}
                       </span>
-                      <span className="flex items-center gap-1 text-xs text-white/70">
+                      <span className="flex items-center gap-1 text-xs text-white/80">
                         <Calendar className="w-3 h-3" /> {event.date}
                       </span>
                     </div>
-                    <h3 className="text-2xl font-display font-bold text-white mb-2 group-hover:text-accent transition-colors">
+                    <h3 className="text-2xl font-display font-bold text-white mb-3 group-hover:text-accent transition-colors">
                       {event.title}
                     </h3>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground group-hover:text-white transition-colors">
-                      <Users className="w-4 h-4" /> {event.maxTeams || 0} ทีม
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Users className="w-4 h-4" /> {event.maxTeams || 0} ทีม
+                      </div>
+                      <Link href={user ? "/register-team" : "/login"}>
+                        <Button size="sm" className="rounded-full bg-white/10 hover:bg-white text-white hover:text-black border-none">
+                          สมัครเลย
+                        </Button>
+                      </Link>
                     </div>
                   </div>
                 </motion.div>
@@ -161,19 +191,19 @@ export default function Home() {
       {/* CTA Section */}
       <section className="py-24">
         <div className="container mx-auto px-4 text-center">
-          <div className="max-w-3xl mx-auto glass-panel p-12 rounded-3xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-            <div className="absolute bottom-0 left-0 w-64 h-64 bg-accent/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+          <div className="max-w-4xl mx-auto glass-panel p-16 rounded-[3rem] relative overflow-hidden border border-white/10">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2" />
+            <div className="absolute bottom-0 left-0 w-96 h-96 bg-accent/10 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2" />
             
-            <h2 className="text-3xl md:text-4xl font-display font-bold text-white mb-6">
-              พร้อมที่จะลงแข่งหรือยัง?
+            <h2 className="text-4xl md:text-5xl font-display font-bold text-white mb-8">
+              พร้อมที่จะเป็นตำนานหรือยัง?
             </h2>
-            <p className="text-lg text-muted-foreground mb-8">
+            <p className="text-xl text-muted-foreground mb-10 max-w-2xl mx-auto">
               สร้างทีมของคุณ รวบรวมสมาชิก และลงทะเบียนเพื่อชิงรางวัลและการยอมรับในระดับวิทยาลัย
             </p>
             <Link href={user ? "/register-team" : "/login"}>
-              <Button size="lg" className="bg-white text-background hover:bg-white/90 font-bold px-8 h-12 rounded-full">
-                สร้างทีมเลย
+              <Button size="lg" className="bg-primary hover:bg-primary/90 text-white font-bold px-12 h-16 text-xl rounded-full shadow-2xl shadow-primary/40">
+                ลงทะเบียนทีมแข่ง
               </Button>
             </Link>
           </div>

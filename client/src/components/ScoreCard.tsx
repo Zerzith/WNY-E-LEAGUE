@@ -3,12 +3,12 @@ import { Trophy } from "lucide-react";
 
 interface ScoreCardProps {
   match: {
-    id: number;
+    id: string;
     teamA: string;
     teamB: string;
     scoreA: number;
     scoreB: number;
-    game: string;
+    game?: string;
     status: string;
     winner?: string;
     bannerUrl?: string;
@@ -16,78 +16,96 @@ interface ScoreCardProps {
 }
 
 export function ScoreCard({ match }: ScoreCardProps) {
-  const isLive = match.status === 'live';
+  const isLive = match.status === 'ongoing' || match.status === 'live';
+  const isCompleted = match.status === 'completed' || match.status === 'finished';
   
+  const getStatusText = (status: string) => {
+    switch(status) {
+      case 'ongoing':
+      case 'live': return 'กำลังแข่งขัน';
+      case 'completed':
+      case 'finished': return 'จบการแข่งขัน';
+      case 'pending': return 'รอการแข่งขัน';
+      default: return status;
+    }
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative overflow-hidden rounded-xl border border-white/10 bg-card hover:border-accent/50 transition-colors group"
+      className="relative overflow-hidden rounded-2xl border border-white/10 bg-card/50 hover:border-primary/50 transition-all group backdrop-blur-sm"
     >
-      {/* Game Banner Background */}
-      {match.bannerUrl && (
-        <div className="absolute inset-0 z-0">
-          <img 
-            src={match.bannerUrl} 
-            alt={match.game} 
-            className="w-full h-full object-cover opacity-20 group-hover:opacity-30 transition-opacity"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-card via-card/80 to-transparent" />
-        </div>
-      )}
-      
-      {/* Background decoration */}
-      <div className="absolute inset-0 z-0 bg-gradient-to-br from-transparent via-transparent to-primary/5 group-hover:to-primary/10 transition-colors" />
-      
       {/* Status Badge */}
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10">
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10">
         <span className={`
-          px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider
+          px-4 py-1 rounded-b-xl text-[10px] font-bold uppercase tracking-widest
           ${isLive 
-            ? 'bg-red-500/20 text-red-500 border border-red-500/50 animate-pulse' 
-            : 'bg-secondary text-muted-foreground border border-white/5'}
+            ? 'bg-red-600 text-white animate-pulse' 
+            : isCompleted 
+              ? 'bg-green-600/20 text-green-500 border-x border-b border-green-500/30'
+              : 'bg-white/10 text-white/50 border-x border-b border-white/10'}
         `}>
-          {isLive ? 'Live Match' : match.status}
+          {getStatusText(match.status)}
         </span>
       </div>
 
       <div className="relative z-10 p-6 pt-10">
-        <div className="flex items-center justify-between gap-8">
+        <div className="flex items-center justify-between gap-4 md:gap-8">
           {/* Team A */}
           <div className="flex-1 text-center flex flex-col items-center gap-3">
-            <div className="w-16 h-16 rounded-full bg-secondary/50 flex items-center justify-center border-2 border-transparent group-hover:border-primary/50 transition-all backdrop-blur-sm">
-              <span className="text-2xl font-display font-bold text-white/80">{match.teamA.charAt(0)}</span>
+            <div className={`w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center border border-white/10 group-hover:border-primary/30 transition-all shadow-xl ${match.scoreA > match.scoreB && isCompleted ? 'ring-2 ring-primary ring-offset-4 ring-offset-background' : ''}`}>
+              <span className="text-3xl font-display font-bold text-white">{match.teamA.charAt(0)}</span>
             </div>
-            <h3 className={`font-display font-bold text-lg ${match.winner === match.teamA ? 'text-accent' : 'text-white'}`}>
-              {match.teamA}
-            </h3>
-            {match.winner === match.teamA && <Trophy className="w-4 h-4 text-accent" />}
+            <div className="space-y-1">
+              <h3 className={`font-display font-bold text-sm md:text-lg line-clamp-1 ${match.scoreA > match.scoreB && isCompleted ? 'text-primary' : 'text-white'}`}>
+                {match.teamA}
+              </h3>
+              {match.scoreA > match.scoreB && isCompleted && (
+                <div className="flex items-center justify-center gap-1 text-primary">
+                  <Trophy className="w-3 h-3" />
+                  <span className="text-[10px] font-bold uppercase">Winner</span>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Score */}
-          <div className="flex flex-col items-center gap-1">
-            <div className="flex items-center gap-4 font-display font-bold text-4xl bg-black/40 px-4 py-2 rounded-lg border border-white/10 backdrop-blur-md">
-              <span className={match.scoreA > match.scoreB ? 'text-white' : 'text-white/50'}>{match.scoreA}</span>
-              <span className="text-white/20 text-2xl">:</span>
-              <span className={match.scoreB > match.scoreA ? 'text-white' : 'text-white/50'}>{match.scoreB}</span>
+          {/* Score Center */}
+          <div className="flex flex-col items-center gap-2">
+            <div className="flex items-center gap-3 md:gap-5 font-display font-bold text-3xl md:text-5xl bg-black/60 px-6 py-3 rounded-2xl border border-white/5 shadow-2xl">
+              <span className={match.scoreA >= match.scoreB ? 'text-white' : 'text-white/40'}>{match.scoreA}</span>
+              <span className="text-primary/40 text-2xl md:text-4xl">:</span>
+              <span className={match.scoreB >= match.scoreA ? 'text-white' : 'text-white/40'}>{match.scoreB}</span>
             </div>
-            <span className="text-xs text-white/80 font-bold uppercase tracking-wider drop-shadow-md">
-              {match.game}
-            </span>
+            {match.game && (
+              <span className="text-[10px] text-white/40 font-bold uppercase tracking-[0.2em]">
+                {match.game}
+              </span>
+            )}
           </div>
 
           {/* Team B */}
           <div className="flex-1 text-center flex flex-col items-center gap-3">
-            <div className="w-16 h-16 rounded-full bg-secondary/50 flex items-center justify-center border-2 border-transparent group-hover:border-destructive/50 transition-all backdrop-blur-sm">
-              <span className="text-2xl font-display font-bold text-white/80">{match.teamB.charAt(0)}</span>
+            <div className={`w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center border border-white/10 group-hover:border-primary/30 transition-all shadow-xl ${match.scoreB > match.scoreA && isCompleted ? 'ring-2 ring-primary ring-offset-4 ring-offset-background' : ''}`}>
+              <span className="text-3xl font-display font-bold text-white">{match.teamB.charAt(0)}</span>
             </div>
-            <h3 className={`font-display font-bold text-lg ${match.winner === match.teamB ? 'text-accent' : 'text-white'}`}>
-              {match.teamB}
-            </h3>
-            {match.winner === match.teamB && <Trophy className="w-4 h-4 text-accent" />}
+            <div className="space-y-1">
+              <h3 className={`font-display font-bold text-sm md:text-lg line-clamp-1 ${match.scoreB > match.scoreA && isCompleted ? 'text-primary' : 'text-white'}`}>
+                {match.teamB}
+              </h3>
+              {match.scoreB > match.scoreA && isCompleted && (
+                <div className="flex items-center justify-center gap-1 text-primary">
+                  <Trophy className="w-3 h-3" />
+                  <span className="text-[10px] font-bold uppercase">Winner</span>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
+      
+      {/* Bottom Decorative Line */}
+      <div className={`absolute bottom-0 left-0 h-1 transition-all duration-500 ${isLive ? 'w-full bg-red-600' : 'w-0 group-hover:w-full bg-primary'}`} />
     </motion.div>
   );
 }

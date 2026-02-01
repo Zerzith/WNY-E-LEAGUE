@@ -21,6 +21,7 @@ export function Navigation() {
   const navItems = [
     { href: "/", label: "หน้าแรก", icon: Gamepad2 },
     { href: "/scoreboard", label: "ตารางคะแนน", icon: Trophy },
+    { href: "/bracket", label: "สายการแข่งขัน", icon: Users },
     { href: "/chat", label: "แชทสด", icon: MessageCircle },
   ];
 
