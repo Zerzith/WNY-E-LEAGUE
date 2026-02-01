@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, type InsertTeam } from "@shared/routes";
+import { api } from "@shared/routes";
+import { type InsertTeam } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { doc, getDoc, collection, addDoc, query, where, onSnapshot, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, collection, addDoc, query, where, onSnapshot, serverTimestamp, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

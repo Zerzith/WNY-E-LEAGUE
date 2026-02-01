@@ -126,7 +126,7 @@ export default function Home() {
               <p className="text-muted-foreground mt-2">เข้าร่วมการแข่งขันที่กำลังจะมาถึง</p>
             </div>
             <Link href="/hall-of-fame">
-              <Button variant="link" className="text-accent hover:text-accent/80 p-0 h-auto">
+              <Button variant="ghost" className="text-accent hover:text-accent/80 p-0 h-auto hover:bg-transparent">
                 ดูทั้งหมด <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
             </Link>

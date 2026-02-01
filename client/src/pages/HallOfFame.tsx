@@ -78,13 +78,16 @@ export default function HallOfFame() {
               </div>
               <div className="space-y-2">
                 <div className="text-sm text-white/50">สมาชิกทีม: {team.members?.length || 0} คน</div>
-                <div className="flex -space-x-2">
-                   {team.members?.slice(0, 5).map((member, i) => (
-                     <div key={i} className="w-8 h-8 rounded-full bg-secondary border border-card flex items-center justify-center text-xs text-white" title={member}>
-                        {member.charAt(0).toUpperCase()}
-                     </div>
-                   ))}
-                </div>
+	                <div className="flex -space-x-2">
+	                   {team.members?.slice(0, 5).map((member: any, i: number) => {
+	                     const name = typeof member === 'string' ? member : (member.name || member.gameName || "P");
+	                     return (
+	                       <div key={i} className="w-8 h-8 rounded-full bg-secondary border border-card flex items-center justify-center text-xs text-white" title={name}>
+	                          {name.charAt(0).toUpperCase()}
+	                       </div>
+	                     );
+	                   })}
+	                </div>
               </div>
             </CardContent>
           </Card>

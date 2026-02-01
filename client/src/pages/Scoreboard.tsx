@@ -5,7 +5,7 @@ import { ScoreCard } from "@/components/ScoreCard";
 import { Loader2 } from "lucide-react";
 
 interface Match {
-  id: number;
+  id: string;
   eventId: number;
   teamA: string;
   teamB: string;
@@ -26,7 +26,10 @@ export default function Scoreboard() {
     // Query Firestore "matches" collection
     const q = query(collection(db, "matches"), orderBy("status", "desc")); // Live matches first
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const matchData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      const matchData = snapshot.docs.map(doc => ({ 
+        ...doc.data(),
+        id: doc.id.toString() 
+      } as any));
       setMatches(matchData);
       setLoading(false);
     }, (error) => {

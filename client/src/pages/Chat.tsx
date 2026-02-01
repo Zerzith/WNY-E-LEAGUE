@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, doc, getDoc, setDoc } from "firebase/firestore";
+import { collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, doc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -38,12 +38,8 @@ export default function Chat() {
   const [userPhotoURL, setUserPhotoURL] = useState<string>("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Check if user is admin - use role from useAuth directly
+  // Check if user is admin
   const isAdmin = user?.role === 'admin';
-
-  console.log("Chat component - User:", user);
-  console.log("Chat component - isAdmin:", isAdmin);
-  console.log("Chat component - user.role:", user?.role);
 
   // Get user photo
   useEffect(() => {
@@ -56,9 +52,10 @@ export default function Chat() {
   useEffect(() => {
     const unsubscribe = onSnapshot(doc(db, "config", "live_stream"), (doc) => {
       if (doc.exists()) {
-        setLiveStream(doc.data() as LiveStreamConfig);
-        setEditStreamUrl(doc.data().liveUrl || "");
-        setEditStreamTitle(doc.data().title || "");
+        const data = doc.data();
+        setLiveStream(data as LiveStreamConfig);
+        setEditStreamUrl(data.liveUrl || "");
+        setEditStreamTitle(data.title || "");
       }
     }, (error) => {
       console.error("Error fetching live stream config:", error);
@@ -67,7 +64,7 @@ export default function Chat() {
     return () => unsubscribe();
   }, []);
 
-  // Fetch chat messages with user photos
+  // Fetch chat messages
   useEffect(() => {
     const q = query(
       collection(db, "live_chat"),
@@ -159,13 +156,10 @@ export default function Chat() {
 
   return (
     <div className="container mx-auto px-4 py-6 h-[calc(100vh-4rem)] flex flex-col gap-4">
-      {/* Live Stream Section - YouTube/Twitch Style */}
       {liveStream?.isActive && liveStream?.liveUrl ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 flex-1 overflow-hidden">
-          {/* Video Player (Left/Top) */}
           <div className="lg:col-span-2 flex flex-col gap-4">
             <Card className="bg-black border-white/10 overflow-hidden flex-1">
-              {/* Video Player Header */}
               <div className="aspect-video bg-black flex items-center justify-center relative">
                 {isYoutubeUrl(liveStream.liveUrl) ? (
                   <iframe
@@ -195,36 +189,31 @@ export default function Chat() {
                   />
                 )}
                 
-                {/* Live Badge */}
                 <div className="absolute top-4 left-4 bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center gap-2 shadow-lg">
                   <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
                   LIVE
                 </div>
 
-                {/* Viewer Count */}
                 <div className="absolute top-4 right-4 bg-black/70 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm flex items-center gap-2">
                   <Eye className="w-4 h-4" />
                   {viewerCount} ผู้ชม
                 </div>
               </div>
 
-              {/* Video Info */}
               <div className="p-4 border-t border-white/10">
-                <h2 className="text-xl font-bold text-white mb-2">{liveStream.title || "Live Stream"}</h2>
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">{viewerCount} ผู้ชมออนไลน์</span>
+                  <div>
+                    <h2 className="text-xl font-bold text-white mb-1">{liveStream.title || "Live Stream"}</h2>
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">{viewerCount} ผู้ชมออนไลน์</span>
+                    </div>
                   </div>
                   {isAdmin && (
                     <Button 
                       size="sm" 
                       variant="ghost"
-                      onClick={() => {
-                        console.log("Edit button clicked. Current isEditingStream:", isEditingStream);
-                        setIsEditingStream(true);
-                        console.log("After setIsEditingStream(true), isEditingStream should be true.");
-                      }}
+                      onClick={() => setIsEditingStream(!isEditingStream)}
                       className="text-muted-foreground hover:text-accent"
                     >
                       <Edit2 className="w-4 h-4" />
@@ -234,8 +223,6 @@ export default function Chat() {
               </div>
             </Card>
 
-            {/* Admin Stream Management */}
-            {console.log("Rendering check - isAdmin:", isAdmin, "isEditingStream:", isEditingStream)}
             {isAdmin && isEditingStream && (
               <Card className="bg-card/50 border-white/10 backdrop-blur-sm p-4">
                 <div className="space-y-4">
@@ -253,32 +240,18 @@ export default function Chat() {
                     <Input 
                       value={editStreamUrl}
                       onChange={(e) => setEditStreamUrl(e.target.value)}
-                      placeholder="เช่น https://www.youtube.com/watch?v=... หรือ https://www.twitch.tv/..."
+                      placeholder="เช่น https://www.youtube.com/watch?v=..."
                       className="bg-background/50 border-white/10"
                     />
-                    <p className="text-xs text-muted-foreground mt-2">รองรับ: YouTube, Twitch, หรือ URL วิดีโอทั่วไป</p>
                   </div>
                   <div className="flex gap-2">
-                    <Button 
-                      onClick={handleUpdateStream}
-                      className="bg-primary hover:bg-primary/90 flex-1"
-                    >
-                      <Check className="w-4 h-4 mr-2" />
-                      บันทึก
+                    <Button onClick={handleUpdateStream} className="bg-primary flex-1">
+                      <Check className="w-4 h-4 mr-2" /> บันทึก
                     </Button>
-                    <Button 
-                      onClick={handleRemoveStream}
-                      variant="destructive"
-                      className="flex-1"
-                    >
-                      <X className="w-4 h-4 mr-2" />
-                      ลบ
+                    <Button onClick={handleRemoveStream} variant="destructive" className="flex-1">
+                      <X className="w-4 h-4 mr-2" /> ลบ
                     </Button>
-                    <Button 
-                      onClick={() => setIsEditingStream(false)}
-                      variant="outline"
-                      className="flex-1"
-                    >
+                    <Button onClick={() => setIsEditingStream(false)} variant="outline" className="flex-1">
                       ยกเลิก
                     </Button>
                   </div>
@@ -287,72 +260,73 @@ export default function Chat() {
             )}
           </div>
 
-          {/* Chat Section (Right/Bottom) */}
           <div className="lg:col-span-1 flex flex-col">
             <Card className="bg-card/50 border-white/10 backdrop-blur-sm flex-1 flex flex-col overflow-hidden">
-              <div className="p-4 border-b border-white/10">
-                <h3 className="font-bold text-white flex items-center gap-2">
-                  <Users className="w-5 h-5 text-primary" />
-                  แชทสด
-                </h3>
+              <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                <h3 className="font-bold text-white">แชทสด</h3>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                  {viewerCount} ออนไลน์
+                </div>
               </div>
 
-              {/* Messages */}
-              <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+              <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-hide">
                 {messages.map((msg) => (
-                  <div key={msg.id} className="flex gap-3 items-start">
-                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary flex-shrink-0">
+                  <div key={msg.id} className="flex gap-3 group">
+                    <div className="w-8 h-8 rounded-full bg-secondary flex-shrink-0 overflow-hidden border border-white/10">
                       {msg.userPhotoURL ? (
-                        <img src={msg.userPhotoURL} alt={msg.displayName} className="w-full h-full rounded-full object-cover" />
+                        <img src={msg.userPhotoURL} alt={msg.displayName} className="w-full h-full object-cover" />
                       ) : (
-                        msg.displayName.charAt(0).toUpperCase()
+                        <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-white/40">
+                          {msg.displayName.charAt(0)}
+                        </div>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-baseline gap-2">
-                        <span className="text-sm font-medium text-white truncate">{msg.displayName}</span>
-                        <span className="text-xs text-muted-foreground flex-shrink-0">
-                          {msg.timestamp?.toDate?.().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
+                        <span className="text-xs font-bold text-accent truncate">{msg.displayName}</span>
+                        <span className="text-[10px] text-white/20">
+                          {msg.timestamp?.toDate?.().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
-                      <p className="text-sm text-muted-foreground break-words">{msg.text}</p>
+                      <p className="text-sm text-white/80 break-words leading-relaxed">{msg.text}</p>
                     </div>
                   </div>
                 ))}
               </div>
 
-              {/* Input */}
-              <div className="p-4 border-t border-white/10 relative">
+              <div className="p-4 border-t border-white/10 bg-black/20 relative">
                 {showEmoji && (
-                  <div className="absolute bottom-full mb-2 right-4 z-50">
-                    <EmojiPicker
+                  <div className="absolute bottom-full right-0 mb-2 z-50">
+                    <EmojiPicker 
                       onEmojiClick={(emojiData) => {
-                        setNewMessage((prev) => prev + emojiData.emoji);
+                        setNewMessage(prev => prev + emojiData.emoji);
                         setShowEmoji(false);
                       }}
+                      theme={"dark" as any}
                     />
                   </div>
                 )}
                 <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="text-muted-foreground hover:text-white"
                     onClick={() => setShowEmoji(!showEmoji)}
-                    className="flex-shrink-0"
                   >
                     <Smile className="w-5 h-5" />
                   </Button>
-                  <Input
+                  <Input 
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && handleSendMessage()}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                     placeholder="พิมพ์ข้อความ..."
-                    className="bg-background/50 border-white/10 flex-1"
+                    className="bg-white/5 border-white/10 focus:ring-primary/50"
                   />
-                  <Button
+                  <Button 
                     onClick={handleSendMessage}
-                    className="bg-primary hover:bg-primary/90 flex-shrink-0"
+                    size="icon"
+                    className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20"
                   >
                     <Send className="w-4 h-4" />
                   </Button>
@@ -362,30 +336,26 @@ export default function Chat() {
           </div>
         </div>
       ) : (
-        // No Stream Active
-        <div className="flex-1 flex flex-col items-center justify-center">
-          <Card className="bg-card/50 border-white/10 p-8 text-center">
-            <h2 className="text-2xl font-bold text-white mb-4">ยังไม่มีการถ่ายทอดสดในขณะนี้</h2>
-            <p className="text-muted-foreground mb-6">กรุณารอการเริ่มต้นการถ่ายทอดสดของการแข่งขัน</p>
-            {isAdmin && (
+        <div className="flex-1 flex flex-col items-center justify-center gap-6">
+          <Card className="bg-card/50 border-white/10 backdrop-blur-sm p-12 text-center max-w-md w-full">
+            <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Eye className="w-10 h-10 text-primary opacity-50" />
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-2">ไม่มีการถ่ายทอดสด</h2>
+            <p className="text-muted-foreground mb-8">ขณะนี้ยังไม่มีการแข่งขันที่กำลังถ่ายทอดสด คุณสามารถพูดคุยกับเพื่อนๆ ในแชทได้</p>
+            
+            {isAdmin && !isEditingStream && (
               <Button 
-                      onClick={() => {
-                        console.log("Edit button clicked. Current isEditingStream:", isEditingStream);
-                        setIsEditingStream(true);
-                        console.log("After setIsEditingStream(true), isEditingStream should be true.");
-                      }}
-                className="bg-accent hover:bg-accent/90"
+                onClick={() => setIsEditingStream(true)}
+                className="bg-accent text-black hover:bg-accent/90 font-bold"
               >
-                <Edit2 className="w-4 h-4 mr-2" />
-                เพิ่มลิงก์ Live Streaming
+                <Edit2 className="w-4 h-4 mr-2" /> เพิ่มลิงก์ไลฟ์สด
               </Button>
             )}
           </Card>
           
-          {/* Admin Stream Management - Show when no stream and editing */}
-          {console.log("No stream section - isAdmin:", isAdmin, "isEditingStream:", isEditingStream)}
           {isAdmin && isEditingStream && (
-            <Card className="bg-card/50 border-white/10 backdrop-blur-sm p-6 mt-4 max-w-2xl w-full">
+            <Card className="bg-card/50 border-white/10 backdrop-blur-sm p-6 max-w-2xl w-full">
               <h3 className="text-lg font-bold text-white mb-4">เพิ่มลิงก์ Live Streaming</h3>
               <div className="space-y-4">
                 <div>
@@ -402,26 +372,15 @@ export default function Chat() {
                   <Input 
                     value={editStreamUrl}
                     onChange={(e) => setEditStreamUrl(e.target.value)}
-                    placeholder="เช่น https://www.youtube.com/watch?v=... หรือ https://www.twitch.tv/..."
+                    placeholder="เช่น https://www.youtube.com/watch?v=..."
                     className="bg-background/50 border-white/10"
                   />
-                  <p className="text-xs text-muted-foreground mt-2">รองรับ: YouTube, Twitch, หรือ URL วิดีโอทั่วไป</p>
                 </div>
                 <div className="flex gap-2">
-                  <Button 
-                    onClick={handleUpdateStream}
-                    className="bg-primary hover:bg-primary/90 flex-1"
-                    disabled={!editStreamUrl.trim()}
-                  >
-                    <Check className="w-4 h-4 mr-2" />
-                    บันทึก
+                  <Button onClick={handleUpdateStream} className="bg-primary flex-1">
+                    <Check className="w-4 h-4 mr-2" /> บันทึก
                   </Button>
-                  <Button 
-                    onClick={() => setIsEditingStream(false)}
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    <X className="w-4 h-4 mr-2" />
+                  <Button onClick={() => setIsEditingStream(false)} variant="outline" className="flex-1">
                     ยกเลิก
                   </Button>
                 </div>
