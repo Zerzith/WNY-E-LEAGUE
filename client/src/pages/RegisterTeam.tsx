@@ -4,7 +4,8 @@ import { useCreateTeam } from "@/hooks/use-teams";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { collection, query, where, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { db, storage } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,11 +13,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, Upload, Plus, Trash2 } from "lucide-react";
 import { type InsertTeam } from "@shared/schema";
-import axios from "axios";
-
-// Cloudinary config (Client-side upload for speed, usually would be signed on server)
-const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${import.meta.env.VITE_CLOUDINARY_CLOUD_NAME}/image/upload`;
-const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "unsigned_preset";
 
 interface Member {
   name: string;
@@ -120,17 +116,25 @@ export default function RegisterTeam() {
     let logoUrl = "";
 
     try {
+      // Upload logo to Firebase Storage instead of Cloudinary
       if (logoFile) {
         setIsUploading(true);
-        const formData = new FormData();
-        formData.append("file", logoFile);
-        formData.append("upload_preset", UPLOAD_PRESET);
-
-        const res = await axios.post(CLOUDINARY_URL, formData);
-        logoUrl = res.data.secure_url;
+        
+        // Create a unique filename
+        const timestamp = Date.now();
+        const filename = `team-logos/${user.uid}_${timestamp}_${logoFile.name}`;
+        const storageRef = ref(storage, filename);
+        
+        // Upload the file
+        await uploadBytes(storageRef, logoFile);
+        
+        // Get the download URL
+        logoUrl = await getDownloadURL(storageRef);
+        
+        console.log("Logo uploaded successfully:", logoUrl);
       }
 
-      // Add registration to Firestore instead of creating a team
+      // Add registration to Firestore
       await addDoc(collection(db, "registrations"), {
         eventId: selectedTournament,
         userId: user.uid,
@@ -146,9 +150,23 @@ export default function RegisterTeam() {
       toast({ title: "ลงทะเบียนทีมสำเร็จ รอการตรวจสอบ", variant: "default" });
       setLocation("/");
 
-    } catch (error) {
-      console.error(error);
-      toast({ title: "อัปโหลดรูปล้มเหลว หรือ การลงทะเบียนผิดพลาด", variant: "destructive" });
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      
+      // Improved error handling with specific messages
+      let errorMessage = "เกิดข้อผิดพลาดในการลงทะเบียน";
+      
+      if (error.code === 'storage/unauthorized') {
+        errorMessage = "ไม่มีสิทธิ์อัปโหลดรูปภาพ กรุณาเข้าสู่ระบบใหม่";
+      } else if (error.code === 'storage/canceled') {
+        errorMessage = "การอัปโหลดถูกยกเลิก";
+      } else if (error.code === 'storage/unknown') {
+        errorMessage = "เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ กรุณาลองใหม่";
+      } else if (error.message) {
+        errorMessage = `เกิดข้อผิดพลาด: ${error.message}`;
+      }
+      
+      toast({ title: errorMessage, variant: "destructive" });
     } finally {
       setIsUploading(false);
     }
@@ -286,7 +304,7 @@ export default function RegisterTeam() {
               {members.map((member, index) => (
                 <div key={index} className="p-4 rounded-lg bg-background/30 border border-white/5 space-y-4">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm font-bold text-muted-foreground">
+                    <span className="text-sm font-medium text-white">
                       สมาชิกคนที่ {index + 1} 
                       {index === 0 ? " (หัวหน้าทีม)" : (index >= currentGameRules.min ? " (ตัวสำรอง)" : "")}
                     </span>

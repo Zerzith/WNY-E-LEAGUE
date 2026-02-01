@@ -1,6 +1,7 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 // NOTE: In a real deployment, these would come from import.meta.env
 // For this demo, we'll assume the environment variables are set or fallback gracefully
@@ -16,6 +17,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const storage = getStorage(app);
 
 export function mapFirebaseErrorToThaiMessage(errorCode: string): string {
   switch (errorCode) {
