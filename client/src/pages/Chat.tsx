@@ -42,6 +42,9 @@ export default function Chat() {
   // Check if user is admin and get user photo
   useEffect(() => {
     if (user) {
+      console.log("User object in Chat.tsx useEffect:", user);
+      console.log("User role:", user.role);
+
       const checkAdmin = async () => {
         try {
           const userDoc = await getDoc(doc(db, "users", user.uid));
@@ -226,7 +229,11 @@ export default function Chat() {
                     <Button 
                       size="sm" 
                       variant="ghost"
-                      onClick={() => setIsEditingStream(true)}
+                      onClick={() => {
+                        console.log("Edit button clicked. Current isEditingStream:", isEditingStream);
+                        setIsEditingStream(true);
+                        console.log("After setIsEditingStream(true), isEditingStream should be true.");
+                      }}
                       className="text-muted-foreground hover:text-accent"
                     >
                       <Edit2 className="w-4 h-4" />
@@ -237,6 +244,8 @@ export default function Chat() {
             </Card>
 
             {/* Admin Stream Management */}
+            {console.log("isAdmin:", isAdmin, "isEditingStream:", isEditingStream)}
+            {console.log("isAdmin:", isAdmin, "isEditingStream:", isEditingStream)}
             {isAdmin && isEditingStream && (
               <Card className="bg-card/50 border-white/10 backdrop-blur-sm p-4">
                 <div className="space-y-4">
@@ -366,7 +375,11 @@ export default function Chat() {
             <p className="text-muted-foreground mb-6">กรุณารอการเริ่มต้นการถ่ายทอดสดของการแข่งขัน</p>
             {isAdmin && (
               <Button 
-                onClick={() => setIsEditingStream(true)}
+                      onClick={() => {
+                        console.log("Edit button clicked. Current isEditingStream:", isEditingStream);
+                        setIsEditingStream(true);
+                        console.log("After setIsEditingStream(true), isEditingStream should be true.");
+                      }}
                 className="bg-accent hover:bg-accent/90"
               >
                 <Edit2 className="w-4 h-4 mr-2" />
