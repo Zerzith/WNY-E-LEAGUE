@@ -299,13 +299,15 @@ export default function AdminDashboard() {
       </div>
       
       <Tabs defaultValue="registrations" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 mb-8 bg-card/50 border border-white/5 p-1 rounded-xl overflow-x-auto">
-          <TabsTrigger value="events" className="data-[state=active]:bg-primary rounded-lg whitespace-nowrap">การแข่งขัน</TabsTrigger>
-          <TabsTrigger value="registrations" className="data-[state=active]:bg-primary rounded-lg whitespace-nowrap">คำขอสมัคร</TabsTrigger>
-          <TabsTrigger value="matches" className="data-[state=active]:bg-primary rounded-lg whitespace-nowrap">สายแข่ง & คะแนน</TabsTrigger>
-          <TabsTrigger value="teams" className="data-[state=active]:bg-primary rounded-lg whitespace-nowrap">ทีมทั้งหมด</TabsTrigger>
-          <TabsTrigger value="news" className="data-[state=active]:bg-primary rounded-lg whitespace-nowrap">ข่าวสาร</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto pb-2 mb-6 scrollbar-hide">
+          <TabsList className="flex w-max min-w-full bg-card/50 border border-white/5 p-1 rounded-xl gap-1">
+            <TabsTrigger value="events" className="flex-1 data-[state=active]:bg-primary rounded-lg whitespace-nowrap px-4 py-2 text-sm">การแข่งขัน</TabsTrigger>
+            <TabsTrigger value="registrations" className="flex-1 data-[state=active]:bg-primary rounded-lg whitespace-nowrap px-4 py-2 text-sm">คำขอสมัคร</TabsTrigger>
+            <TabsTrigger value="matches" className="flex-1 data-[state=active]:bg-primary rounded-lg whitespace-nowrap px-4 py-2 text-sm">สายแข่ง & คะแนน</TabsTrigger>
+            <TabsTrigger value="teams" className="flex-1 data-[state=active]:bg-primary rounded-lg whitespace-nowrap px-4 py-2 text-sm">ทีมทั้งหมด</TabsTrigger>
+            <TabsTrigger value="news" className="flex-1 data-[state=active]:bg-primary rounded-lg whitespace-nowrap px-4 py-2 text-sm">ข่าวสาร</TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Registrations Tab */}
         <TabsContent value="registrations">
