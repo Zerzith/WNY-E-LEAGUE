@@ -147,6 +147,16 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteEvent = async (id: string) => {
+    if (!confirm("ยืนยันการลบการแข่งขันนี้? ข้อมูลที่เกี่ยวข้องทั้งหมดจะหายไป")) return;
+    try {
+      await deleteDoc(doc(db, "events", id));
+      toast({ title: "ลบการแข่งขันเรียบร้อย" });
+    } catch (error) {
+      toast({ title: "ผิดพลาดในการลบ", variant: "destructive" });
+    }
+  };
+
   const handleApproveRegistration = async (reg: any) => {
     try {
       await addDoc(collection(db, "teams"), {
@@ -174,6 +184,16 @@ export default function AdminDashboard() {
       toast({ title: "ปฏิเสธการสมัครเรียบร้อย" });
     } catch (error) {
       toast({ title: "ผิดพลาด", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteRegistration = async (id: string) => {
+    if (!confirm("ยืนยันการลบคำขอสมัครนี้ออกจากระบบ?")) return;
+    try {
+      await deleteDoc(doc(db, "registrations", id));
+      toast({ title: "ลบคำขอสมัครเรียบร้อย" });
+    } catch (error) {
+      toast({ title: "ผิดพลาดในการลบ", variant: "destructive" });
     }
   };
 
@@ -211,9 +231,18 @@ export default function AdminDashboard() {
         status,
         updatedAt: serverTimestamp()
       });
-      // ไม่ต้อง toast บ่อยๆ เพื่อความลื่นไหล
     } catch (error) {
       toast({ title: "ผิดพลาด", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteMatch = async (id: string) => {
+    if (!confirm("ยืนยันการลบแมตช์นี้?")) return;
+    try {
+      await deleteDoc(doc(db, "matches", id));
+      toast({ title: "ลบแมตช์เรียบร้อย" });
+    } catch (error) {
+      toast({ title: "ผิดพลาดในการลบ", variant: "destructive" });
     }
   };
 
@@ -234,6 +263,26 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteNews = async (id: string) => {
+    if (!confirm("ยืนยันการลบข่าวสารนี้?")) return;
+    try {
+      await deleteDoc(doc(db, "news", id));
+      toast({ title: "ลบข่าวสารเรียบร้อย" });
+    } catch (error) {
+      toast({ title: "ผิดพลาดในการลบ", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteTeam = async (id: string) => {
+    if (!confirm("ยืนยันการลบทีมนี้ออกจากระบบ?")) return;
+    try {
+      await deleteDoc(doc(db, "teams", id));
+      toast({ title: "ลบทีมเรียบร้อย" });
+    } catch (error) {
+      toast({ title: "ผิดพลาดในการลบ", variant: "destructive" });
+    }
+  };
+
   const togglePrivateData = (id: string) => {
     setShowPrivateData(prev => ({ ...prev, [id]: !prev[id] }));
   };
@@ -250,41 +299,52 @@ export default function AdminDashboard() {
       </div>
       
       <Tabs defaultValue="registrations" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 mb-8 bg-card/50 border border-white/5 p-1 rounded-xl">
-          <TabsTrigger value="events" className="data-[state=active]:bg-primary rounded-lg">การแข่งขัน</TabsTrigger>
-          <TabsTrigger value="registrations" className="data-[state=active]:bg-primary rounded-lg">คำขอสมัคร</TabsTrigger>
-          <TabsTrigger value="matches" className="data-[state=active]:bg-primary rounded-lg">สายแข่ง & คะแนน</TabsTrigger>
-          <TabsTrigger value="teams" className="data-[state=active]:bg-primary rounded-lg">ทีมทั้งหมด</TabsTrigger>
-          <TabsTrigger value="news" className="data-[state=active]:bg-primary rounded-lg">ข่าวสาร</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-5 mb-8 bg-card/50 border border-white/5 p-1 rounded-xl overflow-x-auto">
+          <TabsTrigger value="events" className="data-[state=active]:bg-primary rounded-lg whitespace-nowrap">การแข่งขัน</TabsTrigger>
+          <TabsTrigger value="registrations" className="data-[state=active]:bg-primary rounded-lg whitespace-nowrap">คำขอสมัคร</TabsTrigger>
+          <TabsTrigger value="matches" className="data-[state=active]:bg-primary rounded-lg whitespace-nowrap">สายแข่ง & คะแนน</TabsTrigger>
+          <TabsTrigger value="teams" className="data-[state=active]:bg-primary rounded-lg whitespace-nowrap">ทีมทั้งหมด</TabsTrigger>
+          <TabsTrigger value="news" className="data-[state=active]:bg-primary rounded-lg whitespace-nowrap">ข่าวสาร</TabsTrigger>
         </TabsList>
 
         {/* Registrations Tab */}
         <TabsContent value="registrations">
           <div className="grid gap-6">
-            {registrations.filter(r => r.status === "pending").length === 0 ? (
+            {registrations.length === 0 ? (
               <Card className="bg-card/30 border-dashed border-white/10 py-12 text-center">
                 <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-20" />
-                <p className="text-muted-foreground">ไม่มีคำขอสมัครใหม่ในขณะนี้</p>
+                <p className="text-muted-foreground">ไม่มีคำขอสมัครในขณะนี้</p>
               </Card>
             ) : (
-              registrations.filter(r => r.status === "pending").map((reg) => (
-                <Card key={reg.id} className="bg-card/50 border-white/10 overflow-hidden">
+              registrations.map((reg) => (
+                <Card key={reg.id} className={`bg-card/50 border-white/10 overflow-hidden ${reg.status === 'rejected' ? 'opacity-50' : ''}`}>
                   <div className="p-6">
                     <div className="flex flex-col md:flex-row justify-between gap-6">
                       <div className="flex gap-4">
                         <AvatarCustom src={reg.logoUrl} name={reg.teamName} size="lg" />
                         <div>
-                          <h3 className="text-xl font-bold text-white">{censorText(reg.teamName)}</h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-xl font-bold text-white">{censorText(reg.teamName)}</h3>
+                            {reg.status === 'approved' && <Badge className="bg-emerald-500">อนุมัติแล้ว</Badge>}
+                            {reg.status === 'rejected' && <Badge variant="destructive">ปฏิเสธแล้ว</Badge>}
+                          </div>
                           <p className="text-primary text-sm font-bold uppercase">{reg.game} ({reg.gameMode})</p>
                           <p className="text-xs text-muted-foreground mt-1">สมัครเมื่อ: {reg.createdAt?.toDate().toLocaleString('th-TH')}</p>
                         </div>
                       </div>
                       <div className="flex gap-2 items-start">
-                        <Button onClick={() => handleApproveRegistration(reg)} className="bg-emerald-600 hover:bg-emerald-700">
-                          <UserCheck className="w-4 h-4 mr-2" /> อนุมัติ
-                        </Button>
-                        <Button onClick={() => handleRejectRegistration(reg.id)} variant="destructive">
-                          <UserX className="w-4 h-4 mr-2" /> ปฏิเสธ
+                        {reg.status === 'pending' && (
+                          <>
+                            <Button onClick={() => handleApproveRegistration(reg)} className="bg-emerald-600 hover:bg-emerald-700">
+                              <UserCheck className="w-4 h-4 mr-2" /> อนุมัติ
+                            </Button>
+                            <Button onClick={() => handleRejectRegistration(reg.id)} variant="destructive">
+                              <UserX className="w-4 h-4 mr-2" /> ปฏิเสธ
+                            </Button>
+                          </>
+                        )}
+                        <Button onClick={() => handleDeleteRegistration(reg.id)} variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10">
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
                     </div>
@@ -364,17 +424,22 @@ export default function AdminDashboard() {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-6">
                     <Badge variant="outline">Round {match.round} | Group {match.group || 'A'}</Badge>
-                    <Select 
-                      value={match.status}
-                      onValueChange={(val) => handleUpdateScore(match.id, match.scoreA, match.scoreB, val)}
-                    >
-                      <SelectTrigger className="w-32 h-8 text-xs bg-white/5"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pending">รอดำเนินการ</SelectItem>
-                        <SelectItem value="ongoing">กำลังแข่ง</SelectItem>
-                        <SelectItem value="completed">จบแล้ว</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="flex items-center gap-2">
+                      <Select 
+                        value={match.status}
+                        onValueChange={(val) => handleUpdateScore(match.id, match.scoreA, match.scoreB, val)}
+                      >
+                        <SelectTrigger className="w-32 h-8 text-xs bg-white/5"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pending">รอดำเนินการ</SelectItem>
+                          <SelectItem value="ongoing">กำลังแข่ง</SelectItem>
+                          <SelectItem value="completed">จบแล้ว</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteMatch(match.id)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                   
                   <div className="flex items-center justify-between gap-4">
@@ -398,14 +463,6 @@ export default function AdminDashboard() {
                       />
                     </div>
                   </div>
-                  
-                  <div className="mt-6 flex justify-end">
-                    <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => {
-                      if(confirm("ลบแมตช์นี้?")) deleteDoc(doc(db, "matches", match.id));
-                    }}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -417,12 +474,17 @@ export default function AdminDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {teams.map((team) => (
               <Card key={team.id} className="bg-card/50 border-white/10">
-                <CardHeader className="flex flex-row items-center gap-4">
-                  <AvatarCustom src={team.logoUrl} name={team.name} size="md" />
-                  <div>
-                    <CardTitle className="text-lg">{censorText(team.name)}</CardTitle>
-                    <CardDescription>{team.game}</CardDescription>
+                <CardHeader className="flex flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <AvatarCustom src={team.logoUrl} name={team.name} size="md" />
+                    <div>
+                      <CardTitle className="text-lg">{censorText(team.name)}</CardTitle>
+                      <CardDescription>{team.game}</CardDescription>
+                    </div>
                   </div>
+                  <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => handleDeleteTeam(team.id)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
@@ -444,45 +506,84 @@ export default function AdminDashboard() {
 
         {/* Events Tab */}
         <TabsContent value="events">
-          <Card className="bg-card/50 border-white/10">
-            <CardHeader>
-              <CardTitle>สร้างการแข่งขันใหม่</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleCreateEvent} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>ชื่อการแข่งขัน</Label>
-                  <Input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="เช่น WNY ROV Tournament" className="bg-white/5" />
-                </div>
-                <div className="space-y-2">
-                  <Label>เกม</Label>
-                  <Select value={newGame} onValueChange={setNewGame}>
-                    <SelectTrigger className="bg-white/5"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Valorant">Valorant</SelectItem>
-                      <SelectItem value="RoV">RoV</SelectItem>
-                      <SelectItem value="Free Fire">Free Fire</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button type="submit" className="md:col-span-2 bg-primary">สร้างการแข่งขัน</Button>
-              </form>
-            </CardContent>
-          </Card>
+          <div className="grid gap-8">
+            <Card className="bg-card/50 border-white/10">
+              <CardHeader>
+                <CardTitle>สร้างการแข่งขันใหม่</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleCreateEvent} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>ชื่อการแข่งขัน</Label>
+                    <Input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="เช่น WNY ROV Tournament" className="bg-white/5" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>เกม</Label>
+                    <Select value={newGame} onValueChange={setNewGame}>
+                      <SelectTrigger className="bg-white/5"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Valorant">Valorant</SelectItem>
+                        <SelectItem value="RoV">RoV</SelectItem>
+                        <SelectItem value="Free Fire">Free Fire</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button type="submit" className="md:col-span-2 bg-primary">สร้างการแข่งขัน</Button>
+                </form>
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {events.map((event) => (
+                <Card key={event.id} className="bg-card/50 border-white/10">
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg">{event.title}</CardTitle>
+                      <CardDescription>{event.game} | {event.status}</CardDescription>
+                    </div>
+                    <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => handleDeleteEvent(event.id)}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </CardHeader>
+                </Card>
+              ))}
+            </div>
+          </div>
         </TabsContent>
 
         {/* News Tab */}
         <TabsContent value="news">
-          <Card className="bg-card/50 border-white/10">
-            <CardHeader><CardTitle>ประกาศข่าวสาร</CardTitle></CardHeader>
-            <CardContent>
-              <form onSubmit={handleCreateNews} className="space-y-4">
-                <Input value={newsTitle} onChange={e => setNewsTitle(e.target.value)} placeholder="หัวข้อข่าว" className="bg-white/5" />
-                <textarea value={newsContent} onChange={e => setNewsContent(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg p-4 text-white" rows={4} placeholder="เนื้อหาข่าว..." />
-                <Button type="submit" className="w-full bg-primary">โพสต์ข่าว</Button>
-              </form>
-            </CardContent>
-          </Card>
+          <div className="grid gap-8">
+            <Card className="bg-card/50 border-white/10">
+              <CardHeader><CardTitle>ประกาศข่าวสาร</CardTitle></CardHeader>
+              <CardContent>
+                <form onSubmit={handleCreateNews} className="space-y-4">
+                  <Input value={newsTitle} onChange={e => setNewsTitle(e.target.value)} placeholder="หัวข้อข่าว" className="bg-white/5" />
+                  <textarea value={newsContent} onChange={e => setNewsContent(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg p-4 text-white" rows={4} placeholder="เนื้อหาข่าว..." />
+                  <Button type="submit" className="w-full bg-primary">โพสต์ข่าว</Button>
+                </form>
+              </CardContent>
+            </Card>
+
+            <div className="grid gap-4">
+              {news.map((item) => (
+                <Card key={item.id} className="bg-card/50 border-white/10">
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg">{item.title}</CardTitle>
+                      <CardDescription>โดย {item.author} | {item.createdAt?.toDate().toLocaleString('th-TH')}</CardDescription>
+                    </div>
+                    <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => handleDeleteNews(item.id)}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground line-clamp-2">{item.content}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
