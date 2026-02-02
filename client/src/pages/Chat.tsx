@@ -9,6 +9,7 @@ import { AvatarCustom } from "@/components/ui/avatar-custom";
 import { Send, Smile, Edit2, X, Check, Users, Eye, Plus, Trash2, MessageCircle } from "lucide-react";
 import EmojiPicker, { Theme } from 'emoji-picker-react';
 import { useLocation } from "wouter";
+import { censorText } from "@/lib/filter";
 
 interface ChatMessage {
   id: string;
@@ -171,7 +172,7 @@ export default function Chat() {
                     </div>
                   </div>
                   {isAdmin && (
-                    <Button size="sm" variant="ghost" onClick={() => setIsEditingStream(!isEditingStream)} className="text-muted-foreground hover:text-accent">
+                    <Button size="sm" variant="ghost" onClick={() => setIsEditingStream(!setIsEditingStream)} className="text-muted-foreground hover:text-accent">
                       <Edit2 className="w-4 h-4" />
                     </Button>
                   )}
@@ -233,10 +234,10 @@ export default function Chat() {
                   <AvatarCustom src={msg.userPhotoURL} name={msg.displayName} size="sm" />
                   <div className={`flex flex-col ${msg.userId === user.uid ? 'items-end' : 'items-start'} max-w-[80%]`}>
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[10px] font-bold text-muted-foreground">{msg.displayName}</span>
+                      <span className="text-[10px] font-bold text-muted-foreground">{censorText(msg.displayName)}</span>
                     </div>
                     <div className={`px-3 py-2 rounded-2xl text-sm ${msg.userId === user.uid ? 'bg-primary text-white rounded-tr-none' : 'bg-white/10 text-white rounded-tl-none'}`}>
-                      {msg.text}
+                      {censorText(msg.text)}
                     </div>
                   </div>
                 </div>

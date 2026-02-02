@@ -9,7 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { AvatarCustom } from "@/components/ui/avatar-custom";
-import { Loader2, Plus, Trash2, Calendar, Users, Trophy, Edit2, Check, X, Swords, Megaphone, ShieldAlert, UserCheck, UserX } from "lucide-react";
+import { censorText } from "@/lib/filter";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Loader2, Plus, Trash2, Calendar, Users, Trophy, 
+  Edit2, Check, X, Swords, Megaphone, ShieldAlert, 
+  UserCheck, UserX, Eye, EyeOff, LayoutGrid 
+} from "lucide-react";
 import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query, orderBy, where, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -24,6 +30,7 @@ export default function AdminDashboard() {
   const [matches, setMatches] = useState<any[]>([]);
   const [news, setNews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showPrivateData, setShowPrivateData] = useState<Record<string, boolean>>({});
 
   // News state
   const [newsTitle, setNewsTitle] = useState("");
@@ -40,6 +47,7 @@ export default function AdminDashboard() {
   // Match Management State
   const [selectedEventId, setSelectedEventId] = useState<string>("");
   const [newMatchRound, setNewMatchRound] = useState("1");
+  const [newMatchGroup, setNewMatchGroup] = useState("A");
   const [newMatchTeamA, setNewMatchTeamA] = useState("");
   const [newMatchTeamB, setNewMatchTeamB] = useState("");
 
@@ -179,6 +187,7 @@ export default function AdminDashboard() {
       await addDoc(collection(db, "matches"), {
         tournamentId: selectedEventId,
         round: parseInt(newMatchRound),
+        group: newMatchGroup,
         teamA: newMatchTeamA,
         teamB: newMatchTeamB,
         scoreA: 0,
@@ -202,7 +211,7 @@ export default function AdminDashboard() {
         status,
         updatedAt: serverTimestamp()
       });
-      toast({ title: "อัปเดตคะแนนสำเร็จ" });
+      // ไม่ต้อง toast บ่อยๆ เพื่อความลื่นไหล
     } catch (error) {
       toast({ title: "ผิดพลาด", variant: "destructive" });
     }
@@ -223,6 +232,10 @@ export default function AdminDashboard() {
     } catch (error) {
       toast({ title: "ผิดพลาด", variant: "destructive" });
     }
+  };
+
+  const togglePrivateData = (id: string) => {
+    setShowPrivateData(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
   return (
@@ -261,7 +274,7 @@ export default function AdminDashboard() {
                       <div className="flex gap-4">
                         <AvatarCustom src={reg.logoUrl} name={reg.teamName} size="lg" />
                         <div>
-                          <h3 className="text-xl font-bold text-white">{reg.teamName}</h3>
+                          <h3 className="text-xl font-bold text-white">{censorText(reg.teamName)}</h3>
                           <p className="text-primary text-sm font-bold uppercase">{reg.game} ({reg.gameMode})</p>
                           <p className="text-xs text-muted-foreground mt-1">สมัครเมื่อ: {reg.createdAt?.toDate().toLocaleString('th-TH')}</p>
                         </div>
@@ -277,14 +290,21 @@ export default function AdminDashboard() {
                     </div>
                     
                     <div className="mt-6 pt-6 border-t border-white/5">
-                      <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-4">รายชื่อสมาชิก ({reg.members?.length || 0})</h4>
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">รายชื่อสมาชิก ({reg.members?.length || 0})</h4>
+                        <Button variant="ghost" size="sm" onClick={() => togglePrivateData(reg.id)} className="h-6 text-[10px]">
+                          {showPrivateData[reg.id] ? <><EyeOff className="w-3 h-3 mr-1" /> ปิดข้อมูลลับ</> : <><Eye className="w-3 h-3 mr-1" /> ดูข้อมูลลับ</>}
+                        </Button>
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                         {reg.members?.map((m: any, i: number) => (
                           <div key={i} className="flex items-center gap-3 p-2 rounded bg-white/5 border border-white/5">
                             <AvatarCustom name={m.name} size="xs" />
                             <div className="overflow-hidden">
-                              <p className="text-sm font-medium text-white truncate">{m.name}</p>
-                              <p className="text-[10px] text-muted-foreground truncate">{m.gameName} | {m.department}</p>
+                              <p className="text-sm font-medium text-white truncate">{censorText(m.gameName)}</p>
+                              {showPrivateData[reg.id] && (
+                                <p className="text-[10px] text-muted-foreground truncate">{m.name} | {m.department}</p>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -297,6 +317,101 @@ export default function AdminDashboard() {
           </div>
         </TabsContent>
 
+        {/* Matches Tab */}
+        <TabsContent value="matches" className="space-y-8">
+          <Card className="bg-card/50 border-white/10">
+            <CardHeader>
+              <CardTitle>สร้างแมตช์ใหม่</CardTitle>
+              <CardDescription>กำหนดคู่แข่งขัน รอบ และกลุ่ม</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleCreateMatch} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div className="space-y-2">
+                  <Label>รายการแข่ง</Label>
+                  <Select value={selectedEventId} onValueChange={setSelectedEventId}>
+                    <SelectTrigger className="bg-white/5"><SelectValue placeholder="เลือกรายการ" /></SelectTrigger>
+                    <SelectContent>
+                      {events.map(e => <SelectItem key={e.id} value={e.id}>{e.title}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>ทีม A</Label>
+                  <Input value={newMatchTeamA} onChange={e => setNewMatchTeamA(e.target.value)} placeholder="ชื่อทีม A" className="bg-white/5" />
+                </div>
+                <div className="space-y-2">
+                  <Label>ทีม B</Label>
+                  <Input value={newMatchTeamB} onChange={e => setNewMatchTeamB(e.target.value)} placeholder="ชื่อทีม B" className="bg-white/5" />
+                </div>
+                <div className="space-y-2">
+                  <Label>รอบที่</Label>
+                  <Input type="number" value={newMatchRound} onChange={e => setNewMatchRound(e.target.value)} className="bg-white/5" />
+                </div>
+                <div className="space-y-2">
+                  <Label>กลุ่ม</Label>
+                  <Input value={newMatchGroup} onChange={e => setNewMatchGroup(e.target.value)} placeholder="A, B, C..." className="bg-white/5" />
+                </div>
+                <div className="flex items-end">
+                  <Button type="submit" className="w-full bg-primary"><Plus className="w-4 h-4 mr-2" /> สร้างแมตช์</Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {matches.map((match) => (
+              <Card key={match.id} className="bg-card/50 border-white/10">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <Badge variant="outline">Round {match.round} | Group {match.group || 'A'}</Badge>
+                    <Select 
+                      value={match.status}
+                      onValueChange={(val) => handleUpdateScore(match.id, match.scoreA, match.scoreB, val)}
+                    >
+                      <SelectTrigger className="w-32 h-8 text-xs bg-white/5"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pending">รอดำเนินการ</SelectItem>
+                        <SelectItem value="ongoing">กำลังแข่ง</SelectItem>
+                        <SelectItem value="completed">จบแล้ว</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1 text-center space-y-2">
+                      <p className="font-bold text-white truncate">{censorText(match.teamA)}</p>
+                      <Input 
+                        type="number" 
+                        className="text-center text-2xl font-black bg-white/5" 
+                        value={match.scoreA} 
+                        onChange={(e) => handleUpdateScore(match.id, parseInt(e.target.value) || 0, match.scoreB, match.status)}
+                      />
+                    </div>
+                    <div className="text-2xl font-black text-primary">VS</div>
+                    <div className="flex-1 text-center space-y-2">
+                      <p className="font-bold text-white truncate">{censorText(match.teamB)}</p>
+                      <Input 
+                        type="number" 
+                        className="text-center text-2xl font-black bg-white/5" 
+                        value={match.scoreB} 
+                        onChange={(e) => handleUpdateScore(match.id, match.scoreA, parseInt(e.target.value) || 0, match.status)}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="mt-6 flex justify-end">
+                    <Button variant="ghost" size="sm" className="text-destructive hover:bg-destructive/10" onClick={() => {
+                      if(confirm("ลบแมตช์นี้?")) deleteDoc(doc(db, "matches", match.id));
+                    }}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+
         {/* Teams Tab */}
         <TabsContent value="teams">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -305,7 +420,7 @@ export default function AdminDashboard() {
                 <CardHeader className="flex flex-row items-center gap-4">
                   <AvatarCustom src={team.logoUrl} name={team.name} size="md" />
                   <div>
-                    <CardTitle className="text-lg">{team.name}</CardTitle>
+                    <CardTitle className="text-lg">{censorText(team.name)}</CardTitle>
                     <CardDescription>{team.game}</CardDescription>
                   </div>
                 </CardHeader>
@@ -315,7 +430,7 @@ export default function AdminDashboard() {
                       <div key={i} className="flex items-center justify-between text-sm p-2 rounded bg-white/5">
                         <div className="flex items-center gap-2">
                           <AvatarCustom name={m.name} size="xs" />
-                          <span className="text-white">{m.name}</span>
+                          <span className="text-white">{censorText(m.gameName)}</span>
                         </div>
                         <span className="text-muted-foreground text-xs">{m.department}</span>
                       </div>
@@ -327,7 +442,7 @@ export default function AdminDashboard() {
           </div>
         </TabsContent>
 
-        {/* Other tabs content (Events, Matches, News) - Simplified for brevity */}
+        {/* Events Tab */}
         <TabsContent value="events">
           <Card className="bg-card/50 border-white/10">
             <CardHeader>
@@ -355,11 +470,8 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
         </TabsContent>
-        
-        <TabsContent value="matches">
-          <p className="text-center py-12 text-muted-foreground">ส่วนจัดการสายแข่งและคะแนน (กำลังปรับปรุง UI สมาชิก)</p>
-        </TabsContent>
 
+        {/* News Tab */}
         <TabsContent value="news">
           <Card className="bg-card/50 border-white/10">
             <CardHeader><CardTitle>ประกาศข่าวสาร</CardTitle></CardHeader>
