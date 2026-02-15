@@ -57,15 +57,20 @@ export default function Bracket() {
 
     const q = query(
       collection(db, "matches"),
-      where("tournamentId", "==", selectedTournament.id),
-      orderBy("round", "asc")
+      where("tournamentId", "==", selectedTournament.id)
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const matchesData = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       } as any));
-      setMatches(matchesData);
+      
+      const sortedMatches = matchesData.sort((a, b) => {
+        if (a.round !== b.round) return a.round - b.round;
+        return (a.group || "").localeCompare(b.group || "");
+      });
+      
+      setMatches(sortedMatches);
       
       // ดึงรายชื่อกลุ่มที่มีทั้งหมด
       const uniqueGroups = Array.from(new Set(matchesData.map(m => m.group || "General")));
