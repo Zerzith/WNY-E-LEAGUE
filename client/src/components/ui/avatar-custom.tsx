@@ -1,19 +1,29 @@
 import React from "react";
+import { User } from "lucide-react";
 
 interface AvatarCustomProps {
   src?: string | null;
   name: string;
   size?: "xs" | "sm" | "md" | "lg" | "xl";
   className?: string;
+  isTeam?: boolean;
 }
 
-export function AvatarCustom({ src, name, size = "md", className = "" }: AvatarCustomProps) {
+export function AvatarCustom({ src, name, size = "md", className = "", isTeam = false }: AvatarCustomProps) {
   const sizeClasses = {
     xs: "w-6 h-6 text-[10px]",
     sm: "w-8 h-8 text-xs",
     md: "w-10 h-10 text-sm",
     lg: "w-16 h-16 text-xl",
     xl: "w-24 h-24 text-3xl",
+  };
+
+  const iconSizes = {
+    xs: 12,
+    sm: 16,
+    md: 20,
+    lg: 32,
+    xl: 48,
   };
 
   const getInitials = (name: string) => {
@@ -47,18 +57,26 @@ export function AvatarCustom({ src, name, size = "md", className = "" }: AvatarC
           alt={name} 
           className="w-full h-full object-cover"
           onError={(e) => {
-            (e.target as HTMLImageElement).style.display = 'none';
-            (e.target as HTMLImageElement).parentElement!.classList.add(getRandomColor(name));
-            (e.target as HTMLImageElement).parentElement!.innerHTML = `<span class="font-bold text-white">${getInitials(name)}</span>`;
+            const target = e.target as HTMLImageElement;
+            target.style.display = 'none';
+            const parent = target.parentElement!;
+            parent.classList.add(getRandomColor(name));
+            parent.classList.add("flex", "items-center", "justify-center");
+            parent.innerHTML = `<span class="font-bold text-white">${getInitials(name)}</span>`;
           }}
         />
       </div>
     );
   }
 
+  // Default anonymous icon for teams or users without logo
   return (
-    <div className={`${sizeClasses[size]} rounded-full flex items-center justify-center border border-white/10 flex-shrink-0 ${getRandomColor(name)} ${className}`}>
-      <span className="font-bold text-white">{getInitials(name)}</span>
+    <div className={`${sizeClasses[size]} rounded-full flex items-center justify-center border border-white/10 flex-shrink-0 bg-slate-700 ${className}`}>
+      {isTeam ? (
+        <User size={iconSizes[size]} className="text-slate-400" />
+      ) : (
+        <span className="font-bold text-white">{getInitials(name)}</span>
+      )}
     </div>
   );
 }
