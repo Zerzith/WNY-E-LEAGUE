@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,10 @@ export default function AdminDashboard() {
   const [newMembers, setNewMembers] = useState("5");
   const [newSubs, setNewSubs] = useState("1");
   const [newDate, setNewDate] = useState("");
+  const [newRegistrationDeadline, setNewRegistrationDeadline] = useState("");
+  const [newBannerUrl, setNewBannerUrl] = useState("");
+  const [editingEventId, setEditingEventId] = useState<string>("");
+  const [editingBannerUrl, setEditingBannerUrl] = useState<string>("");
 
   // Match Management State
   const [selectedEventId, setSelectedEventId] = useState<string>("");
@@ -79,14 +83,15 @@ export default function AdminDashboard() {
     const qTeams = query(collection(db, "teams"), orderBy("createdAt", "desc"));
     const unsubTeams = onSnapshot(qTeams, (snap) => {
       setTeams(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setApprovedTeams(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
 
-    const qRegs = query(collection(db, "registrations"), orderBy("createdAt", "desc"));
-    const unsubRegs = onSnapshot(qRegs, (snap) => {
+    const qRegistrations = query(collection(db, "registrations"), orderBy("createdAt", "desc"));
+    const unsubRegistrations = onSnapshot(qRegistrations, (snap) => {
       setRegistrations(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
 
-    const qMatches = query(collection(db, "matches"), orderBy("round", "asc"));
+    const qMatches = query(collection(db, "matches"), orderBy("createdAt", "desc"));
     const unsubMatches = onSnapshot(qMatches, (snap) => {
       setMatches(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
@@ -95,73 +100,29 @@ export default function AdminDashboard() {
     const unsubNews = onSnapshot(qNews, (snap) => {
       setNews(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       setLoading(false);
-    }, (err) => {
-      console.error("News fetch error:", err);
-      setLoading(false);
+    });
+
+    const qBanners = query(collection(db, "banners"), orderBy("createdAt", "desc"));
+    const unsubBanners = onSnapshot(qBanners, (snap) => {
+      setBanners(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
 
     return () => {
       unsubEvents();
       unsubTeams();
-      unsubRegs();
+      unsubRegistrations();
       unsubMatches();
       unsubNews();
+      unsubBanners();
     };
-  }, [user, authLoading, setLocation]);
-
-  useEffect(() => {
-    const qBanners = query(collection(db, "banners"), orderBy("createdAt", "desc"));
-    const unsubBanners = onSnapshot(qBanners, (snap) => {
-      setBanners(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-    return () => unsubBanners();
-  }, []);
-
-  useEffect(() => {
-    if (!selectedEventId) {
-      setApprovedTeams([]);
-      return;
-    }
-
-    const qApprovedTeams = query(
-      collection(db, "teams"),
-      where("eventId", "==", selectedEventId),
-      where("status", "==", "approved")
-    );
-
-    const unsubApprovedTeams = onSnapshot(qApprovedTeams, (snap) => {
-      setApprovedTeams(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-
-    return () => unsubApprovedTeams();
-  }, [selectedEventId]);
-
-  if (authLoading || (user && user.role === "admin" && loading)) {
-    return (
-      <div className="flex flex-col justify-center items-center h-screen bg-background gap-4">
-        <Loader2 className="animate-spin w-12 h-12 text-primary" />
-        <p className="text-muted-foreground animate-pulse">กำลังโหลดข้อมูลแผงควบคุม...</p>
-      </div>
-    );
-  }
-
-  if (!user || user.role !== "admin") {
-    return (
-      <div className="flex flex-col justify-center items-center h-screen bg-background gap-6 px-4 text-center">
-        <div className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center">
-          <ShieldAlert className="w-10 h-10 text-destructive" />
-        </div>
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-white">ปฏิเสธการเข้าถึง</h1>
-          <p className="text-muted-foreground max-w-md">คุณไม่มีสิทธิ์เข้าถึงหน้านี้ เฉพาะผู้ดูแลระบบเท่านั้น</p>
-        </div>
-        <Button onClick={() => setLocation("/")} variant="outline">กลับสู่หน้าหลัก</Button>
-      </div>
-    );
-  }
+  }, [authLoading, user, setLocation]);
 
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!newTitle || !newDate || !newRegistrationDeadline) {
+      toast({ title: "กรุณากรอกข้อมูลให้ครบถ้วน", variant: "destructive" });
+      return;
+    }
     try {
       await addDoc(collection(db, "events"), {
         title: newTitle,
@@ -170,13 +131,33 @@ export default function AdminDashboard() {
         membersPerTeam: parseInt(newMembers),
         maxSubstitutes: parseInt(newSubs),
         date: newDate,
+        registrationDeadline: newRegistrationDeadline,
+        bannerUrl: newBannerUrl,
         status: "upcoming",
         createdAt: serverTimestamp()
       });
       toast({ title: "สร้างการแข่งขันสำเร็จ" });
       setNewTitle("");
+      setNewDate("");
+      setNewRegistrationDeadline("");
+      setNewBannerUrl("");
     } catch (error) {
       toast({ title: "เกิดข้อผิดพลาด", variant: "destructive" });
+    }
+  };
+
+  const handleUpdateEventBanner = async (eventId: string, bannerUrl: string) => {
+    if (!bannerUrl) {
+      toast({ title: "กรุณาระบุ URL แบนเนอร์", variant: "destructive" });
+      return;
+    }
+    try {
+      await updateDoc(doc(db, "events", eventId), { bannerUrl });
+      toast({ title: "อัปเดตแบนเนอร์สำเร็จ" });
+      setEditingEventId("");
+      setEditingBannerUrl("");
+    } catch (error) {
+      toast({ title: "ผิดพลาดในการอัปเดต", variant: "destructive" });
     }
   };
 
@@ -221,30 +202,30 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteRegistration = async (id: string) => {
-    if (!confirm("ยืนยันการลบคำขอสมัครนี้ออกจากระบบ?")) return;
+    if (!confirm("ยืนยันการลบการสมัครนี้?")) return;
     try {
       await deleteDoc(doc(db, "registrations", id));
-      toast({ title: "ลบคำขอสมัครเรียบร้อย" });
+      toast({ title: "ลบการสมัครเรียบร้อย" });
     } catch (error) {
-      toast({ title: "ผิดพลาดในการลบ", variant: "destructive" });
+      toast({ title: "ผิดพลาด", variant: "destructive" });
     }
   };
 
   const handleCreateMatch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedEventId || !newMatchTeamA || !newMatchTeamB) {
-      toast({ title: "กรุณาเลือกข้อมูลให้ครบ", variant: "destructive" });
+      toast({ title: "กรุณากรอกข้อมูลให้ครบถ้วน", variant: "destructive" });
       return;
     }
     try {
       await addDoc(collection(db, "matches"), {
-        tournamentId: selectedEventId,
-        round: parseInt(newMatchRound),
-        group: newMatchGroup,
+        eventId: selectedEventId,
         teamA: newMatchTeamA,
         teamB: newMatchTeamB,
         scoreA: 0,
         scoreB: 0,
+        round: parseInt(newMatchRound),
+        group: newMatchGroup,
         status: "pending",
         createdAt: serverTimestamp()
       });
@@ -252,20 +233,7 @@ export default function AdminDashboard() {
       setNewMatchTeamA("");
       setNewMatchTeamB("");
     } catch (error) {
-      toast({ title: "ผิดพลาด", variant: "destructive" });
-    }
-  };
-
-  const handleUpdateScore = async (matchId: string, scoreA: number, scoreB: number, status: string) => {
-    try {
-      await updateDoc(doc(db, "matches", matchId), {
-        scoreA,
-        scoreB,
-        status,
-        updatedAt: serverTimestamp()
-      });
-    } catch (error) {
-      toast({ title: "ผิดพลาด", variant: "destructive" });
+      toast({ title: "ผิดพลาดในการสร้างแมตช์", variant: "destructive" });
     }
   };
 
@@ -274,23 +242,6 @@ export default function AdminDashboard() {
     try {
       await deleteDoc(doc(db, "matches", id));
       toast({ title: "ลบแมตช์เรียบร้อย" });
-    } catch (error) {
-      toast({ title: "ผิดพลาดในการลบ", variant: "destructive" });
-    }
-  };
-
-  const handleCreateNews = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await addDoc(collection(db, "news"), {
-        title: newsTitle,
-        content: newsContent,
-        author: user?.displayName || "Admin",
-        createdAt: serverTimestamp()
-      });
-      toast({ title: "ประกาศข่าวสารสำเร็จ" });
-      setNewsTitle("");
-      setNewsContent("");
     } catch (error) {
       toast({ title: "ผิดพลาด", variant: "destructive" });
     }
@@ -332,272 +283,65 @@ export default function AdminDashboard() {
       await deleteDoc(doc(db, "news", id));
       toast({ title: "ลบข่าวสารเรียบร้อย" });
     } catch (error) {
-      toast({ title: "ผิดพลาดในการลบ", variant: "destructive" });
+      toast({ title: "ผิดพลาด", variant: "destructive" });
     }
   };
 
-  const handleDeleteTeam = async (id: string) => {
-    if (!confirm("ยืนยันการลบทีมนี้ออกจากระบบ?")) return;
+  const handleCreateNews = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newsTitle || !newsContent) {
+      toast({ title: "กรุณากรอกข้อมูลให้ครบถ้วน", variant: "destructive" });
+      return;
+    }
     try {
-      await deleteDoc(doc(db, "teams", id));
-      toast({ title: "ลบทีมเรียบร้อย" });
+      await addDoc(collection(db, "news"), {
+        title: newsTitle,
+        content: newsContent,
+        author: user?.email || "Admin",
+        createdAt: serverTimestamp()
+      });
+      toast({ title: "สร้างข่าวสารสำเร็จ" });
+      setNewsTitle("");
+      setNewsContent("");
     } catch (error) {
-      toast({ title: "ผิดพลาดในการลบ", variant: "destructive" });
+      toast({ title: "ผิดพลาด", variant: "destructive" });
     }
   };
 
-  const togglePrivateData = (id: string) => {
-    setShowPrivateData(prev => ({ ...prev, [id]: !prev[id] }));
-  };
+  if (authLoading || loading) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <Loader2 className="w-10 h-10 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!user || user.role !== "admin") {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">ไม่มีสิทธิ์เข้าถึง</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-            <ShieldAlert className="text-white w-6 h-6" />
-          </div>
-          <h1 className="text-3xl font-bold text-white font-display tracking-tight uppercase">แผงควบคุมแอดมิน</h1>
-        </div>
+    <div className="container mx-auto px-4 py-12">
+      <div className="mb-8">
+        <h1 className="text-4xl font-display font-bold text-white mb-2">แดชบอร์ดแอดมิน</h1>
+        <p className="text-muted-foreground">จัดการการแข่งขัน ทีม และข้อมูลอื่นๆ</p>
       </div>
-      
-      <Tabs defaultValue="registrations" className="w-full">
-        <div className="overflow-x-auto pb-2 mb-6 scrollbar-hide">
-          <TabsList className="flex w-max min-w-full bg-card/50 border border-white/5 p-1 rounded-xl gap-1">
-            <TabsTrigger value="events" className="flex-1 data-[state=active]:bg-primary rounded-lg whitespace-nowrap px-4 py-2 text-sm">การแข่งขัน</TabsTrigger>
-            <TabsTrigger value="registrations" className="flex-1 data-[state=active]:bg-primary rounded-lg whitespace-nowrap px-4 py-2 text-sm">คำขอสมัคร</TabsTrigger>
-            <TabsTrigger value="matches" className="flex-1 data-[state=active]:bg-primary rounded-lg whitespace-nowrap px-4 py-2 text-sm">สายแข่ง & คะแนน</TabsTrigger>
-            <TabsTrigger value="teams" className="flex-1 data-[state=active]:bg-primary rounded-lg whitespace-nowrap px-4 py-2 text-sm">ทีมทั้งหมด</TabsTrigger>
-            <TabsTrigger value="banners" className="flex-1 data-[state=active]:bg-primary rounded-lg whitespace-nowrap px-4 py-2 text-sm">แบนเนอร์</TabsTrigger>
-            <TabsTrigger value="news" className="flex-1 data-[state=active]:bg-primary rounded-lg whitespace-nowrap px-4 py-2 text-sm">ข่าวสาร</TabsTrigger>
-          </TabsList>
-        </div>
 
-        {/* Registrations Tab */}
-        <TabsContent value="registrations">
-          <div className="grid gap-6">
-            {registrations.length === 0 ? (
-              <Card className="bg-card/30 border-dashed border-white/10 py-12 text-center">
-                <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-20" />
-                <p className="text-muted-foreground">ไม่มีคำขอสมัครในขณะนี้</p>
-              </Card>
-            ) : (
-              registrations.map((reg) => (
-                <Card key={reg.id} className={`bg-card/50 border-white/10 overflow-hidden ${reg.status === 'rejected' ? 'opacity-50' : ''}`}>
-                  <div className="p-6">
-                    <div className="flex flex-col md:flex-row justify-between gap-6">
-                      <div className="flex gap-4">
-                        <AvatarCustom src={reg.logoUrl} name={reg.teamName} size="lg" />
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-xl font-bold text-white">{censorText(reg.teamName)}</h3>
-                            {reg.status === 'approved' && <Badge className="bg-emerald-500">อนุมัติแล้ว</Badge>}
-                            {reg.status === 'rejected' && <Badge variant="destructive">ปฏิเสธแล้ว</Badge>}
-                          </div>
-                          <p className="text-primary text-sm font-bold uppercase">{reg.game} ({reg.gameMode})</p>
-                          <p className="text-xs text-muted-foreground mt-1">สมัครเมื่อ: {reg.createdAt?.toDate().toLocaleString('th-TH')}</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2 items-start">
-                        {reg.status === 'pending' && (
-                          <>
-                            <Button onClick={() => handleApproveRegistration(reg)} className="bg-emerald-600 hover:bg-emerald-700">
-                              <UserCheck className="w-4 h-4 mr-2" /> อนุมัติ
-                            </Button>
-                            <Button onClick={() => handleRejectRegistration(reg.id)} variant="destructive">
-                              <UserX className="w-4 h-4 mr-2" /> ปฏิเสธ
-                            </Button>
-                          </>
-                        )}
-                        <Button onClick={() => handleDeleteRegistration(reg.id)} variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10">
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-6 pt-6 border-t border-white/5">
-                      <div className="flex items-center justify-between mb-4">
-                        <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">รายชื่อสมาชิก ({reg.members?.length || 0})</h4>
-                        <Button variant="ghost" size="sm" onClick={() => togglePrivateData(reg.id)} className="h-6 text-[10px]">
-                          {showPrivateData[reg.id] ? <><EyeOff className="w-3 h-3 mr-1" /> ปิดข้อมูลลับ</> : <><Eye className="w-3 h-3 mr-1" /> ดูข้อมูลลับ</>}
-                        </Button>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {reg.members?.map((m: any, i: number) => (
-                          <div key={i} className="flex items-center gap-3 p-2 rounded bg-white/5 border border-white/5">
-                            <AvatarCustom name={m.name} size="xs" />
-                            <div className="overflow-hidden">
-                              <p className="text-sm font-medium text-white truncate">{censorText(m.gameName)}</p>
-                              {showPrivateData[reg.id] && (
-                                <p className="text-[10px] text-muted-foreground truncate">{m.name} | {m.department}</p>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </Card>
-              ))
-            )}
-          </div>
-        </TabsContent>
-
-        {/* Matches Tab */}
-        <TabsContent value="matches" className="space-y-8">
-          <Card className="bg-card/50 border-white/10">
-            <CardHeader>
-              <CardTitle>สร้างแมตช์ใหม่</CardTitle>
-              <CardDescription>กำหนดคู่แข่งขัน รอบ และกลุ่ม</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleCreateMatch} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>การแข่งขัน</Label>
-                  <Select value={selectedEventId} onValueChange={setSelectedEventId}>
-                    <SelectTrigger className="bg-white/5"><SelectValue placeholder="เลือกการแข่งขัน" /></SelectTrigger>
-                    <SelectContent>
-                      {events.map(event => (
-                        <SelectItem key={event.id} value={event.id}>{event.title}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>รอบที่</Label>
-                  <Input type="number" value={newMatchRound} onChange={e => setNewMatchRound(e.target.value)} className="bg-white/5" />
-                </div>
-                <div className="space-y-2">
-                  <Label>กลุ่ม</Label>
-                  <Input value={newMatchGroup} onChange={e => setNewMatchGroup(e.target.value)} placeholder="A, B, C..." className="bg-white/5" />
-                </div>
-                <div className="space-y-2">
-                  <Label>ทีม A</Label>
-                  <Select value={newMatchTeamA} onValueChange={setNewMatchTeamA} disabled={!selectedEventId}>
-                    <SelectTrigger className="bg-white/5"><SelectValue placeholder="เลือกทีม A" /></SelectTrigger>
-                    <SelectContent>
-                      {approvedTeams.map(team => (
-                        <SelectItem key={team.id} value={team.name}>
-                          <div className="flex items-center gap-2">
-                            <AvatarCustom src={team.logoUrl} name={team.name} size="sm" />
-                            <span>{team.name}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>ทีม B</Label>
-                  <Select value={newMatchTeamB} onValueChange={setNewMatchTeamB} disabled={!selectedEventId}>
-                    <SelectTrigger className="bg-white/5"><SelectValue placeholder="เลือกทีม B" /></SelectTrigger>
-                    <SelectContent>
-                      {approvedTeams.map(team => (
-                        <SelectItem key={team.id} value={team.name}>
-                          <div className="flex items-center gap-2">
-                            <AvatarCustom src={team.logoUrl} name={team.name} size="sm" />
-                            <span>{team.name}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-end md:col-span-2">
-                  <Button type="submit" className="w-full bg-primary"><Plus className="w-4 h-4 mr-2" /> สร้างแมตช์</Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {matches.map((match) => (
-              <Card key={match.id} className="bg-card/50 border-white/10">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <Badge variant="outline">Round {match.round} | Group {match.group || 'A'}</Badge>
-                    <div className="flex items-center gap-2">
-                      <Select 
-                        value={match.status}
-                        onValueChange={(val) => handleUpdateScore(match.id, match.scoreA, match.scoreB, val)}
-                      >
-                        <SelectTrigger className="w-32 h-8 text-xs bg-white/5"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pending">รอดำเนินการ</SelectItem>
-                          <SelectItem value="ongoing">กำลังแข่ง</SelectItem>
-                          <SelectItem value="completed">จบแล้ว</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDeleteMatch(match.id)}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex-1 text-center space-y-2">
-                      <p className="font-bold text-white truncate">{censorText(match.teamA)}</p>
-                      <Input 
-                        type="number" 
-                        className="text-center text-2xl font-black bg-white/5" 
-                        value={match.scoreA} 
-                        onChange={(e) => handleUpdateScore(match.id, parseInt(e.target.value) || 0, match.scoreB, match.status)}
-                      />
-                    </div>
-                    <div className="text-2xl font-black text-primary">VS</div>
-                    <div className="flex-1 text-center space-y-2">
-                      <p className="font-bold text-white truncate">{censorText(match.teamB)}</p>
-                      <Input 
-                        type="number" 
-                        className="text-center text-2xl font-black bg-white/5" 
-                        value={match.scoreB} 
-                        onChange={(e) => handleUpdateScore(match.id, match.scoreA, parseInt(e.target.value) || 0, match.status)}
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        {/* Teams Tab */}
-        <TabsContent value="teams">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {teams.map((team) => (
-              <Card key={team.id} className="bg-card/50 border-white/10">
-                <CardHeader className="flex flex-row items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    <AvatarCustom src={team.logoUrl} name={team.name} size="md" />
-                    <div>
-                      <CardTitle className="text-lg">{censorText(team.name)}</CardTitle>
-                      <CardDescription>{team.game}</CardDescription>
-                    </div>
-                  </div>
-                  <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => handleDeleteTeam(team.id)}>
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {team.members?.map((m: any, i: number) => (
-                      <div key={i} className="flex items-center justify-between text-sm p-2 rounded bg-white/5">
-                        <div className="flex items-center gap-2">
-                          <AvatarCustom name={m.name} size="xs" />
-                          <span className="text-white">{censorText(m.gameName)}</span>
-                        </div>
-                        <span className="text-muted-foreground text-xs">{m.department}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
+      <Tabs defaultValue="events" className="space-y-8">
+        <TabsList className="grid w-full grid-cols-5 bg-card/50 border border-white/10">
+          <TabsTrigger value="events">การแข่งขัน</TabsTrigger>
+          <TabsTrigger value="registrations">สมัครสมาชิก</TabsTrigger>
+          <TabsTrigger value="matches">แมตช์</TabsTrigger>
+          <TabsTrigger value="banners">แบนเนอร์</TabsTrigger>
+          <TabsTrigger value="news">ข่าวสาร</TabsTrigger>
+        </TabsList>
 
         {/* Events Tab */}
-        <TabsContent value="events">
+        <TabsContent value="events" className="space-y-8">
           <div className="grid gap-8">
             <Card className="bg-card/50 border-white/10">
               <CardHeader>
@@ -606,8 +350,14 @@ export default function AdminDashboard() {
               <CardContent>
                 <form onSubmit={handleCreateEvent} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>ชื่อการแข่งขัน</Label>
-                    <Input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="เช่น WNY ROV Tournament" className="bg-white/5" />
+                    <Label>ชื่อการแข่งขัน *</Label>
+                    <Input 
+                      value={newTitle} 
+                      onChange={e => setNewTitle(e.target.value)} 
+                      placeholder="เช่น WNY ROV Tournament" 
+                      className="bg-white/5"
+                      required
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>เกม</Label>
@@ -620,27 +370,237 @@ export default function AdminDashboard() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button type="submit" className="md:col-span-2 bg-primary">สร้างการแข่ง</Button>
+                  <div className="space-y-2">
+                    <Label>จำนวนทีมสูงสุด</Label>
+                    <Input 
+                      value={newMaxTeams} 
+                      onChange={e => setNewMaxTeams(e.target.value)} 
+                      type="number" 
+                      className="bg-white/5" 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>จำนวนสมาชิกต่อทีม</Label>
+                    <Input 
+                      value={newMembers} 
+                      onChange={e => setNewMembers(e.target.value)} 
+                      type="number" 
+                      className="bg-white/5" 
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>วันที่แข่งขัน *</Label>
+                    <Input 
+                      value={newDate} 
+                      onChange={e => setNewDate(e.target.value)} 
+                      type="date" 
+                      className="bg-white/5"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>วันสิ้นสุดการสมัคร *</Label>
+                    <Input 
+                      value={newRegistrationDeadline} 
+                      onChange={e => setNewRegistrationDeadline(e.target.value)} 
+                      type="date" 
+                      className="bg-white/5"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>URL แบนเนอร์</Label>
+                    <Input 
+                      value={newBannerUrl} 
+                      onChange={e => setNewBannerUrl(e.target.value)} 
+                      placeholder="https://example.com/banner.jpg" 
+                      className="bg-white/5" 
+                    />
+                  </div>
+                  <Button type="submit" className="md:col-span-2 bg-primary"><Plus className="w-4 h-4 mr-2" /> สร้างการแข่ง</Button>
                 </form>
               </CardContent>
             </Card>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {events.map((event) => (
-                <Card key={event.id} className="bg-card/50 border-white/10">
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <div>
-                      <CardTitle className="text-lg">{event.title}</CardTitle>
-                      <CardDescription>{event.game} | {event.status}</CardDescription>
-                    </div>
-                    <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => handleDeleteEvent(event.id)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </CardHeader>
-                </Card>
-              ))}
-            </div>
+            <Card className="bg-card/50 border-white/10">
+              <CardHeader>
+                <CardTitle>การแข่งขันทั้งหมด</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {events.map((event) => (
+                    <Card key={event.id} className="bg-card/50 border-white/10">
+                      <CardHeader>
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <CardTitle className="text-lg">{event.title}</CardTitle>
+                            <CardDescription className="text-sm mt-1">
+                              {event.game} | {event.status}
+                            </CardDescription>
+                            {event.date && (
+                              <p className="text-xs text-muted-foreground mt-2">
+                                <Calendar className="w-3 h-3 inline mr-1" />
+                                {new Date(event.date).toLocaleDateString('th-TH')}
+                              </p>
+                            )}
+                            {event.registrationDeadline && (
+                              <p className="text-xs text-yellow-400 mt-1">
+                                ปิดรับสมัคร: {new Date(event.registrationDeadline).toLocaleDateString('th-TH')}
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex gap-2">
+                            {editingEventId === event.id ? (
+                              <>
+                                <Button 
+                                  size="icon" 
+                                  variant="ghost"
+                                  onClick={() => handleUpdateEventBanner(event.id, editingBannerUrl)}
+                                  className="text-green-500 hover:bg-green-500/10"
+                                >
+                                  <Check className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  size="icon" 
+                                  variant="ghost"
+                                  onClick={() => setEditingEventId("")}
+                                  className="text-muted-foreground"
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button 
+                                  size="icon" 
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setEditingEventId(event.id);
+                                    setEditingBannerUrl(event.bannerUrl || "");
+                                  }}
+                                  className="text-accent hover:bg-accent/10"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </Button>
+                                <Button 
+                                  size="icon" 
+                                  variant="ghost" 
+                                  className="text-destructive hover:bg-destructive/10" 
+                                  onClick={() => handleDeleteEvent(event.id)}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </CardHeader>
+                      {editingEventId === event.id && (
+                        <CardContent>
+                          <Input 
+                            value={editingBannerUrl} 
+                            onChange={e => setEditingBannerUrl(e.target.value)} 
+                            placeholder="URL แบนเนอร์" 
+                            className="bg-white/5"
+                          />
+                        </CardContent>
+                      )}
+                    </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           </div>
+        </TabsContent>
+
+        {/* Registrations Tab */}
+        <TabsContent value="registrations" className="space-y-8">
+          <Card className="bg-card/50 border-white/10">
+            <CardHeader>
+              <CardTitle>การสมัครสมาชิก</CardTitle>
+              <CardDescription>รอการอนุมัติ: {registrations.filter(r => r.status === "pending").length}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {registrations.filter(r => r.status === "pending").map((reg) => (
+                  <Card key={reg.id} className="bg-background/50 border-white/5 p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <h4 className="font-bold text-white">{reg.teamName}</h4>
+                        <p className="text-sm text-muted-foreground">{reg.game}</p>
+                        {reg.logoUrl && (
+                          <img src={reg.logoUrl} alt={reg.teamName} className="w-12 h-12 rounded mt-2 object-cover" />
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button 
+                          size="sm" 
+                          className="bg-green-600 hover:bg-green-700"
+                          onClick={() => handleApproveRegistration(reg)}
+                        >
+                          <Check className="w-4 h-4 mr-1" /> อนุมัติ
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleRejectRegistration(reg.id)}
+                        >
+                          <X className="w-4 h-4 mr-1" /> ปฏิเสธ
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Matches Tab */}
+        <TabsContent value="matches" className="space-y-8">
+          <Card className="bg-card/50 border-white/10">
+            <CardHeader>
+              <CardTitle>สร้างแมตช์ใหม่</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleCreateMatch} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label>การแข่งขัน</Label>
+                  <Select value={selectedEventId} onValueChange={setSelectedEventId}>
+                    <SelectTrigger className="bg-white/5"><SelectValue placeholder="เลือกการแข่งขัน" /></SelectTrigger>
+                    <SelectContent>
+                      {events.map(event => (
+                        <SelectItem key={event.id} value={event.id}>{event.title}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>ทีม A</Label>
+                  <Select value={newMatchTeamA} onValueChange={setNewMatchTeamA}>
+                    <SelectTrigger className="bg-white/5"><SelectValue placeholder="เลือกทีม" /></SelectTrigger>
+                    <SelectContent>
+                      {approvedTeams.map(team => (
+                        <SelectItem key={team.id} value={team.name}>{team.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>ทีม B</Label>
+                  <Select value={newMatchTeamB} onValueChange={setNewMatchTeamB}>
+                    <SelectTrigger className="bg-white/5"><SelectValue placeholder="เลือกทีม" /></SelectTrigger>
+                    <SelectContent>
+                      {approvedTeams.map(team => (
+                        <SelectItem key={team.id} value={team.name}>{team.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button type="submit" className="md:col-span-3 bg-primary"><Plus className="w-4 h-4 mr-2" /> สร้างแมตช์</Button>
+              </form>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Banners Tab */}
@@ -698,30 +658,38 @@ export default function AdminDashboard() {
         <TabsContent value="news">
           <div className="grid gap-8">
             <Card className="bg-card/50 border-white/10">
-              <CardHeader><CardTitle>ประกาศข่าวสาร</CardTitle></CardHeader>
+              <CardHeader>
+                <CardTitle>สร้างข่าวสารใหม่</CardTitle>
+              </CardHeader>
               <CardContent>
                 <form onSubmit={handleCreateNews} className="space-y-4">
-                  <Input value={newsTitle} onChange={e => setNewsTitle(e.target.value)} placeholder="หัวข้อข่าว" className="bg-white/5" />
-                  <textarea value={newsContent} onChange={e => setNewsContent(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-lg p-4 text-white" rows={4} placeholder="เนื้อหาข่าว..." />
-                  <Button type="submit" className="w-full bg-primary">โพสต์ข่าว</Button>
+                  <div className="space-y-2">
+                    <Label>หัวข้อ</Label>
+                    <Input value={newsTitle} onChange={e => setNewsTitle(e.target.value)} placeholder="หัวข้อข่าวสาร" className="bg-white/5" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>เนื้อหา</Label>
+                    <textarea value={newsContent} onChange={e => setNewsContent(e.target.value)} placeholder="เนื้อหาข่าวสาร" className="w-full bg-white/5 border border-white/10 rounded-md p-3 text-white" rows={5} />
+                  </div>
+                  <Button type="submit" className="bg-primary"><Plus className="w-4 h-4 mr-2" /> สร้างข่าวสาร</Button>
                 </form>
               </CardContent>
             </Card>
 
-            <div className="grid gap-4">
+            <div className="space-y-4">
               {news.map((item) => (
                 <Card key={item.id} className="bg-card/50 border-white/10">
-                  <CardHeader className="flex flex-row items-center justify-between">
-                    <div>
-                      <CardTitle className="text-lg">{item.title}</CardTitle>
-                      <CardDescription>โดย {item.author} | {item.createdAt?.toDate().toLocaleString('th-TH')}</CardDescription>
+                  <CardHeader className="flex flex-row items-start justify-between">
+                    <div className="flex-1">
+                      <CardTitle>{item.title}</CardTitle>
+                      <CardDescription className="text-xs mt-2">โดย {item.author} • {item.createdAt?.toDate?.().toLocaleDateString('th-TH')}</CardDescription>
                     </div>
                     <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10" onClick={() => handleDeleteNews(item.id)}>
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-muted-foreground line-clamp-2">{item.content}</p>
+                    <p className="text-sm text-muted-foreground">{item.content}</p>
                   </CardContent>
                 </Card>
               ))}
