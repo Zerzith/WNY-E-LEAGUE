@@ -259,9 +259,6 @@ function BracketMatch({ match }: { match: Match }) {
           </span>
         </div>
       </Card>
-      
-      {/* Connector Line */}
-      <div className="absolute -right-6 top-1/2 w-6 h-[1px] bg-white/10 group-hover:bg-primary/30 transition-colors" />
     </motion.div>
   );
 }
