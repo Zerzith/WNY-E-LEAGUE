@@ -50,6 +50,12 @@ export default function AdminDashboard() {
   const [newMatchGroup, setNewMatchGroup] = useState("A");
   const [newMatchTeamA, setNewMatchTeamA] = useState("");
   const [newMatchTeamB, setNewMatchTeamB] = useState("");
+  const [approvedTeams, setApprovedTeams] = useState<any[]>([]);
+  const [banners, setBanners] = useState<any[]>([]);
+
+  // Banner Management State
+  const [bannerEventId, setBannerEventId] = useState<string>("");
+  const [bannerUrl, setBannerUrl] = useState<string>("");
 
   useEffect(() => {
     if (authLoading) return;
@@ -102,6 +108,33 @@ export default function AdminDashboard() {
       unsubNews();
     };
   }, [user, authLoading, setLocation]);
+
+  useEffect(() => {
+    const qBanners = query(collection(db, "banners"), orderBy("createdAt", "desc"));
+    const unsubBanners = onSnapshot(qBanners, (snap) => {
+      setBanners(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return () => unsubBanners();
+  }, []);
+
+  useEffect(() => {
+    if (!selectedEventId) {
+      setApprovedTeams([]);
+      return;
+    }
+
+    const qApprovedTeams = query(
+      collection(db, "teams"),
+      where("eventId", "==", selectedEventId),
+      where("status", "==", "approved")
+    );
+
+    const unsubApprovedTeams = onSnapshot(qApprovedTeams, (snap) => {
+      setApprovedTeams(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+
+    return () => unsubApprovedTeams();
+  }, [selectedEventId]);
 
   if (authLoading || (user && user.role === "admin" && loading)) {
     return (
@@ -263,6 +296,36 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleCreateBanner = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bannerEventId || !bannerUrl) {
+      toast({ title: "กรุณาเลือกการแข่งขันและระบุ URL แบนเนอร์", variant: "destructive" });
+      return;
+    }
+    try {
+      await addDoc(collection(db, "banners"), {
+        eventId: bannerEventId,
+        imageUrl: bannerUrl,
+        createdAt: serverTimestamp()
+      });
+      toast({ title: "สร้างแบนเนอร์สำเร็จ" });
+      setBannerEventId("");
+      setBannerUrl("");
+    } catch (error) {
+      toast({ title: "ผิดพลาดในการสร้างแบนเนอร์", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteBanner = async (id: string) => {
+    if (!confirm("ยืนยันการลบแบนเนอร์นี้?")) return;
+    try {
+      await deleteDoc(doc(db, "banners", id));
+      toast({ title: "ลบแบนเนอร์เรียบร้อย" });
+    } catch (error) {
+      toast({ title: "ผิดพลาดในการลบแบนเนอร์", variant: "destructive" });
+    }
+  };
+
   const handleDeleteNews = async (id: string) => {
     if (!confirm("ยืนยันการลบข่าวสารนี้?")) return;
     try {
@@ -304,9 +367,7 @@ export default function AdminDashboard() {
             <TabsTrigger value="events" className="flex-1 data-[state=active]:bg-primary rounded-lg whitespace-nowrap px-4 py-2 text-sm">การแข่งขัน</TabsTrigger>
             <TabsTrigger value="registrations" className="flex-1 data-[state=active]:bg-primary rounded-lg whitespace-nowrap px-4 py-2 text-sm">คำขอสมัคร</TabsTrigger>
             <TabsTrigger value="matches" className="flex-1 data-[state=active]:bg-primary rounded-lg whitespace-nowrap px-4 py-2 text-sm">สายแข่ง & คะแนน</TabsTrigger>
-            <TabsTrigger value="teams" className="flex-1 data-[state=active]:bg-primary rounded-lg whitespace-nowrap px-4 py-2 text-sm">ทีมทั้งหมด</TabsTrigger>
-            <TabsTrigger value="news" className="flex-1 data-[state=active]:bg-primary rounded-lg whitespace-nowrap px-4 py-2 text-sm">ข่าวสาร</TabsTrigger>
-          </TabsList>
+            <TabsTrigger value="teams" className="flex-1 data-[state=active]:bg-primary rounded-lg whitespace-nowrap px-4 py-2 text-sm">ทีมทั้งหมด</TabsTrigger>            <TabsTrigger value="banners" className="flex-1 data-[state=active]:bg-primary rounded-lg whitespace-nowrap px-4 py-2 text-sm">แบนเนอร์</TabsTrigger>        </TabsList>
         </div>
 
         {/* Registrations Tab */}
@@ -387,35 +448,61 @@ export default function AdminDashboard() {
               <CardDescription>กำหนดคู่แข่งขัน รอบ และกลุ่ม</CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleCreateMatch} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                <div className="space-y-2">
-                  <Label>รายการแข่ง</Label>
-                  <Select value={selectedEventId} onValueChange={setSelectedEventId}>
-                    <SelectTrigger className="bg-white/5"><SelectValue placeholder="เลือกรายการ" /></SelectTrigger>
-                    <SelectContent>
-                      {events.map(e => <SelectItem key={e.id} value={e.id}>{e.title}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>ทีม A</Label>
-                  <Input value={newMatchTeamA} onChange={e => setNewMatchTeamA(e.target.value)} placeholder="ชื่อทีม A" className="bg-white/5" />
-                </div>
-                <div className="space-y-2">
-                  <Label>ทีม B</Label>
-                  <Input value={newMatchTeamB} onChange={e => setNewMatchTeamB(e.target.value)} placeholder="ชื่อทีม B" className="bg-white/5" />
-                </div>
-                <div className="space-y-2">
-                  <Label>รอบที่</Label>
-                  <Input type="number" value={newMatchRound} onChange={e => setNewMatchRound(e.target.value)} className="bg-white/5" />
-                </div>
-                <div className="space-y-2">
-                  <Label>กลุ่ม</Label>
-                  <Input value={newMatchGroup} onChange={e => setNewMatchGroup(e.target.value)} placeholder="A, B, C..." className="bg-white/5" />
-                </div>
-                <div className="flex items-end">
-                  <Button type="submit" className="w-full bg-primary"><Plus className="w-4 h-4 mr-2" /> สร้างแมตช์</Button>
-                </div>
+              <form onSubmit={handleCreateMatch} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>การแข่งขัน</Label>
+                    <Select value={selectedEventId} onValueChange={setSelectedEventId}>
+                      <SelectTrigger className="bg-white/5"><SelectValue placeholder="เลือกการแข่งขัน" /></SelectTrigger>
+                      <SelectContent>
+                        {events.map(event => (
+                          <SelectItem key={event.id} value={event.id}>{event.title}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>รอบที่</Label>
+                    <Input type="number" value={newMatchRound} onChange={e => setNewMatchRound(e.target.value)} className="bg-white/5" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>กลุ่ม</Label>
+                    <Input value={newMatchGroup} onChange={e => setNewMatchGroup(e.target.value)} placeholder="A, B, C..." className="bg-white/5" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>ทีม A</Label>
+                    <Select value={newMatchTeamA} onValueChange={setNewMatchTeamA} disabled={!selectedEventId}>
+                      <SelectTrigger className="bg-white/5"><SelectValue placeholder="เลือกทีม A" /></SelectTrigger>
+                      <SelectContent>
+                        {approvedTeams.map(team => (
+                          <SelectItem key={team.id} value={team.name}>
+                            <div className="flex items-center gap-2">
+                              <AvatarCustom src={team.logoUrl} name={team.name} size="sm" />
+                              <span>{team.name}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>ทีม B</Label>
+                    <Select value={newMatchTeamB} onValueChange={setNewMatchTeamB} disabled={!selectedEventId}>
+                      <SelectTrigger className="bg-white/5"><SelectValue placeholder="เลือกทีม B" /></SelectTrigger>
+                      <SelectContent>
+                        {approvedTeams.map(team => (
+                          <SelectItem key={team.id} value={team.name}>
+                            <div className="flex items-center gap-2">
+                              <AvatarCustom src={team.logoUrl} name={team.name} size="sm" />
+                              <span>{team.name}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-end md:col-span-2">
+                    <Button type="submit" className="w-full bg-primary"><Plus className="w-4 h-4 mr-2" /> สร้างแมตช์</Button>
+                  </div>
               </form>
             </CardContent>
           </Card>
@@ -466,10 +553,7 @@ export default function AdminDashboard() {
                     </div>
                   </div>
                 </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
+          </Card> </TabsContent>
 
         {/* Teams Tab */}
         <TabsContent value="teams">
@@ -530,12 +614,12 @@ export default function AdminDashboard() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button type="submit" className="md:col-span-2 bg-primary">สร้างการแข่งขัน</Button>
-                </form>
-              </CardContent>
-            </Card>
+                  <Button type="submit" className="md:col-span-2 bg-primary">สร้างการแข่ง                  </div>
+              </form>
+            </CardContent>
+          </Card>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {events.map((event) => (
                 <Card key={event.id} className="bg-card/50 border-white/10">
                   <CardHeader className="flex flex-row items-center justify-between">
@@ -550,6 +634,57 @@ export default function AdminDashboard() {
                 </Card>
               ))}
             </div>
+          </div>
+        </TabsContent>
+
+        {/* Banners Tab */}
+        <TabsContent value="banners" className="space-y-8">
+          <Card className="bg-card/50 border-white/10">
+            <CardHeader>
+              <CardTitle>จัดการแบนเนอร์</CardTitle>
+              <CardDescription>เพิ่มหรือลบแบนเนอร์สำหรับแต่ละการแข่งขัน</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleCreateBanner} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2 md:col-span-1">
+                  <Label>การแข่งขัน</Label>
+                  <Select value={bannerEventId} onValueChange={setBannerEventId}>
+                    <SelectTrigger className="bg-white/5"><SelectValue placeholder="เลือกการแข่งขัน" /></SelectTrigger>
+                    <SelectContent>
+                      {events.map(event => (
+                        <SelectItem key={event.id} value={event.id}>{event.title}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 md:col-span-1">
+                  <Label>URL รูปภาพ</Label>
+                  <Input value={bannerUrl} onChange={e => setBannerUrl(e.target.value)} placeholder="https://example.com/banner.jpg" className="bg-white/5" />
+                </div>
+                <div className="flex items-end md:col-span-1">
+                  <Button type="submit" className="w-full bg-primary"><Plus className="w-4 h-4 mr-2" /> เพิ่มแบนเนอร์</Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {banners.map((banner) => (
+              <Card key={banner.id} className="bg-card/50 border-white/10 overflow-hidden">
+                <CardHeader className="flex flex-row items-start justify-between">
+                  <div className="space-y-1">
+                    <CardTitle className="text-base">{events.find(e => e.id === banner.eventId)?.title || 'ไม่พบการแข่งขัน'}</CardTitle>
+                    <CardDescription className="text-xs truncate">{banner.imageUrl}</CardDescription>
+                  </div>
+                  <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 shrink-0" onClick={() => handleDeleteBanner(banner.id)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <img src={banner.imageUrl} alt={`แบนเนอร์สำหรับ ${events.find(e => e.id === banner.eventId)?.title}`} className="w-full h-40 object-cover rounded-md" />
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </TabsContent>
 
@@ -585,6 +720,159 @@ export default function AdminDashboard() {
                 </Card>
               ))}
             </div>
+          </div>
+        </TabsContent>
+
+        {/* Banners Tab */}
+        <TabsContent value="banners" className="space-y-8">
+          <Card className="bg-card/50 border-white/10">
+            <CardHeader>
+              <CardTitle>จัดการแบนเนอร์</CardTitle>
+              <CardDescription>เพิ่มหรือลบแบนเนอร์สำหรับแต่ละการแข่งขัน</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleCreateBanner} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2 md:col-span-1">
+                  <Label>การแข่งขัน</Label>
+                  <Select value={bannerEventId} onValueChange={setBannerEventId}>
+                    <SelectTrigger className="bg-white/5"><SelectValue placeholder="เลือกการแข่งขัน" /></SelectTrigger>
+                    <SelectContent>
+                      {events.map(event => (
+                        <SelectItem key={event.id} value={event.id}>{event.title}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 md:col-span-1">
+                  <Label>URL รูปภาพ</Label>
+                  <Input value={bannerUrl} onChange={e => setBannerUrl(e.target.value)} placeholder="https://example.com/banner.jpg" className="bg-white/5" />
+                </div>
+                <div className="flex items-end md:col-span-1">
+                  <Button type="submit" className="w-full bg-primary"><Plus className="w-4 h-4 mr-2" /> เพิ่มแบนเนอร์</Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {banners.map((banner) => (
+              <Card key={banner.id} className="bg-card/50 border-white/10 overflow-hidden">
+                <CardHeader className="flex flex-row items-start justify-between">
+                  <div className="space-y-1">
+                    <CardTitle className="text-base">{events.find(e => e.id === banner.eventId)?.title || 'ไม่พบการแข่งขัน'}</CardTitle>
+                    <CardDescription className="text-xs truncate">{banner.imageUrl}</CardDescription>
+                  </div>
+                  <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 shrink-0" onClick={() => handleDeleteBanner(banner.id)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <img src={banner.imageUrl} alt={`แบนเนอร์สำหรับ ${events.find(e => e.id === banner.eventId)?.title}`} className="w-full h-40 object-cover rounded-md" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+
+        {/* Banners Tab */}
+        <TabsContent value="banners" className="space-y-8">
+          <Card className="bg-card/50 border-white/10">
+            <CardHeader>
+              <CardTitle>จัดการแบนเนอร์</CardTitle>
+              <CardDescription>เพิ่มหรือลบแบนเนอร์สำหรับแต่ละการแข่งขัน</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleCreateBanner} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2 md:col-span-1">
+                  <Label>การแข่งขัน</Label>
+                  <Select value={bannerEventId} onValueChange={setBannerEventId}>
+                    <SelectTrigger className="bg-white/5"><SelectValue placeholder="เลือกการแข่งขัน" /></SelectTrigger>
+                    <SelectContent>
+                      {events.map(event => (
+                        <SelectItem key={event.id} value={event.id}>{event.title}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 md:col-span-1">
+                  <Label>URL รูปภาพ</Label>
+                  <Input value={bannerUrl} onChange={e => setBannerUrl(e.target.value)} placeholder="https://example.com/banner.jpg" className="bg-white/5" />
+                </div>
+                <div className="flex items-end md:col-span-1">
+                  <Button type="submit" className="w-full bg-primary"><Plus className="w-4 h-4 mr-2" /> เพิ่มแบนเนอร์</Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {banners.map((banner) => (
+              <Card key={banner.id} className="bg-card/50 border-white/10 overflow-hidden">
+                <CardHeader className="flex flex-row items-start justify-between">
+                  <div className="space-y-1">
+                    <CardTitle className="text-base">{events.find(e => e.id === banner.eventId)?.title || 'ไม่พบการแข่งขัน'}</CardTitle>
+                    <CardDescription className="text-xs truncate">{banner.imageUrl}</CardDescription>
+                  </div>
+                  <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 shrink-0" onClick={() => handleDeleteBanner(banner.id)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <img src={banner.imageUrl} alt={`แบนเนอร์สำหรับ ${events.find(e => e.id === banner.eventId)?.title}`} className="w-full h-40 object-cover rounded-md" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </TabsContent>
+
+        {/* Banners Tab */}
+        <TabsContent value="banners" className="space-y-8">
+          <Card className="bg-card/50 border-white/10">
+            <CardHeader>
+              <CardTitle>จัดการแบนเนอร์</CardTitle>
+              <CardDescription>เพิ่มหรือลบแบนเนอร์สำหรับแต่ละการแข่งขัน</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleCreateBanner} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2 md:col-span-1">
+                  <Label>การแข่งขัน</Label>
+                  <Select value={bannerEventId} onValueChange={setBannerEventId}>
+                    <SelectTrigger className="bg-white/5"><SelectValue placeholder="เลือกการแข่งขัน" /></SelectTrigger>
+                    <SelectContent>
+                      {events.map(event => (
+                        <SelectItem key={event.id} value={event.id}>{event.title}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 md:col-span-1">
+                  <Label>URL รูปภาพ</Label>
+                  <Input value={bannerUrl} onChange={e => setBannerUrl(e.target.value)} placeholder="https://example.com/banner.jpg" className="bg-white/5" />
+                </div>
+                <div className="flex items-end md:col-span-1">
+                  <Button type="submit" className="w-full bg-primary"><Plus className="w-4 h-4 mr-2" /> เพิ่มแบนเนอร์</Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {banners.map((banner) => (
+              <Card key={banner.id} className="bg-card/50 border-white/10 overflow-hidden">
+                <CardHeader className="flex flex-row items-start justify-between">
+                  <div className="space-y-1">
+                    <CardTitle className="text-base">{events.find(e => e.id === banner.eventId)?.title || 'ไม่พบการแข่งขัน'}</CardTitle>
+                    <CardDescription className="text-xs truncate">{banner.imageUrl}</CardDescription>
+                  </div>
+                  <Button variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10 shrink-0" onClick={() => handleDeleteBanner(banner.id)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <img src={banner.imageUrl} alt={`แบนเนอร์สำหรับ ${events.find(e => e.id === banner.eventId)?.title}`} className="w-full h-40 object-cover rounded-md" />
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </TabsContent>
       </Tabs>
