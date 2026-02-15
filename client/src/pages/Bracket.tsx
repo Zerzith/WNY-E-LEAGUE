@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Card } from "@/components/ui/card";
 import { Loader2, Trophy, Swords, LayoutGrid } from "lucide-react";
 import { motion } from "framer-motion";
 import { censorText } from "@/lib/filter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AvatarCustom } from "@/components/ui/avatar-custom";
 
 interface Match {
   id: string;
@@ -18,8 +17,6 @@ interface Match {
   status: "pending" | "ongoing" | "completed";
   tournamentId: string;
   group?: string;
-  logoUrlA?: string;
-  logoUrlB?: string;
 }
 
 interface Tournament {
@@ -27,7 +24,6 @@ interface Tournament {
   title: string;
   game: string;
   status: string;
-  maxTeams?: number;
 }
 
 export default function Bracket() {
@@ -36,12 +32,10 @@ export default function Bracket() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [groups, setGroups] = useState<string[]>(["All"]);
-  const [teamLogos, setTeamLogos] = useState<Record<string, string>>({});
-  const [registeredTeamCount, setRegisteredTeamCount] = useState(0);
 
   // Fetch tournaments
   useEffect(() => {
-    const q = query(collection(db, "events"));
+    const q = query(collection(db, "events"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const tournamentsData = snapshot.docs.map((doc) => ({
         id: doc.id,
@@ -57,63 +51,29 @@ export default function Bracket() {
     return () => unsubscribe();
   }, []);
 
-  // Fetch team logos and count
-  useEffect(() => {
-    if (!selectedTournament) return;
-
-    const registrationsQuery = query(
-      collection(db, "registrations"),
-      where("eventId", "==", selectedTournament.id),
-      where("status", "==", "approved")
-    );
-
-    const unsubscribe = onSnapshot(registrationsQuery, (snapshot) => {
-      const logos: Record<string, string> = {};
-      snapshot.docs.forEach((doc) => {
-        const reg = doc.data();
-        if (reg.teamName && reg.logoUrl) {
-          logos[reg.teamName] = reg.logoUrl;
-        }
-      });
-      setTeamLogos(logos);
-      setRegisteredTeamCount(snapshot.docs.length);
-    });
-
-    return () => unsubscribe();
-  }, [selectedTournament]);
-
   // Fetch matches for selected tournament
   useEffect(() => {
     if (!selectedTournament) return;
 
     const q = query(
       collection(db, "matches"),
-      where("tournamentId", "==", selectedTournament.id)
+      where("tournamentId", "==", selectedTournament.id),
+      orderBy("round", "asc")
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const matchesData = snapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          logoUrlA: teamLogos[data.teamA] || "",
-          logoUrlB: teamLogos[data.teamB] || "",
-        } as Match;
-      });
+      const matchesData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      } as any));
+      setMatches(matchesData);
       
-      const sortedMatches = matchesData.sort((a, b) => {
-        if (a.round !== b.round) return a.round - b.round;
-        return (a.group || "").localeCompare(b.group || "");
-      });
-      
-      setMatches(sortedMatches);
-      
+      // ดึงรายชื่อกลุ่มที่มีทั้งหมด
       const uniqueGroups = Array.from(new Set(matchesData.map(m => m.group || "General")));
       setGroups(["All", ...uniqueGroups]);
     });
 
     return () => unsubscribe();
-  }, [selectedTournament, teamLogos]);
+  }, [selectedTournament]);
 
   if (loading) {
     return (
@@ -139,96 +99,169 @@ export default function Bracket() {
           <h1 className="text-4xl md:text-6xl font-display font-bold text-white mb-4 tracking-tight">
             สายการแข่งขัน
           </h1>
-          <p className="text-white/60 text-lg">ติดตามผลการแข่งขันแบบเรียลไทม์</p>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            ติดตามผลการแข่งขันแบบสดๆ โดยไม่ต้องรีเฟรชหน้าจอ
+          </p>
         </div>
 
         {/* Tournament Selector */}
-        <div className="mb-8 flex flex-col sm:flex-row gap-4 items-center justify-center">
-          <select
-            value={selectedTournament?.id || ""}
-            onChange={(e) => {
-              const tournament = tournaments.find(t => t.id === e.target.value);
-              setSelectedTournament(tournament || null);
-            }}
-            className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-white"
-          >
-            {tournaments.map(tournament => (
-              <option key={tournament.id} value={tournament.id} className="bg-background">
-                {tournament.title} ({tournament.game})
-              </option>
-            ))}
-          </select>
-          
-          {selectedTournament && (
-            <div className="px-4 py-2 rounded-lg bg-primary/10 border border-primary/20 text-primary font-semibold">
-              ทีมที่ลงทะเบียน: {registeredTeamCount}/{selectedTournament.maxTeams || "∞"}
-            </div>
-          )}
+        <div className="flex flex-wrap justify-center gap-3 mb-12">
+          {tournaments.map((tournament) => (
+            <button
+              key={tournament.id}
+              onClick={() => setSelectedTournament(tournament)}
+              className={`px-6 py-2.5 rounded-xl font-bold transition-all duration-300 border ${
+                selectedTournament?.id === tournament.id
+                  ? "bg-primary text-white border-primary shadow-lg shadow-primary/20 scale-105"
+                  : "bg-card/50 text-white/60 border-white/5 hover:border-white/20 hover:text-white"
+              }`}
+            >
+              {tournament.title}
+            </button>
+          ))}
         </div>
 
-        {/* Matches Display */}
-        {matches.length > 0 ? (
-          <div className="space-y-8">
-            {matches.map((match) => (
-              <motion.div
-                key={match.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="group relative"
-              >
-                <Card className="bg-card/50 border-white/10 overflow-hidden hover:border-primary/30 transition-colors">
-                  {/* Team A */}
-                  <div className="flex justify-between items-center p-4 border-b border-white/5">
-                    <div className="flex items-center gap-3 overflow-hidden flex-1">
-                      <AvatarCustom 
-                        src={match.logoUrlA} 
-                        name={match.teamA} 
-                        size="md"
-                      />
-                      <span className="font-bold truncate text-sm text-white">
-                        {censorText(match.teamA) || "TBD"}
-                      </span>
-                    </div>
-                    <span className="font-mono font-black text-lg text-white">
-                      {match.scoreA}
-                    </span>
-                  </div>
-
-                  {/* Team B */}
-                  <div className="flex justify-between items-center p-4">
-                    <div className="flex items-center gap-3 overflow-hidden flex-1">
-                      <AvatarCustom 
-                        src={match.logoUrlB} 
-                        name={match.teamB} 
-                        size="md"
-                      />
-                      <span className="font-bold truncate text-sm text-white">
-                        {censorText(match.teamB) || "TBD"}
-                      </span>
-                    </div>
-                    <span className="font-mono font-black text-lg text-white">
-                      {match.scoreB}
-                    </span>
-                  </div>
-
-                  {/* Match Info */}
-                  <div className="px-4 py-2 bg-white/5 border-t border-white/5 flex justify-between items-center text-xs text-muted-foreground">
-                    <span>Round {match.round} {match.group && `| Group ${match.group}`}</span>
-                    <span className="capitalize">{match.status === "completed" ? "จบแล้ว" : match.status === "ongoing" ? "กำลังแข่ง" : "รอดำเนินการ"}</span>
-                  </div>
-                </Card>
-              </motion.div>
-            ))}
+        {tournaments.length === 0 ? (
+          <div className="text-center py-24 bg-card/20 rounded-[2rem] border border-dashed border-white/10">
+            <Trophy className="w-16 h-16 mx-auto text-white/10 mb-4" />
+            <p className="text-muted-foreground text-lg">ยังไม่มีข้อมูลการแข่งขันในขณะนี้</p>
           </div>
         ) : (
-          <Card className="bg-card/50 border-dashed border-white/10 py-12 text-center">
-            <Trophy className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-20" />
-            <p className="text-muted-foreground">
-              {!selectedTournament ? "กรุณาเลือกการแข่งขัน" : "ยังไม่มีแมตช์สำหรับการแข่งขันนี้"}
-            </p>
-          </Card>
+          <Tabs defaultValue="All" className="w-full">
+            <div className="flex justify-center mb-8">
+              <TabsList className="bg-white/5 border border-white/10 p-1">
+                {groups.map(group => (
+                  <TabsTrigger key={group} value={group} className="data-[state=active]:bg-primary data-[state=active]:text-white px-6">
+                    {group === "All" ? "ทั้งหมด" : `กลุ่ม ${group}`}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </div>
+
+            {groups.map(group => {
+              const filteredMatches = matches.filter(m => group === "All" || (m.group || "General") === group);
+              
+              // Group matches by round for this group
+              const matchesByRound = filteredMatches.reduce((acc, match) => {
+                if (!acc[match.round]) {
+                  acc[match.round] = [];
+                }
+                acc[match.round].push(match);
+                return acc;
+              }, {} as Record<number, Match[]>);
+
+              const rounds = Object.keys(matchesByRound)
+                .map(Number)
+                .sort((a, b) => a - b);
+
+              return (
+                <TabsContent key={group} value={group} className="mt-0">
+                  {filteredMatches.length === 0 ? (
+                    <div className="text-center py-24 bg-card/20 rounded-[2rem] border border-dashed border-white/10">
+                      <LayoutGrid className="w-16 h-16 mx-auto text-white/10 mb-4" />
+                      <p className="text-muted-foreground text-lg">ยังไม่มีข้อมูลการแข่งขันในกลุ่มนี้</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto pb-12 scrollbar-hide">
+                      <div className="min-w-max flex justify-center gap-12 md:gap-20 py-8 px-4">
+                        {rounds.map((round, roundIndex) => (
+                          <div key={round} className="flex flex-col justify-around gap-8">
+                            <div className="text-center mb-4">
+                              <div className="inline-block px-4 py-1 rounded-lg bg-white/5 border border-white/10">
+                                <p className="text-xs font-black text-primary uppercase tracking-[0.2em]">
+                                  {roundIndex === rounds.length - 1
+                                    ? "Finals"
+                                    : roundIndex === rounds.length - 2
+                                    ? "Semi-Finals"
+                                    : `Round ${round}`}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex flex-col gap-8">
+                              {matchesByRound[round].map((match) => (
+                                <BracketMatch key={match.id} match={match} />
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </TabsContent>
+              );
+            })}
+          </Tabs>
         )}
       </div>
     </div>
+  );
+}
+
+function BracketMatch({ match }: { match: Match }) {
+  const isCompleted = match.status === "completed";
+  const isOngoing = match.status === "ongoing";
+  const winnerA = isCompleted && match.scoreA > match.scoreB;
+  const winnerB = isCompleted && match.scoreB > match.scoreA;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="relative"
+    >
+      <Card
+        className={`w-64 md:w-72 bg-card/80 backdrop-blur-md border-white/10 overflow-hidden transition-all duration-500 hover:border-primary/50 group ${
+          isOngoing ? "ring-2 ring-red-500/50 border-red-500/50" : ""
+        } ${isCompleted ? "shadow-2xl shadow-black/50" : ""}`}
+      >
+        {/* Match Status Indicator */}
+        {isOngoing && (
+          <div className="absolute top-0 right-0 px-2 py-0.5 bg-red-600 text-[8px] font-black text-white uppercase tracking-tighter animate-pulse rounded-bl-lg">
+            LIVE
+          </div>
+        )}
+
+        {/* Team A */}
+        <div
+          className={`flex justify-between items-center p-4 border-b border-white/5 transition-colors ${
+            winnerA ? "bg-primary/10" : ""
+          }`}
+        >
+          <div className="flex items-center gap-3 overflow-hidden">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${winnerA ? 'bg-primary text-white' : 'bg-white/5 text-white/40'}`}>
+              {censorText(match.teamA).charAt(0)}
+            </div>
+            <span className={`font-bold truncate text-sm ${winnerA ? "text-white" : "text-white/40"}`}>
+              {censorText(match.teamA) || "TBD"}
+            </span>
+          </div>
+          <span className={`font-mono font-black text-lg ${winnerA ? "text-primary" : "text-white/20"}`}>
+            {match.scoreA}
+          </span>
+        </div>
+
+        {/* Team B */}
+        <div
+          className={`flex justify-between items-center p-4 transition-colors ${
+            winnerB ? "bg-primary/10" : ""
+          }`}
+        >
+          <div className="flex items-center gap-3 overflow-hidden">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${winnerB ? 'bg-primary text-white' : 'bg-white/5 text-white/40'}`}>
+              {censorText(match.teamB).charAt(0)}
+            </div>
+            <span className={`font-bold truncate text-sm ${winnerB ? "text-white" : "text-white/40"}`}>
+              {censorText(match.teamB) || "TBD"}
+            </span>
+          </div>
+          <span className={`font-mono font-black text-lg ${winnerB ? "text-primary" : "text-white/20"}`}>
+            {match.scoreB}
+          </span>
+        </div>
+      </Card>
+      
+      {/* Connector Line */}
+      <div className="absolute -right-6 top-1/2 w-6 h-[1px] bg-white/10 group-hover:bg-primary/30 transition-colors" />
+    </motion.div>
   );
 }
