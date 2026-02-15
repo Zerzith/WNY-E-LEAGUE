@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { collection, query, where, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, query, where, onSnapshot, addDoc, serverTimestamp, updateDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,8 @@ interface Tournament {
   title: string;
   game: string;
   date: string;
+  maxTeams?: number;
+  status?: string;
 }
 
 export default function RegisterTeam() {
@@ -60,7 +62,30 @@ export default function RegisterTeam() {
   useEffect(() => {
     const q = query(collection(db, "events"), where("status", "in", ["upcoming", "ongoing"]));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setTournaments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tournament)));
+      const tournamentsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tournament));
+      
+      // Check team count for each tournament and auto-close if full
+      tournamentsData.forEach(async (tournament) => {
+        const registrationsQuery = query(
+          collection(db, "registrations"),
+          where("eventId", "==", tournament.id),
+          where("status", "==", "approved")
+        );
+        
+        const registrationsSnapshot = await new Promise<any>((resolve) => {
+          onSnapshot(registrationsQuery, resolve);
+        });
+        
+        const teamCount = registrationsSnapshot.docs.length;
+        if (tournament.maxTeams && teamCount >= tournament.maxTeams && tournament.status === "ongoing") {
+          // Auto-close registration when full
+          await updateDoc(doc(db, "events", tournament.id), {
+            status: "closed"
+          });
+        }
+      });
+      
+      setTournaments(tournamentsData);
       setIsLoadingTournaments(false);
     });
     return () => unsubscribe();
@@ -106,15 +131,29 @@ export default function RegisterTeam() {
       return;
     }
 
+    const validMembers = members.filter(m => m.name && m.gameName);
+    if (validMembers.length < currentGameRules.min) {
+      toast({ title: `กรุณาเพิ่มสมาชิกอย่างน้อย ${currentGameRules.min} คน`, variant: "destructive" });
+      return;
+    }
+
     let logoUrl = "";
     try {
       setIsUploading(true);
+      
       if (logoFile) {
-        const formData = new FormData();
-        formData.append("file", logoFile);
-        formData.append("upload_preset", UPLOAD_PRESET);
-        const res = await axios.post(CLOUDINARY_URL, formData);
-        logoUrl = res.data.secure_url;
+        try {
+          const formData = new FormData();
+          formData.append("file", logoFile);
+          formData.append("upload_preset", UPLOAD_PRESET);
+          const res = await axios.post(CLOUDINARY_URL, formData, { timeout: 30000 });
+          if (res.data?.secure_url) {
+            logoUrl = res.data.secure_url;
+          }
+        } catch (uploadError: any) {
+          console.error("Logo upload error:", uploadError);
+          toast({ title: "ไม่สามารถอัปโหลดโลโก้ แต่จะลงทะเบียนโดยไม่มีโลโก้", variant: "default" });
+        }
       }
 
       await addDoc(collection(db, "registrations"), {
@@ -123,8 +162,8 @@ export default function RegisterTeam() {
         teamName,
         game,
         gameMode,
-        logoUrl,
-        members,
+        logoUrl: logoUrl || "",
+        members: validMembers,
         status: "pending",
         createdAt: serverTimestamp(),
       });
@@ -132,7 +171,8 @@ export default function RegisterTeam() {
       toast({ title: "ลงทะเบียนทีมสำเร็จ รอการตรวจสอบ" });
       setLocation("/");
     } catch (error: any) {
-      toast({ title: "เกิดข้อผิดพลาดในการลงทะเบียน", variant: "destructive" });
+      console.error("Registration error:", error);
+      toast({ title: error.message || "เกิดข้อผิดพลาดในการลงทะเบียน", variant: "destructive" });
     } finally {
       setIsUploading(false);
     }
