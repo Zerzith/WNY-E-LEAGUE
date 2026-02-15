@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
+import { collection, query, where, onSnapshot, orderBy, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Card } from "@/components/ui/card";
 import { Loader2, Trophy, Swords, LayoutGrid } from "lucide-react";
@@ -17,6 +17,8 @@ interface Match {
   status: "pending" | "ongoing" | "completed";
   tournamentId: string;
   group?: string;
+  logoUrlA?: string;
+  logoUrlB?: string;
 }
 
 interface Tournament {
@@ -51,7 +53,7 @@ export default function Bracket() {
     return () => unsubscribe();
   }, []);
 
-  // Fetch matches for selected tournament
+  // Fetch matches for selected tournament with logos
   useEffect(() => {
     if (!selectedTournament) return;
 
@@ -60,16 +62,47 @@ export default function Bracket() {
       where("tournamentId", "==", selectedTournament.id),
       orderBy("round", "asc")
     );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
       const matchesData = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       } as any));
-      setMatches(matchesData);
+      
+      // Fetch team logos from registrations
+      const matchesWithLogos = await Promise.all(
+        matchesData.map(async (match) => {
+          try {
+            const registrationsQuery = query(
+              collection(db, "registrations"),
+              where("teamName", "in", [match.teamA, match.teamB])
+            );
+            
+            const registrationsSnapshot = await getDocs(registrationsQuery);
+            const registrations: any = {};
+            
+            registrationsSnapshot.docs.forEach(doc => {
+              registrations[doc.data().teamName] = doc.data().logoUrl;
+            });
+            
+            return {
+              ...match,
+              logoUrlA: registrations[match.teamA] || undefined,
+              logoUrlB: registrations[match.teamB] || undefined,
+            };
+          } catch (error) {
+            console.error("Error fetching logos for match:", match.id, error);
+            return match;
+          }
+        })
+      );
+      
+      setMatches(matchesWithLogos);
       
       // ดึงรายชื่อกลุ่มที่มีทั้งหมด
-      const uniqueGroups = Array.from(new Set(matchesData.map(m => m.group || "General")));
+      const uniqueGroups = Array.from(new Set(matchesWithLogos.map(m => m.group || "General")));
       setGroups(["All", ...uniqueGroups]);
+    }, (error) => {
+      console.error("Error fetching matches:", error);
     });
 
     return () => unsubscribe();
@@ -228,8 +261,12 @@ function BracketMatch({ match }: { match: Match }) {
           }`}
         >
           <div className="flex items-center gap-3 overflow-hidden">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${winnerA ? 'bg-primary text-white' : 'bg-white/5 text-white/40'}`}>
-              {censorText(match.teamA).charAt(0)}
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs overflow-hidden ${winnerA ? 'bg-primary text-white' : 'bg-white/5 text-white/40'}`}>
+              {match.logoUrlA ? (
+                <img src={match.logoUrlA} alt={match.teamA} className="w-full h-full object-cover" />
+              ) : (
+                censorText(match.teamA).charAt(0)
+              )}
             </div>
             <span className={`font-bold truncate text-sm ${winnerA ? "text-white" : "text-white/40"}`}>
               {censorText(match.teamA) || "TBD"}
@@ -247,8 +284,12 @@ function BracketMatch({ match }: { match: Match }) {
           }`}
         >
           <div className="flex items-center gap-3 overflow-hidden">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${winnerB ? 'bg-primary text-white' : 'bg-white/5 text-white/40'}`}>
-              {censorText(match.teamB).charAt(0)}
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs overflow-hidden ${winnerB ? 'bg-primary text-white' : 'bg-white/5 text-white/40'}`}>
+              {match.logoUrlB ? (
+                <img src={match.logoUrlB} alt={match.teamB} className="w-full h-full object-cover" />
+              ) : (
+                censorText(match.teamB).charAt(0)
+              )}
             </div>
             <span className={`font-bold truncate text-sm ${winnerB ? "text-white" : "text-white/40"}`}>
               {censorText(match.teamB) || "TBD"}

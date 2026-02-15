@@ -332,10 +332,11 @@ export default function AdminDashboard() {
       </div>
 
       <Tabs defaultValue="events" className="space-y-8">
-        <TabsList className="grid w-full grid-cols-5 bg-card/50 border border-white/10">
+        <TabsList className="grid w-full grid-cols-6 bg-card/50 border border-white/10">
           <TabsTrigger value="events">การแข่งขัน</TabsTrigger>
           <TabsTrigger value="registrations">สมัครสมาชิก</TabsTrigger>
-          <TabsTrigger value="matches">แมตช์</TabsTrigger>
+          <TabsTrigger value="bracket">สายแข่งขัน</TabsTrigger>
+          <TabsTrigger value="scoreboard">คะแนน</TabsTrigger>
           <TabsTrigger value="banners">แบนเนอร์</TabsTrigger>
           <TabsTrigger value="news">ข่าวสาร</TabsTrigger>
         </TabsList>
@@ -556,53 +557,32 @@ export default function AdminDashboard() {
           </Card>
         </TabsContent>
 
-        {/* Matches Tab */}
-        <TabsContent value="matches" className="space-y-8">
+
+        {/* Bracket Tab */}
+        <TabsContent value="bracket" className="space-y-8">
           <Card className="bg-card/50 border-white/10">
             <CardHeader>
-              <CardTitle>สร้างแมตช์ใหม่</CardTitle>
+              <CardTitle>สายการแข่งขัน</CardTitle>
+              <CardDescription>ดูสายการแข่งขันแบบเรียลไทม์</CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleCreateMatch} className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>การแข่งขัน</Label>
-                  <Select value={selectedEventId} onValueChange={setSelectedEventId}>
-                    <SelectTrigger className="bg-white/5"><SelectValue placeholder="เลือกการแข่งขัน" /></SelectTrigger>
-                    <SelectContent>
-                      {events.map(event => (
-                        <SelectItem key={event.id} value={event.id}>{event.title}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>ทีม A</Label>
-                  <Select value={newMatchTeamA} onValueChange={setNewMatchTeamA}>
-                    <SelectTrigger className="bg-white/5"><SelectValue placeholder="เลือกทีม" /></SelectTrigger>
-                    <SelectContent>
-                      {approvedTeams.map(team => (
-                        <SelectItem key={team.id} value={team.name}>{team.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>ทีม B</Label>
-                  <Select value={newMatchTeamB} onValueChange={setNewMatchTeamB}>
-                    <SelectTrigger className="bg-white/5"><SelectValue placeholder="เลือกทีม" /></SelectTrigger>
-                    <SelectContent>
-                      {approvedTeams.map(team => (
-                        <SelectItem key={team.id} value={team.name}>{team.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button type="submit" className="md:col-span-3 bg-primary"><Plus className="w-4 h-4 mr-2" /> สร้างแมตช์</Button>
-              </form>
+              <p className="text-muted-foreground mb-4">ไปที่หน้า <a href="/bracket" className="text-primary hover:underline">สายการแข่งขัน</a> เพื่อดูและจัดการสายการแข่งขัน</p>
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* Scoreboard Tab */}
+        <TabsContent value="scoreboard" className="space-y-8">
+          <Card className="bg-card/50 border-white/10">
+            <CardHeader>
+              <CardTitle>ตารางคะแนน</CardTitle>
+              <CardDescription>ดูตารางคะแนนของทีมทั้งหมด</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground mb-4">ไปที่หน้า <a href="/scoreboard" className="text-primary hover:underline">ตารางคะแนน</a> เพื่อดูและจัดการตารางคะแนน</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
         {/* Banners Tab */}
         <TabsContent value="banners" className="space-y-8">
           <Card className="bg-card/50 border-white/10">
