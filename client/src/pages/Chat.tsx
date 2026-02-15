@@ -172,7 +172,7 @@ export default function Chat() {
                     </div>
                   </div>
                   {isAdmin && (
-                    <Button size="sm" variant="ghost" onClick={() => setIsEditingStream(!setIsEditingStream)} className="text-muted-foreground hover:text-accent">
+                    <Button size="sm" variant="ghost" onClick={() => setIsEditingStream(!isEditingStream)} className="text-muted-foreground hover:text-accent">
                       <Edit2 className="w-4 h-4" />
                     </Button>
                   )}
