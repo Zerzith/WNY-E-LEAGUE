@@ -13,11 +13,12 @@ import { censorText } from "@/lib/filter";
 import { Badge } from "@/components/ui/badge";
 import { 
   Loader2, Plus, Trash2, Calendar, Users, Trophy, 
-  Edit2, Check, X, Swords, Megaphone, ShieldAlert, 
-  UserCheck, UserX, Eye, EyeOff, LayoutGrid 
+  Check, X, Swords, Megaphone, ShieldAlert, 
+  UserCheck, UserX, Eye, EyeOff, LayoutGrid, MonitorPlay 
 } from "lucide-react";
 import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query, orderBy, where, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
 export default function AdminDashboard() {
   const { user, loading: authLoading } = useAuth();
@@ -58,6 +59,11 @@ export default function AdminDashboard() {
   // Banner Management State
   const [bannerEventId, setBannerEventId] = useState<string>("");
   const [bannerUrl, setBannerUrl] = useState<string>("");
+
+  // Live Stream Dialog State
+  const [isLiveStreamDialogOpen, setIsLiveStreamDialogOpen] = useState(false);
+  const [liveStreamEventId, setLiveStreamEventId] = useState<string>("");
+  const [liveStreamUrl, setLiveStreamUrl] = useState<string>("");
 
   useEffect(() => {
     if (authLoading) return;
@@ -184,6 +190,26 @@ export default function AdminDashboard() {
       setNewBannerUrl("");
     } catch (error) {
       toast({ title: "เกิดข้อผิดพลาด", variant: "destructive" });
+    }
+  };
+
+  const handleUpdateLiveStream = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!liveStreamEventId) {
+      toast({ title: "ไม่พบ Event ID", variant: "destructive" });
+      return;
+    }
+    try {
+      await updateDoc(doc(db, "events", liveStreamEventId), {
+        liveStreamUrl: liveStreamUrl,
+        updatedAt: serverTimestamp()
+      });
+      toast({ title: "อัปเดต Live Stream สำเร็จ" });
+      setIsLiveStreamDialogOpen(false);
+      setLiveStreamEventId("");
+      setLiveStreamUrl("");
+    } catch (error) {
+      toast({ title: "เกิดข้อผิดพลาดในการอัปเดต Live Stream", variant: "destructive" });
     }
   };
 
@@ -458,9 +484,18 @@ export default function AdminDashboard() {
                         <span>{event.status}</span>
                       </CardDescription>
                     </div>
-                    <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeleteEvent(event.id)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={() => {
+                        setLiveStreamEventId(event.id);
+                        setLiveStreamUrl(event.liveStreamUrl || "");
+                        setIsLiveStreamDialogOpen(true);
+                      }}>
+                        <MonitorPlay className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeleteEvent(event.id)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 gap-4">
@@ -839,6 +874,34 @@ export default function AdminDashboard() {
             </div>
           </div>
         </TabsContent>
+
+        {/* Live Stream Dialog */}
+        <Dialog open={isLiveStreamDialogOpen} onOpenChange={setIsLiveStreamDialogOpen}>
+          <DialogContent className="sm:max-w-[425px] bg-card border-white/10">
+            <DialogHeader>
+              <DialogTitle>ตั้งค่า Live Stream</DialogTitle>
+              <DialogDescription>เพิ่มหรือแก้ไข URL สำหรับการถ่ายทอดสด</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleUpdateLiveStream} className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="livestream-url" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Live Stream URL</Label>
+                <Input
+                  id="livestream-url"
+                  value={liveStreamUrl}
+                  onChange={(e) => setLiveStreamUrl(e.target.value)}
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  className="bg-white/5 border-white/10"
+                />
+              </div>
+              <DialogFooter>
+                <Button type="submit" className="bg-primary hover:bg-primary/90 text-white font-bold h-10 shadow-lg shadow-primary/20">
+                  <MonitorPlay className="w-4 h-4 mr-2" /> บันทึก Live Stream
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
       </Tabs>
     </div>
   );
