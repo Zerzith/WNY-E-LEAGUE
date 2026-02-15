@@ -12,6 +12,8 @@ interface ScoreCardProps {
     status: string;
     winner?: string;
     bannerUrl?: string;
+    logoUrlA?: string;
+    logoUrlB?: string;
   };
 }
 
@@ -54,8 +56,12 @@ export function ScoreCard({ match }: ScoreCardProps) {
         <div className="flex items-center justify-between gap-4 md:gap-8">
           {/* Team A */}
           <div className="flex-1 text-center flex flex-col items-center gap-3">
-            <div className={`w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center border border-white/10 group-hover:border-primary/30 transition-all shadow-xl ${match.scoreA > match.scoreB && isCompleted ? 'ring-2 ring-primary ring-offset-4 ring-offset-background' : ''}`}>
-              <span className="text-3xl font-display font-bold text-white">{match.teamA.charAt(0)}</span>
+            <div className={`w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center border border-white/10 group-hover:border-primary/30 transition-all shadow-xl overflow-hidden ${match.scoreA > match.scoreB && isCompleted ? 'ring-2 ring-primary ring-offset-4 ring-offset-background' : ''}`}>
+              {match.logoUrlA ? (
+                <img src={match.logoUrlA} alt={match.teamA} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-3xl font-display font-bold text-white">{match.teamA.charAt(0)}</span>
+              )}
             </div>
             <div className="space-y-1">
               <h3 className={`font-display font-bold text-sm md:text-lg line-clamp-1 ${match.scoreA > match.scoreB && isCompleted ? 'text-primary' : 'text-white'}`}>
@@ -86,8 +92,12 @@ export function ScoreCard({ match }: ScoreCardProps) {
 
           {/* Team B */}
           <div className="flex-1 text-center flex flex-col items-center gap-3">
-            <div className={`w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center border border-white/10 group-hover:border-primary/30 transition-all shadow-xl ${match.scoreB > match.scoreA && isCompleted ? 'ring-2 ring-primary ring-offset-4 ring-offset-background' : ''}`}>
-              <span className="text-3xl font-display font-bold text-white">{match.teamB.charAt(0)}</span>
+            <div className={`w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center border border-white/10 group-hover:border-primary/30 transition-all shadow-xl overflow-hidden ${match.scoreB > match.scoreA && isCompleted ? 'ring-2 ring-primary ring-offset-4 ring-offset-background' : ''}`}>
+              {match.logoUrlB ? (
+                <img src={match.logoUrlB} alt={match.teamB} className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-3xl font-display font-bold text-white">{match.teamB.charAt(0)}</span>
+              )}
             </div>
             <div className="space-y-1">
               <h3 className={`font-display font-bold text-sm md:text-lg line-clamp-1 ${match.scoreB > match.scoreA && isCompleted ? 'text-primary' : 'text-white'}`}>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { ScoreCard } from "@/components/ScoreCard";
 import { Loader2 } from "lucide-react";
@@ -16,6 +16,8 @@ interface Match {
   round: string;
   winner?: string;
   bannerUrl?: string;
+  logoUrlA?: string;
+  logoUrlB?: string;
 }
 
 export default function Scoreboard() {
@@ -25,12 +27,42 @@ export default function Scoreboard() {
   useEffect(() => {
     // Query Firestore "matches" collection
     const q = query(collection(db, "matches"), orderBy("status", "desc")); // Live matches first
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
       const matchData = snapshot.docs.map(doc => ({ 
         ...doc.data(),
         id: doc.id.toString() 
       } as any));
-      setMatches(matchData);
+      
+      // Fetch team logos for each match
+      const matchesWithLogos = await Promise.all(
+        matchData.map(async (match) => {
+          try {
+            // Fetch registrations for both teams
+            const registrationsQuery = query(
+              collection(db, "registrations"),
+              where("teamName", "in", [match.teamA, match.teamB])
+            );
+            
+            const registrationsSnapshot = await getDocs(registrationsQuery);
+            const registrations: any = {};
+            
+            registrationsSnapshot.docs.forEach(doc => {
+              registrations[doc.data().teamName] = doc.data().logoUrl;
+            });
+            
+            return {
+              ...match,
+              logoUrlA: registrations[match.teamA] || undefined,
+              logoUrlB: registrations[match.teamB] || undefined,
+            };
+          } catch (error) {
+            console.error("Error fetching logos for match:", match.id, error);
+            return match;
+          }
+        })
+      );
+      
+      setMatches(matchesWithLogos);
       setLoading(false);
     }, (error) => {
       console.error("Error fetching matches:", error);
