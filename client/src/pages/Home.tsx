@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Trophy, Users, Calendar, Loader2, Megaphone } from "lucide-react";
+import { ArrowRight, Trophy, Users, Calendar, Loader2, Megaphone, Clock, AlertCircle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useEffect, useState } from "react";
 import { collection, onSnapshot, query, where, orderBy, limit } from "firebase/firestore";
@@ -14,9 +14,11 @@ interface Event {
   title: string;
   game: string;
   date: string;
+  registrationDeadline?: string;
   bannerUrl?: string;
   maxTeams?: number;
   status?: string;
+  registeredTeams?: number;
 }
 
 interface News {
@@ -36,8 +38,30 @@ export default function Home() {
   useEffect(() => {
     // Fetch upcoming events
     const qEvents = query(collection(db, "events"), where("status", "==", "upcoming"), limit(3));
-    const unsubEvents = onSnapshot(qEvents, (snapshot) => {
-      setEvents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any)));
+    const unsubEvents = onSnapshot(qEvents, async (snapshot) => {
+      const eventsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      
+      // Fetch team count for each event
+      const eventsWithCount = await Promise.all(
+        eventsData.map(async (event) => {
+          const registrationsQuery = query(
+            collection(db, "registrations"),
+            where("eventId", "==", event.id),
+            where("status", "==", "approved")
+          );
+          
+          const registrationsSnapshot = await new Promise<any>((resolve) => {
+            onSnapshot(registrationsQuery, resolve);
+          });
+          
+          return {
+            ...event,
+            registeredTeams: registrationsSnapshot.docs.length,
+          };
+        })
+      );
+      
+      setEvents(eventsWithCount);
     });
 
     // Fetch latest news
@@ -52,6 +76,20 @@ export default function Home() {
       unsubNews();
     };
   }, []);
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('th-TH', { year: 'numeric', month: 'short', day: 'numeric' });
+    } catch {
+      return dateString;
+    }
+  };
+
+  const isRegistrationFull = (event: Event) => {
+    return event.maxTeams && event.registeredTeams && event.registeredTeams >= event.maxTeams;
+  };
 
   return (
     <div className="min-h-screen">
@@ -142,47 +180,75 @@ export default function Home() {
             </div>
           ) : (
             <div className="grid md:grid-cols-3 gap-8">
-              {events.map((event, i) => (
-                <motion.div
-                  key={event.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                  className="group relative h-96 rounded-3xl overflow-hidden border border-white/10 bg-background hover:border-accent/50 transition-all"
-                >
-                  <img 
-                    src={event.bannerUrl || HERO_BG}
-                    alt={event.title}
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-60"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
-                  
-                  <div className="absolute bottom-0 left-0 p-8 w-full">
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="px-3 py-1 rounded-full bg-accent text-black text-xs font-bold">
-                        {event.game}
-                      </span>
-                      <span className="flex items-center gap-1 text-xs text-white/80">
-                        <Calendar className="w-3 h-3" /> {event.date}
-                      </span>
-                    </div>
-                    <h3 className="text-2xl font-display font-bold text-white mb-3 group-hover:text-accent transition-colors">
-                      {event.title}
-                    </h3>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Users className="w-4 h-4" /> {event.maxTeams || 0} ทีม
+              {events.map((event, i) => {
+                const isFull = isRegistrationFull(event);
+                return (
+                  <motion.div
+                    key={event.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: i * 0.1 }}
+                    className={`group relative h-96 rounded-3xl overflow-hidden border bg-background transition-all ${
+                      isFull ? "border-red-500/50 opacity-75" : "border-white/10 hover:border-accent/50"
+                    }`}
+                  >
+                    <img 
+                      src={event.bannerUrl || HERO_BG}
+                      alt={event.title}
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-60"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+                    
+                    {/* Full Badge */}
+                    {isFull && (
+                      <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-red-500/90 text-white text-xs font-bold flex items-center gap-1.5 z-10">
+                        <AlertCircle className="w-3 h-3" />
+                        เต็มแล้ว
                       </div>
-                      <Link href={user ? "/register-team" : "/login"}>
-                        <Button size="sm" className="rounded-full bg-white/10 hover:bg-white text-white hover:text-black border-none">
-                          สมัครเลย
-                        </Button>
-                      </Link>
+                    )}
+                    
+                    <div className="absolute bottom-0 left-0 p-8 w-full">
+                      <div className="flex items-center gap-2 mb-3 flex-wrap">
+                        <span className="px-3 py-1 rounded-full bg-accent text-black text-xs font-bold">
+                          {event.game}
+                        </span>
+                        <span className="flex items-center gap-1 text-xs text-white/80">
+                          <Calendar className="w-3 h-3" /> {event.date}
+                        </span>
+                      </div>
+                      
+                      {/* Registration Deadline */}
+                      {event.registrationDeadline && (
+                        <div className="flex items-center gap-1.5 text-xs text-yellow-400 mb-2">
+                          <Clock className="w-3 h-3" />
+                          ปิดรับสมัคร: {formatDate(event.registrationDeadline)}
+                        </div>
+                      )}
+                      
+                      <h3 className="text-2xl font-display font-bold text-white mb-3 group-hover:text-accent transition-colors">
+                        {event.title}
+                      </h3>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm">
+                          <Users className="w-4 h-4" />
+                          <span className={isFull ? "text-red-400 font-semibold" : "text-muted-foreground"}>
+                            สมัครแล้ว {event.registeredTeams || 0}/{event.maxTeams || 0} ทีม
+                          </span>
+                        </div>
+                        {!isFull && (
+                          <Link href={user ? "/register-team" : "/login"}>
+                            <Button size="sm" className="rounded-full bg-white/10 hover:bg-white text-white hover:text-black border-none">
+                              สมัครเลย
+                            </Button>
+                          </Link>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </motion.div>
-              ))}
+                  </motion.div>
+                );
+              })}
             </div>
           )}
         </div>
