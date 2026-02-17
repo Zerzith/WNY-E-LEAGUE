@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Trophy, Users, Calendar, Loader2, Megaphone, Clock, AlertCircle } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, query, where, orderBy, limit } from "firebase/firestore";
+import { collection, onSnapshot, query, where, orderBy, limit, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 const HERO_BG = "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2070&auto=format&fit=crop";
@@ -19,6 +19,7 @@ interface Event {
   maxTeams?: number;
   status?: string;
   registeredTeams?: number;
+  logoUrl?: string;
 }
 
 interface News {
@@ -39,29 +40,32 @@ export default function Home() {
     // Fetch upcoming events
     const qEvents = query(collection(db, "events"), where("status", "==", "upcoming"), limit(3));
     const unsubEvents = onSnapshot(qEvents, async (snapshot) => {
-      const eventsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      const eventsData = await Promise.all(snapshot.docs.map(async (doc) => {
+        const event = { id: doc.id, ...doc.data() } as any;
+        
+        // Fetch registered teams count
+        const registrationsQuery = query(
+          collection(db, "registrations"),
+          where("eventId", "==", event.id),
+          where("status", "==", "approved")
+        );
+        const registrationsSnapshot = await getDocs(registrationsQuery);
+        event.registeredTeams = registrationsSnapshot.docs.length;
+
+        // Fetch team logo from one of the approved registrations
+        if (registrationsSnapshot.docs.length > 0) {
+          const teamName = registrationsSnapshot.docs[0].data().teamName;
+          const teamQuery = query(collection(db, "teams"), where("name", "==", teamName), where("eventId", "==", event.id), limit(1));
+          const teamSnapshot = await getDocs(teamQuery);
+          if (!teamSnapshot.empty) {
+            event.logoUrl = teamSnapshot.docs[0].data().logoUrl;
+          }
+        }
+
+        return event;
+      }));
       
-      // Fetch team count for each event
-      const eventsWithCount = await Promise.all(
-        eventsData.map(async (event) => {
-          const registrationsQuery = query(
-            collection(db, "registrations"),
-            where("eventId", "==", event.id),
-            where("status", "==", "approved")
-          );
-          
-          const registrationsSnapshot = await new Promise<any>((resolve) => {
-            onSnapshot(registrationsQuery, resolve);
-          });
-          
-          return {
-            ...event,
-            registeredTeams: registrationsSnapshot.docs.length,
-          };
-        })
-      );
-      
-      setEvents(eventsWithCount);
+      setEvents(eventsData);
     });
 
     // Fetch latest news
@@ -193,11 +197,19 @@ export default function Home() {
                       isFull ? "border-red-500/50 opacity-75" : "border-white/10 hover:border-accent/50"
                     }`}
                   >
-                    <img 
-                      src={event.bannerUrl || HERO_BG}
-                      alt={event.title}
-                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-60"
-                    />
+                    {event.logoUrl ? (
+                      <img 
+                        src={event.logoUrl}
+                        alt={event.title}
+                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-60"
+                      />
+                    ) : (
+                      <img 
+                        src={event.bannerUrl || HERO_BG}
+                        alt={event.title}
+                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-60"
+                      />
+                    )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
                     
                     {/* Full Badge */}

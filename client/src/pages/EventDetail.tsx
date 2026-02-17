@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { doc, getDoc, collection, addDoc, query, where, onSnapshot, serverTimestamp, updateDoc } from "firebase/firestore";
+import { doc, getDoc, collection, addDoc, query, where, onSnapshot, serverTimestamp, updateDoc, getDocs, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,7 @@ interface Registration {
   userId: string;
   teamName: string;
   members: string[];
+  logoUrl?: string;
   status: "pending" | "approved" | "rejected";
   createdAt: any;
 }
@@ -90,11 +92,25 @@ export default function EventDetail() {
       where("eventId", "==", eventId)
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const regs = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      } as Registration));
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const regs = await Promise.all(snapshot.docs.map(async (doc) => {
+        const registrationData = { id: doc.id, ...doc.data() } as Registration;
+        if (registrationData.logoUrl) return registrationData;
+
+        try {
+            const teamQuery = query(collection(db, "teams"), where("name", "==", registrationData.teamName), where("eventId", "==", eventId), limit(1));
+            const teamSnapshot = await getDocs(teamQuery);
+            if (!teamSnapshot.empty) {
+                const teamData = teamSnapshot.docs[0].data();
+                if (teamData.logoUrl) {
+                    registrationData.logoUrl = teamData.logoUrl;
+                }
+            }
+        } catch (e) {
+            console.error("Error fetching team logo:", e);
+        }
+        return registrationData;
+      }));
       setRegistrations(regs);
 
       // Check if current user has registered
@@ -307,137 +323,90 @@ export default function EventDetail() {
                   </div>
                 </div>
 
-                <div className="flex gap-2">
-                  <Button
-                    type="submit"
-                    disabled={isRegistering}
-                    className="flex-1 bg-primary hover:bg-primary/80"
-                  >
-                    {isRegistering ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        กำลังส่ง...
-                      </>
-                    ) : (
-                      "ลงสมัคร"
-                    )}
-                  </Button>
+                <div className="flex justify-end gap-4 pt-4">
                   <Button
                     type="button"
+                    variant="ghost"
                     onClick={() => setShowRegistrationForm(false)}
-                    variant="outline"
-                    className="flex-1"
                   >
                     ยกเลิก
+                  </Button>
+                  <Button type="submit" disabled={isRegistering} className="bg-primary hover:bg-primary/80">
+                    {isRegistering && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    ยืนยันการสมัคร
                   </Button>
                 </div>
               </form>
             </Card>
           )}
 
-          {/* User Registration Status */}
           {userRegistration && (
-            <Card className="bg-card/50 border-white/10 p-6">
-              <h2 className="text-2xl font-bold text-white mb-4">สถานะการลงสมัครของคุณ</h2>
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">ชื่อทีม</p>
-                  <p className="text-white font-medium">{userRegistration.teamName}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">สมาชิก</p>
-                  <ul className="text-white space-y-1">
-                    {userRegistration.members.map((member, index) => (
-                      <li key={index}>• {member}</li>
-                    ))}
-                  </ul>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">สถานะ</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    {userRegistration.status === "pending" && (
-                      <>
-                        <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
-                        <span className="text-yellow-300 font-medium">รอการอนุมัติ</span>
-                      </>
-                    )}
-                    {userRegistration.status === "approved" && (
-                      <>
-                        <Check className="w-4 h-4 text-green-400" />
-                        <span className="text-green-300 font-medium">อนุมัติแล้ว</span>
-                      </>
-                    )}
-                    {userRegistration.status === "rejected" && (
-                      <>
-                        <X className="w-4 h-4 text-red-400" />
-                        <span className="text-red-300 font-medium">ปฏิเสธ</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
+            <Card className="bg-card/50 border-white/10 p-6 text-center">
+              <h2 className="text-xl font-bold text-white mb-2">คุณได้ลงสมัครแล้ว</h2>
+              <p className="text-muted-foreground">
+                สถานะ: <span className={`font-bold ${
+                  userRegistration.status === 'approved' ? 'text-green-400' :
+                  userRegistration.status === 'pending' ? 'text-yellow-400' :
+                  'text-red-400'
+                }`}>{userRegistration.status}</span>
+              </p>
             </Card>
           )}
         </div>
 
-        {/* Sidebar - Admin Panel */}
-        {isAdmin && (
-          <div className="space-y-6">
-            {/* Statistics */}
+        {/* Sidebar */}
+        <div className="space-y-8">
+          {/* Approved Teams */}
+          <Card className="bg-card/50 border-white/10 p-6">
+            <h3 className="text-xl font-bold text-white mb-4">ทีมที่เข้าร่วม ({approvedCount})</h3>
+            <div className="space-y-4">
+              {registrations.filter(r => r.status === 'approved').map((reg, index) => (
+                <div key={index} className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-white font-bold overflow-hidden">
+                    {reg.logoUrl ? (
+                      <img src={reg.logoUrl} alt={reg.teamName} className="w-full h-full object-cover" />
+                    ) : (
+                      reg.teamName.charAt(0)
+                    )}
+                  </div>
+                  <p className="text-white font-medium">{reg.teamName}</p>
+                </div>
+              ))}
+              {approvedCount === 0 && <p className="text-muted-foreground text-sm">ยังไม่มีทีมที่ได้รับการอนุมัติ</p>}
+            </div>
+          </Card>
+
+          {/* Pending Teams (Admin only) */}
+          {isAdmin && pendingCount > 0 && (
             <Card className="bg-card/50 border-white/10 p-6">
-              <h3 className="text-lg font-bold text-white mb-4">สถิติการลงสมัคร</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">อนุมัติแล้ว</span>
-                  <span className="text-white font-bold">{approvedCount}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">รอการอนุมัติ</span>
-                  <span className="text-yellow-300 font-bold">{pendingCount}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">ทั้งหมด</span>
-                  <span className="text-white font-bold">{registrations.length}</span>
-                </div>
+              <h3 className="text-xl font-bold text-white mb-4">ทีมที่รออนุมัติ ({pendingCount})</h3>
+              <div className="space-y-4">
+                {registrations.filter(r => r.status === 'pending').map((reg, index) => (
+                  <div key={index} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center text-white font-bold overflow-hidden">
+                        {reg.logoUrl ? (
+                          <img src={reg.logoUrl} alt={reg.teamName} className="w-full h-full object-cover" />
+                        ) : (
+                          reg.teamName.charAt(0)
+                        )}
+                      </div>
+                      <p className="text-white font-medium">{reg.teamName}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="icon" variant="ghost" className="text-green-400 hover:bg-green-500/20 hover:text-green-300" onClick={() => handleApproveRegistration(reg.id)}>
+                        <Check className="w-4 h-4" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="text-red-400 hover:bg-red-500/20 hover:text-red-300" onClick={() => handleRejectRegistration(reg.id)}>
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </Card>
-
-            {/* Pending Registrations */}
-            {pendingCount > 0 && (
-              <Card className="bg-card/50 border-white/10 p-6">
-                <h3 className="text-lg font-bold text-white mb-4">รอการอนุมัติ</h3>
-                <div className="space-y-3">
-                  {registrations
-                    .filter((r) => r.status === "pending")
-                    .map((reg) => (
-                      <div key={reg.id} className="border border-white/10 rounded-lg p-3">
-                        <p className="font-medium text-white mb-2">{reg.teamName}</p>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            onClick={() => handleApproveRegistration(reg.id)}
-                            className="flex-1 bg-green-600 hover:bg-green-700"
-                          >
-                            <Check className="w-3 h-3 mr-1" />
-                            อนุมัติ
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => handleRejectRegistration(reg.id)}
-                            variant="destructive"
-                            className="flex-1"
-                          >
-                            <X className="w-3 h-3 mr-1" />
-                            ปฏิเสธ
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </Card>
-            )}
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
