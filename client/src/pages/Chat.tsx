@@ -1,6 +1,7 @@
+
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, doc, setDoc } from "firebase/firestore";
+import { collection, addDoc, query, orderBy, limit, onSnapshot, serverTimestamp, doc, setDoc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,15 @@ import { Send, Smile, Edit2, X, Check, Users, Eye, Plus, Trash2, MessageCircle }
 import EmojiPicker, { Theme } from 'emoji-picker-react';
 import { useLocation } from "wouter";
 import { censorText } from "@/lib/filter";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface ChatMessage {
   id: string;
@@ -172,9 +182,39 @@ export default function Chat() {
                     </div>
                   </div>
                   {isAdmin && (
-                    <Button size="sm" variant="ghost" onClick={() => setIsEditingStream(!isEditingStream)} className="text-muted-foreground hover:text-accent">
-                      <Edit2 className="w-4 h-4" />
-                    </Button>
+                    <Dialog open={isEditingStream} onOpenChange={setIsEditingStream}>
+                      <DialogTrigger asChild>
+                        <Button size="sm" variant="ghost" className="text-muted-foreground hover:text-accent">
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                          <DialogTitle>แก้ไข Live Stream</DialogTitle>
+                          <DialogDescription>
+                            อัปเดตลิงก์และชื่อเรื่องของการถ่ายทอดสด
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                          <div className="grid grid-cols-4 items-center gap-4">
+                            <label htmlFor="title" className="text-right">
+                              ชื่อเรื่อง
+                            </label>
+                            <Input id="title" value={editStreamTitle} onChange={(e) => setEditStreamTitle(e.target.value)} className="col-span-3" />
+                          </div>
+                          <div className="grid grid-cols-4 items-center gap-4">
+                            <label htmlFor="url" className="text-right">
+                              URL
+                            </label>
+                            <Input id="url" value={editStreamUrl} onChange={(e) => setEditStreamUrl(e.target.value)} className="col-span-3" />
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button variant="destructive" onClick={handleRemoveStream}>ลบ</Button>
+                          <Button onClick={handleUpdateStream}>บันทึก</Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
                   )}
                 </div>
               </div>
@@ -187,32 +227,39 @@ export default function Chat() {
               <h2 className="text-2xl font-bold text-white mb-2">ไม่มีการถ่ายทอดสดในขณะนี้</h2>
               <p className="text-muted-foreground max-w-md mb-8">ติดตามข่าวสารการแข่งขันได้ที่หน้าแรก เพื่อไม่ให้พลาดทุกแมตช์สำคัญ</p>
               {isAdmin && (
-                <Button onClick={() => setIsEditingStream(true)} className="bg-primary">
-                  <Plus className="w-4 h-4 mr-2" /> เพิ่มลิงก์ไลฟ์สด
-                </Button>
+                <Dialog open={isEditingStream} onOpenChange={setIsEditingStream}>
+                  <DialogTrigger asChild>
+                    <Button className="bg-primary">
+                      <Plus className="w-4 h-4 mr-2" /> เพิ่มลิงก์ไลฟ์สด
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>เพิ่ม Live Stream</DialogTitle>
+                      <DialogDescription>
+                        เพิ่มลิงก์และชื่อเรื่องของการถ่ายทอดสด
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <label htmlFor="title" className="text-right">
+                          ชื่อเรื่อง
+                        </label>
+                        <Input id="title" value={editStreamTitle} onChange={(e) => setEditStreamTitle(e.target.value)} className="col-span-3" />
+                      </div>
+                      <div className="grid grid-cols-4 items-center gap-4">
+                        <label htmlFor="url" className="text-right">
+                          URL
+                        </label>
+                        <Input id="url" value={editStreamUrl} onChange={(e) => setEditStreamUrl(e.target.value)} className="col-span-3" />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={handleUpdateStream}>บันทึก</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               )}
-            </Card>
-          )}
-
-          {isAdmin && isEditingStream && (
-            <Card className="bg-card/50 border-white/10 backdrop-blur-sm p-4">
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">ชื่อการแข่งขัน</label>
-                    <Input value={editStreamTitle} onChange={(e) => setEditStreamTitle(e.target.value)} placeholder="เช่น Valorant Final" className="bg-background/50 border-white/10" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">ลิงก์ Live Streaming</label>
-                    <Input value={editStreamUrl} onChange={(e) => setEditStreamUrl(e.target.value)} placeholder="เช่น https://www.youtube.com/watch?v=..." className="bg-background/50 border-white/10" />
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button onClick={handleUpdateStream} className="bg-emerald-600 hover:bg-emerald-700 flex-1"><Check className="w-4 h-4 mr-2" /> บันทึก</Button>
-                  <Button onClick={handleRemoveStream} variant="destructive" className="flex-1"><Trash2 className="w-4 h-4 mr-2" /> ลบ</Button>
-                  <Button onClick={() => setIsEditingStream(false)} variant="outline" className="flex-1">ยกเลิก</Button>
-                </div>
-              </div>
             </Card>
           )}
         </div>
