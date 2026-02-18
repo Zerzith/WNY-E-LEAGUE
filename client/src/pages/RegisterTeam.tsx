@@ -13,8 +13,8 @@ import { AvatarCustom } from "@/components/ui/avatar-custom";
 import { Loader2, Upload, Plus, Trash2, ShieldCheck, Users, Gamepad2 } from "lucide-react";
 import axios from "axios";
 
-const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "djubsqri6";
-const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "wangnamyenesport";
+const CLOUD_NAME = "djubsqri6";
+const UPLOAD_PRESET = "wangnamyenesport";
 const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
 
 const MAX_FILE_SIZE_MB = 5;
