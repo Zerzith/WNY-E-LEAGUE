@@ -16,7 +16,7 @@ import {
   Check, X, Swords, Megaphone, ShieldAlert, 
   UserCheck, UserX, Eye, EyeOff, LayoutGrid, MonitorPlay 
 } from "lucide-react";
-import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query, orderBy, where, serverTimestamp } from "firebase/firestore";
+import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query, orderBy, where, serverTimestamp, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
@@ -31,7 +31,7 @@ export default function AdminDashboard() {
   const [matches, setMatches] = useState<any[]>([]);
   const [news, setNews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showPrivateData, setShowPrivateData] = useState<Record<string, boolean>>({});
+
 
   // News state
   const [newsTitle, setNewsTitle] = useState("");
@@ -90,8 +90,22 @@ export default function AdminDashboard() {
     });
 
     const qRegs = query(collection(db, "registrations"), orderBy("createdAt", "desc"));
-    const unsubRegs = onSnapshot(qRegs, (snap) => {
-      setRegistrations(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    const unsubRegs = onSnapshot(qRegs, async (snap) => {
+      const regsWithUserDetails = await Promise.all(
+        snap.docs.map(async (d) => {
+          const regData = { id: d.id, ...d.data() } as any;
+          if (regData.userId) {
+            const userDoc = await getDoc(doc(db, "users", regData.userId));
+            if (userDoc.exists()) {
+              const userData = userDoc.data();
+              regData.applicantDisplayName = userData.displayName || "N/A";
+              regData.applicantEmail = userData.email || "N/A";
+            }
+          }
+          return regData;
+        })
+      );
+      setRegistrations(regsWithUserDetails);
     });
 
     const qMatches = query(collection(db, "matches"), orderBy("round", "asc"));
@@ -376,12 +390,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const togglePrivateData = (id: string) => {
-    setShowPrivateData(prev => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
-  };
+
 
   return (
     <div className="container mx-auto py-10 px-4">
@@ -542,7 +551,8 @@ export default function AdminDashboard() {
                             {reg.status === 'rejected' && <Badge variant="destructive">ปฏิเสธแล้ว</Badge>}
                           </div>
                           <p className="text-primary text-sm font-bold uppercase">{reg.game} ({reg.gameMode || 'Normal'})</p>
-                          <p className="text-xs text-muted-foreground mt-1">สมัครเมื่อ: {reg.createdAt?.toDate().toLocaleString('th-TH')}</p>
+                          <p className="text-xs text-muted-foreground mt-1">สมัครเมื่อ: {reg.createdAt?.toDate().toLocaleString("th-TH")}</p>
+                          <p className="text-xs text-muted-foreground">ผู้สมัคร: {reg.applicantDisplayName} ({reg.applicantEmail})</p>
                         </div>
                       </div>
                       <div className="flex gap-2 items-start">
@@ -565,19 +575,15 @@ export default function AdminDashboard() {
                     <div className="mt-6 pt-6 border-t border-white/5">
                       <div className="flex items-center justify-between mb-4">
                         <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">รายชื่อสมาชิก ({reg.members?.length || 0})</h4>
-                        <Button variant="ghost" size="sm" onClick={() => togglePrivateData(reg.id)} className="h-6 text-[10px]">
-                          {showPrivateData[reg.id] ? <><EyeOff className="w-3 h-3 mr-1" /> ปิดข้อมูลลับ</> : <><Eye className="w-3 h-3 mr-1" /> ดูข้อมูลลับ</>}
-                        </Button>
+
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                         {reg.members?.map((m: any, i: number) => (
                           <div key={i} className="flex items-center gap-3 p-2 rounded bg-white/5 border border-white/5">
                             <AvatarCustom name={m.name} size="xs" />
                             <div className="overflow-hidden">
-                              <p className="text-sm font-medium text-white truncate">{censorText(m.gameName)}</p>
-                              {showPrivateData[reg.id] && (
-                                <p className="text-[10px] text-muted-foreground truncate">{m.name} | {m.department}</p>
-                              )}
+                              <p className="text-sm font-medium text-white truncate">{censorText(m.name)} ({censorText(m.gameName)})</p>
+                              <p className="text-[10px] text-muted-foreground truncate">แผนก: {m.department} | ชั้น: {m.grade}</p>
                             </div>
                           </div>
                         ))}
