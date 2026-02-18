@@ -27,7 +27,9 @@ export default function AdminDashboard() {
 
   const [events, setEvents] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
+  const [selectedTeamEvent, setSelectedTeamEvent] = useState<string>("all");
   const [registrations, setRegistrations] = useState<any[]>([]);
+  const [selectedRegistrationEvent, setSelectedRegistrationEvent] = useState<string>("all");
   const [matches, setMatches] = useState<any[]>([]);
   const [news, setNews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,6 +66,14 @@ export default function AdminDashboard() {
   const [isLiveStreamDialogOpen, setIsLiveStreamDialogOpen] = useState(false);
   const [liveStreamEventId, setLiveStreamEventId] = useState<string>("");
   const [liveStreamUrl, setLiveStreamUrl] = useState<string>("");
+
+  const filteredRegistrations = selectedRegistrationEvent === "all"
+    ? registrations
+    : registrations.filter(reg => reg.eventId === selectedRegistrationEvent);
+
+  const filteredTeams = selectedTeamEvent === "all"
+    ? teams
+    : teams.filter(team => team.eventId === selectedTeamEvent);
 
   useEffect(() => {
     if (authLoading) return;
@@ -530,71 +540,85 @@ export default function AdminDashboard() {
           </div>
         </TabsContent>
 
-        <TabsContent value="registrations">
-          <div className="grid gap-6">
-            {registrations.length === 0 ? (
-              <Card className="bg-card/30 border-dashed border-white/10 py-12 text-center">
-                <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-20" />
-                <p className="text-muted-foreground">ไม่มีคำขอสมัครในขณะนี้</p>
-              </Card>
-            ) : (
-              registrations.map((reg) => (
-                <Card key={reg.id} className={`bg-card/50 border-white/10 overflow-hidden ${reg.status === 'rejected' ? 'opacity-50' : ''}`}>
-                  <div className="p-6">
-                    <div className="flex flex-col md:flex-row justify-between gap-6">
-                      <div className="flex gap-4">
-                        <AvatarCustom src={reg.logoUrl} name={reg.teamName} size="lg" />
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-xl font-bold text-white">{censorText(reg.teamName)}</h3>
-                            {reg.status === 'approved' && <Badge className="bg-emerald-500">อนุมัติแล้ว</Badge>}
-                            {reg.status === 'rejected' && <Badge variant="destructive">ปฏิเสธแล้ว</Badge>}
-                          </div>
-                          <p className="text-primary text-sm font-bold uppercase">{reg.game} ({reg.gameMode || 'Normal'})</p>
-                          <p className="text-xs text-muted-foreground mt-1">สมัครเมื่อ: {reg.createdAt?.toDate().toLocaleString("th-TH")}</p>
-                          <p className="text-xs text-muted-foreground">ผู้สมัคร: {reg.applicantDisplayName} ({reg.applicantEmail})</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2 items-start">
-                        {reg.status === 'pending' && (
-                          <>
-                            <Button onClick={() => handleApproveRegistration(reg)} className="bg-emerald-600 hover:bg-emerald-700">
-                              <UserCheck className="w-4 h-4 mr-2" /> อนุมัติ
-                            </Button>
-                            <Button onClick={() => handleRejectRegistration(reg.id)} variant="destructive">
-                              <UserX className="w-4 h-4 mr-2" /> ปฏิเสธ
-                            </Button>
-                          </>
-                        )}
-                        <Button onClick={() => handleDeleteRegistration(reg.id)} variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10">
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-6 pt-6 border-t border-white/5">
-                      <div className="flex items-center justify-between mb-4">
-                        <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">รายชื่อสมาชิก ({reg.members?.length || 0})</h4>
-
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {reg.members?.map((m: any, i: number) => (
-                          <div key={i} className="flex items-center gap-3 p-2 rounded bg-white/5 border border-white/5">
-                            <AvatarCustom name={m.name} size="xs" />
-                            <div className="overflow-hidden">
-                              <p className="text-sm font-medium text-white truncate">{censorText(m.name)} ({censorText(m.gameName)})</p>
-                              <p className="text-[10px] text-muted-foreground truncate">แผนก: {m.department} | ชั้น: {m.grade}</p>
+            <TabsContent value="registrations">
+              <div className="mb-4">
+                <Label htmlFor="event-filter-reg">กรองตามการแข่งขัน</Label>
+                <Select value={selectedRegistrationEvent} onValueChange={setSelectedRegistrationEvent}>
+                  <SelectTrigger id="event-filter-reg" className="w-[200px] bg-white/5 border-white/10">
+                    <SelectValue placeholder="เลือกการแข่งขัน" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">ทั้งหมด</SelectItem>
+                    {events.map((event) => (
+                      <SelectItem key={event.id} value={event.id}>{event.title}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-6">
+                {filteredRegistrations.length === 0 ? (
+                  <Card className="bg-card/30 border-dashed border-white/10 py-12 text-center">
+                    <Users className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-20" />
+                    <p className="text-muted-foreground">ไม่มีคำขอสมัครในขณะนี้</p>
+                  </Card>
+                ) : (
+                  filteredRegistrations.map((reg) => (
+                    <Card key={reg.id} className={`bg-card/50 border-white/10 overflow-hidden ${reg.status === 'rejected' ? 'opacity-50' : ''}`}>
+                      <div className="p-6">
+                        <div className="flex flex-col md:flex-row justify-between gap-6">
+                          <div className="flex gap-4">
+                            <AvatarCustom src={reg.logoUrl} name={reg.teamName} size="lg" />
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h3 className="text-xl font-bold text-white">{censorText(reg.teamName)}</h3>
+                                {reg.status === 'approved' && <Badge className="bg-emerald-500">อนุมัติแล้ว</Badge>}
+                                {reg.status === 'rejected' && <Badge variant="destructive">ปฏิเสธแล้ว</Badge>}
+                              </div>
+                              <p className="text-primary text-sm font-bold uppercase">{reg.game} ({reg.gameMode || 'Normal'})</p>
+                              <p className="text-xs text-muted-foreground mt-1">สมัครเมื่อ: {reg.createdAt?.toDate().toLocaleString('th-TH')}</p>
+                              <p className="text-xs text-muted-foreground">ผู้สมัคร: {reg.applicantDisplayName} ({reg.applicantEmail})</p>
                             </div>
                           </div>
-                        ))}
+                          <div className="flex gap-2 items-start">
+                            {reg.status === 'pending' && (
+                              <>
+                                <Button onClick={() => handleApproveRegistration(reg)} className="bg-emerald-600 hover:bg-emerald-700">
+                                  <UserCheck className="w-4 h-4 mr-2" /> อนุมัติ
+                                </Button>
+                                <Button onClick={() => handleRejectRegistration(reg.id)} variant="destructive">
+                                  <UserX className="w-4 h-4 mr-2" /> ปฏิเสธ
+                                </Button>
+                              </>
+                            )}
+                            <Button onClick={() => handleDeleteRegistration(reg.id)} variant="ghost" size="icon" className="text-destructive hover:bg-destructive/10">
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                        
+                        <div className="mt-6 pt-6 border-t border-white/5">
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">รายชื่อสมาชิก ({reg.members?.length || 0})</h4>
+
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {reg.members?.map((m: any, i: number) => (
+                              <div key={i} className="flex items-center gap-3 p-2 rounded bg-white/5 border border-white/5">
+                                <AvatarCustom name={m.name} size="xs" />
+                                <div className="overflow-hidden">
+                                  <p className="text-sm font-medium text-white truncate">{censorText(m.name)} ({censorText(m.gameName)})</p>
+                                  <p className="text-[10px] text-muted-foreground truncate">แผนก: {m.department} | ชั้น: {m.grade}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                </Card>
-              ))
-            )}
-          </div>
-        </TabsContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+            </TabsContent>
 
         <TabsContent value="matches" className="space-y-8">
           <Card className="bg-card/50 border-white/10">
@@ -736,8 +760,22 @@ export default function AdminDashboard() {
         </TabsContent>
 
         <TabsContent value="teams">
+          <div className="mb-4">
+            <Label htmlFor="event-filter-teams">กรองตามการแข่งขัน</Label>
+            <Select value={selectedTeamEvent} onValueChange={setSelectedTeamEvent}>
+              <SelectTrigger id="event-filter-teams" className="w-[200px] bg-white/5 border-white/10">
+                <SelectValue placeholder="เลือกการแข่งขัน" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">ทั้งหมด</SelectItem>
+                {events.map((event) => (
+                  <SelectItem key={event.id} value={event.id}>{event.title}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {teams.map((team) => (
+            {filteredTeams.map((team) => (
               <Card key={team.id} className="bg-card/50 border-white/10 group hover:border-primary/30 transition-all duration-300">
                 <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0">
                   <div className="flex items-center gap-4">
