@@ -60,13 +60,16 @@ export default function Bracket() {
     const q = query(
       collection(db, "matches"),
       where("tournamentId", "==", selectedTournament.id),
-      orderBy("round", "asc")
+
     );
     const unsubscribe = onSnapshot(q, async (snapshot) => {
-      const matchesData = snapshot.docs.map((doc) => ({
+      let matchesData = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       } as any));
+
+      // Sort matches client-side by round
+      matchesData.sort((a, b) => a.round - b.round);
       
       // Fetch team logos from registrations
       const matchesWithLogos = await Promise.all(

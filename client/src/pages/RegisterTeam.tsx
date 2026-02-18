@@ -17,6 +17,9 @@ const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "djubsqri6";
 const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "wangnamyenesport";
 const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
 
+const MAX_FILE_SIZE_MB = 5;
+const ALLOWED_FILE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+
 interface Member {
   name: string;
   gameName: string;
@@ -142,6 +145,18 @@ export default function RegisterTeam() {
       setIsUploading(true);
       
       if (logoFile) {
+        // Validate file size and type
+        if (logoFile.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+          toast({ title: `ขนาดไฟล์โลโก้ต้องไม่เกิน ${MAX_FILE_SIZE_MB} MB`, variant: "destructive" });
+          setIsUploading(false);
+          return;
+        }
+        if (!ALLOWED_FILE_TYPES.includes(logoFile.type)) {
+          toast({ title: "รองรับเฉพาะไฟล์รูปภาพ JPG, PNG, GIF, WEBP เท่านั้น", variant: "destructive" });
+          setIsUploading(false);
+          return;
+        }
+
         try {
           const formData = new FormData();
           formData.append("file", logoFile);
@@ -152,7 +167,11 @@ export default function RegisterTeam() {
           }
         } catch (uploadError: any) {
           console.error("Logo upload error:", uploadError);
-          toast({ title: "ไม่สามารถอัปโหลดโลโก้ แต่จะลงทะเบียนโดยไม่มีโลโก้", variant: "default" });
+          let errorMessage = "ไม่สามารถอัปโหลดโลโก้ได้";
+          if (axios.isAxiosError(uploadError) && uploadError.response) {
+            errorMessage += `: ${uploadError.response.data?.error?.message || uploadError.response.statusText}`;
+          }
+          toast({ title: errorMessage + " แต่จะลงทะเบียนโดยไม่มีโลโก้", variant: "default" });
         }
       }
 
