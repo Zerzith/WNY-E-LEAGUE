@@ -329,6 +329,7 @@ export default function RegisterTeam() {
                   className="ring-4 ring-primary/20"
                 />
                 <button
+                  type="button" // Ensure this button does not submit the form
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploading}
                   className="absolute bottom-0 right-0 bg-primary p-3 rounded-full hover:bg-primary/80 transition-all shadow-lg disabled:opacity-50"
