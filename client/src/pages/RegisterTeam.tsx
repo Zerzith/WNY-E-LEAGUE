@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { AvatarCustom } from "@/components/ui/avatar-custom";
 import { Loader2, Upload, Plus, Trash2, ShieldCheck, Users, Gamepad2, Camera } from "lucide-react";
-import axios from "axios";
+
 
 const CLOUD_NAME = "djubsqri6";
 const UPLOAD_PRESET = "wangnamyenesport";
@@ -166,15 +166,24 @@ export default function RegisterTeam() {
           const formData = new FormData();
           formData.append("file", logoFile);
           formData.append("upload_preset", UPLOAD_PRESET);
-          const res = await axios.post(CLOUDINARY_URL, formData, { timeout: 30000 });
-          if (res.data?.secure_url) {
-            logoUrl = res.data.secure_url;
+          const response = await fetch(CLOUDINARY_URL, {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!response.ok) {
+            throw new Error(`Upload failed with status ${response.status}`);
+          }
+
+          const data = await response.json();
+          if (data?.secure_url) {
+            logoUrl = data.secure_url;
           }
         } catch (uploadError: any) {
           console.error("Logo upload error:", uploadError);
           let errorMessage = "ไม่สามารถอัปโหลดโลโก้ได้";
-          if (axios.isAxiosError(uploadError) && uploadError.response) {
-            errorMessage += `: ${uploadError.response.data?.error?.message || uploadError.response.statusText}`;
+          if (uploadError instanceof Error) {
+            errorMessage += `: ${uploadError.message}`;
           }
           toast({ title: errorMessage + " แต่จะลงทะเบียนโดยไม่มีโลโก้", variant: "default" });
           setIsUploading(false);
