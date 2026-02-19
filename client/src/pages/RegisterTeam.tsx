@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { AvatarCustom } from "@/components/ui/avatar-custom";
-import { Loader2, Upload, Plus, Trash2, ShieldCheck, Users, Gamepad2 } from "lucide-react";
+import { Loader2, Upload, Plus, Trash2, ShieldCheck, Users, Gamepad2, Camera } from "lucide-react";
 import axios from "axios";
 
 const CLOUD_NAME = "djubsqri6";
@@ -49,6 +49,7 @@ export default function RegisterTeam() {
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string>("");
   const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isLoadingTournaments, setIsLoadingTournaments] = useState(true);
   const [members, setMembers] = useState<Member[]>([
     { name: "", gameName: "", grade: "", department: "" }
@@ -94,15 +95,7 @@ export default function RegisterTeam() {
     return () => unsubscribe();
   }, []);
 
-  useEffect(() => {
-    if (logoFile) {
-      const reader = new FileReader();
-      reader.onloadend = () => setLogoPreview(reader.result as string);
-      reader.readAsDataURL(logoFile);
-    } else {
-      setLogoPreview("");
-    }
-  }, [logoFile]);
+
 
   if (!user) {
     setLocation("/login");
@@ -127,6 +120,28 @@ export default function RegisterTeam() {
     setMembers(newMembers);
   };
 
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
+      toast({ title: `ขนาดไฟล์โลโก้ต้องไม่เกิน ${MAX_FILE_SIZE_MB} MB`, variant: "destructive" });
+      return;
+    }
+
+    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
+      toast({ title: "รองรับเฉพาะไฟล์รูปภาพ JPG, PNG, GIF, WEBP เท่านั้น", variant: "destructive" });
+      return;
+    }
+
+    setLogoFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setLogoPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!teamName || !game || !selectedTournament) {
@@ -140,23 +155,13 @@ export default function RegisterTeam() {
       return;
     }
 
-    let logoUrl = "";
+    let logoUrl = logoPreview; // Use logoPreview as the source of truth for the URL
     try {
       setIsUploading(true);
       
+      // If logoFile exists, it means a new file was selected and needs to be uploaded
       if (logoFile) {
-        // Validate file size and type
-        if (logoFile.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-          toast({ title: `ขนาดไฟล์โลโก้ต้องไม่เกิน ${MAX_FILE_SIZE_MB} MB`, variant: "destructive" });
-          setIsUploading(false);
-          return;
-        }
-        if (!ALLOWED_FILE_TYPES.includes(logoFile.type)) {
-          toast({ title: "รองรับเฉพาะไฟล์รูปภาพ JPG, PNG, GIF, WEBP เท่านั้น", variant: "destructive" });
-          setIsUploading(false);
-          return;
-        }
-
+        // Validation is now handled in handleLogoChange
         try {
           const formData = new FormData();
           formData.append("file", logoFile);
@@ -172,6 +177,8 @@ export default function RegisterTeam() {
             errorMessage += `: ${uploadError.response.data?.error?.message || uploadError.response.statusText}`;
           }
           toast({ title: errorMessage + " แต่จะลงทะเบียนโดยไม่มีโลโก้", variant: "default" });
+          setIsUploading(false);
+          return; // Stop submission if upload fails
         }
       }
 
@@ -297,12 +304,35 @@ export default function RegisterTeam() {
               <CardTitle>โลโก้ทีม</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-6">
-              <AvatarCustom src={logoPreview} name={teamName || "Team"} size="xl" className="ring-4 ring-primary/20" />
+
               <div className="w-full">
-                <input type="file" id="logo-upload" className="hidden" accept="image/*" onChange={e => setLogoFile(e.target.files?.[0] || null)} />
-                <Button type="button" variant="outline" className="w-full" onClick={() => document.getElementById('logo-upload')?.click()}>
-                  <Upload className="w-4 h-4 mr-2" /> {logoFile ? "เปลี่ยนรูปภาพ" : "อัปโหลดโลโก้"}
-                </Button>
+              <div className="relative group">
+                <AvatarCustom 
+                  src={logoPreview} 
+                  name={teamName || "Team"} 
+                  size="xl" 
+                  className="ring-4 ring-primary/20"
+                />
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="absolute bottom-0 right-0 bg-primary p-3 rounded-full hover:bg-primary/80 transition-all shadow-lg disabled:opacity-50"
+                >
+                  {isUploading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Camera className="w-5 h-5 text-white" />
+                  )}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoChange}
+                  disabled={isUploading}
+                  className="hidden"
+                />
+              </div>
               </div>
               <div className="w-full pt-6 border-t border-white/5">
                 <Button type="submit" className="w-full bg-primary hover:bg-primary/80 h-12 text-lg font-bold uppercase tracking-wider" disabled={isUploading}>
