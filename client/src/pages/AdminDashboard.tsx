@@ -49,6 +49,12 @@ export default function AdminDashboard() {
   const [newRegDeadline, setNewRegDeadline] = useState("");
   const [newBannerUrl, setNewBannerUrl] = useState("");
 
+  const gameBanners: { [key: string]: string } = {
+    "RoV": "https://files.manuscdn.com/user_upload_by_module/session_file/310519663358539715/NASojnuaGInFLzYF.png",
+    "Free Fire": "https://files.manuscdn.com/user_upload_by_module/session_file/310519663358539715/rUDJhrjRVtqbAmGZ.png",
+    "Valorant": "https://files.manuscdn.com/user_upload_by_module/session_file/310519663358539715/PBMkCQUSRSaFncUQ.png",
+  };
+
   // Match Management State
   const [selectedEventId, setSelectedEventId] = useState<string>("");
   const [newMatchRound, setNewMatchRound] = useState("1");
@@ -440,7 +446,10 @@ export default function AdminDashboard() {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">เกม</Label>
-                  <Select value={newGame} onValueChange={setNewGame}>
+                  <Select value={newGame} onValueChange={(value) => {
+                    setNewGame(value);
+                    setNewBannerUrl(gameBanners[value] || "");
+                  }}>
                     <SelectTrigger className="bg-white/5 border-white/10">
                       <SelectValue />
                     </SelectTrigger>
@@ -473,7 +482,7 @@ export default function AdminDashboard() {
                 </div>
                 <div className="space-y-2 md:col-span-2">
                   <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">URL แบนเนอร์ (หน้าแรก)</Label>
-                  <Input value={newBannerUrl} onChange={(e) => setNewBannerUrl(e.target.value)} placeholder="https://example.com/banner.jpg" className="bg-white/5 border-white/10" />
+                  <Input value={newBannerUrl} onChange={(e) => setNewBannerUrl(e.target.value)} placeholder="URL รูปภาพแบนเนอร์ (จะถูกเลือกอัตโนมัติเมื่อเลือกเกม)" className="bg-white/5 border-white/10" />
                 </div>
                 <Button type="submit" className="md:col-span-3 bg-primary hover:bg-primary/90 text-white font-bold h-12 shadow-lg shadow-primary/20">
                   <Trophy className="w-4 h-4 mr-2" /> สร้างการแข่งขัน
