@@ -287,17 +287,25 @@ export default function RegisterTeam() {
                       <Label className="text-xs">ชื่อในเกม (IGN)</Label>
                       <Input value={member.gameName} onChange={e => handleMemberChange(index, 'gameName', e.target.value)} placeholder="In-game Name" className="bg-background/50 border-white/10 h-9" />
                     </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">ระดับชั้น</Label>
-                      <Input value={member.grade} onChange={e => handleMemberChange(index, 'grade', e.target.value)} placeholder="เช่น ปวช.3" className="bg-background/50 border-white/10 h-9" />
-                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label className="text-xs">แผนกวิชา</Label>
-                      <Input value={member.department} onChange={e => handleMemberChange(index, 'department', e.target.value)} placeholder="เช่น เทคโนโลยีสารสนเทศ" className="bg-background/50 border-white/10 h-9" />
+                      <Input value={member.department} onChange={e => handleMemberChange(index, 'department', e.target.value)} placeholder="เช่น คอมพิวเตอร์ธุรกิจ" className="bg-background/50 border-white/10 h-9" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">ชั้นปี</Label>
+                      <Input value={member.grade} onChange={e => handleMemberChange(index, 'grade', e.target.value)} placeholder="เช่น ปวช.1" className="bg-background/50 border-white/10 h-9" />
                     </div>
                   </div>
                   {members.length > 1 && (
-                    <Button type="button" variant="ghost" size="icon" onClick={() => handleRemoveMember(index)} className="absolute top-2 right-2 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => handleRemoveMember(index)}
+                    >
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   )}
@@ -307,14 +315,12 @@ export default function RegisterTeam() {
           </Card>
         </div>
 
-        <div className="space-y-8">
-          <Card className="bg-card/50 border-white/10 backdrop-blur-sm sticky top-24">
+        <div className="lg:col-span-1 space-y-8">
+          <Card className="bg-card/50 border-white/10 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle>โลโก้ทีม</CardTitle>
+              <CardTitle className="flex items-center gap-2"><Upload className="w-5 h-5 text-primary" /> อัปโหลดโลโก้ทีม</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-6">
-
-              <div className="w-full">
               <div className="relative group">
                 <AvatarCustom 
                   src={logoPreview} 
@@ -342,14 +348,20 @@ export default function RegisterTeam() {
                   className="hidden"
                 />
               </div>
-              </div>
-              <div className="w-full pt-6 border-t border-white/5">
-                <Button type="submit" className="w-full bg-primary hover:bg-primary/80 h-12 text-lg font-bold uppercase tracking-wider" disabled={isUploading}>
-                  {isUploading ? <><Loader2 className="w-5 h-5 animate-spin mr-2" /> กำลังส่งข้อมูล...</> : "ยืนยันการลงทะเบียน"}
-                </Button>
-              </div>
+              <p className="text-sm text-muted-foreground text-center">
+                ขนาดไฟล์ไม่เกิน {MAX_FILE_SIZE_MB}MB. รองรับ JPG, PNG, GIF, WEBP
+              </p>
             </CardContent>
           </Card>
+
+          <Button type="submit" className="w-full" disabled={isUploading || isLoadingTournaments}>
+            {isUploading ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <ShieldCheck className="mr-2 h-4 w-4" />
+            )}
+            ลงทะเบียนทีม
+          </Button>
         </div>
       </form>
     </div>
