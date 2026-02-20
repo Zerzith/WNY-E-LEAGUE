@@ -107,6 +107,10 @@ export default function Chat() {
   };
 
   const handleUpdateStream = async () => {
+    if (!isAdmin) {
+      alert("คุณไม่มีสิทธิ์ในการอัปเดตไลฟ์สด");
+      return;
+    }
     if (!editStreamUrl.trim()) return;
     try {
       await setDoc(doc(db, "config", "live_stream"), {
@@ -118,10 +122,15 @@ export default function Chat() {
       setIsEditingStream(false);
     } catch (error) {
       console.error("Error updating stream:", error);
+      alert("เกิดข้อผิดพลาดในการอัปเดตไลฟ์สด: " + error.message);
     }
   };
 
   const handleRemoveStream = async () => {
+    if (!isAdmin) {
+      alert("คุณไม่มีสิทธิ์ในการลบไลฟ์สด");
+      return;
+    }
     try {
       await setDoc(doc(db, "config", "live_stream"), {
         liveUrl: "",
@@ -132,6 +141,7 @@ export default function Chat() {
       setIsEditingStream(false);
     } catch (error) {
       console.error("Error removing stream:", error);
+      alert("เกิดข้อผิดพลาดในการลบไลฟ์สด: " + error.message);
     }
   };
 
