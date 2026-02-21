@@ -346,10 +346,16 @@ export default function AdminDashboard() {
     e.preventDefault();
     if (!bannerEventId || !bannerUrl) return;
     try {
+      // Add banner to banners collection
       await addDoc(collection(db, "banners"), {
         eventId: bannerEventId,
         imageUrl: bannerUrl,
         createdAt: serverTimestamp()
+      });
+
+      // Update the corresponding event with the bannerUrl
+      await updateDoc(doc(db, "events", bannerEventId), {
+        bannerUrl: bannerUrl
       });
       toast({ title: "เพิ่มแบนเนอร์สำเร็จ" });
       setBannerEventId("");
@@ -666,7 +672,12 @@ export default function AdminDashboard() {
                     </SelectTrigger>
                     <SelectContent className="bg-card border-white/10">
                       {approvedTeams.map(team => (
-                        <SelectItem key={team.id} value={team.name}>{team.name}</SelectItem>
+                        <SelectItem key={team.id} value={team.name}>
+                          <div className="flex items-center gap-2">
+                            <AvatarCustom src={team.logoUrl} name={team.name} size="sm" />
+                            <span>{team.name}</span>
+                          </div>
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -679,7 +690,12 @@ export default function AdminDashboard() {
                     </SelectTrigger>
                     <SelectContent className="bg-card border-white/10">
                       {approvedTeams.map(team => (
-                        <SelectItem key={team.id} value={team.name}>{team.name}</SelectItem>
+                        <SelectItem key={team.id} value={team.name}>
+                          <div className="flex items-center gap-2">
+                            <AvatarCustom src={team.logoUrl} name={team.name} size="sm" />
+                            <span>{team.name}</span>
+                          </div>
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -723,6 +739,9 @@ export default function AdminDashboard() {
 
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex-1 text-center space-y-2">
+                      <div className="flex items-center justify-center mb-2">
+                        <AvatarCustom src={approvedTeams.find(team => team.name === match.teamA)?.logoUrl} name={match.teamA} size="md" />
+                      </div>
                       <p className="font-bold text-white truncate">{censorText(match.teamA)}</p>
                       <div className="flex items-center justify-center gap-2">
                         <Button 
@@ -744,6 +763,9 @@ export default function AdminDashboard() {
                     <div className="text-2xl font-black text-primary italic">VS</div>
 
                     <div className="flex-1 text-center space-y-2">
+                      <div className="flex items-center justify-center mb-2">
+                        <AvatarCustom src={approvedTeams.find(team => team.name === match.teamB)?.logoUrl} name={match.teamB} size="md" />
+                      </div>
                       <p className="font-bold text-white truncate">{censorText(match.teamB)}</p>
                       <div className="flex items-center justify-center gap-2">
                         <Button 

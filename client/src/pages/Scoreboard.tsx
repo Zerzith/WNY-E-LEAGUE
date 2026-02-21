@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { collection, onSnapshot, query, orderBy, where, getDocs } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, where, getDocs, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { ScoreCard } from "@/components/ScoreCard";
 import { Loader2 } from "lucide-react";
 
 interface Match {
   id: string;
-  eventId: number;
+  eventId: string;
   teamA: string;
   teamB: string;
   scoreA: number;
@@ -28,10 +28,21 @@ export default function Scoreboard() {
     // Query Firestore "matches" collection
     const q = query(collection(db, "matches"), orderBy("status", "desc")); // Live matches first
     const unsubscribe = onSnapshot(q, async (snapshot) => {
-      const matchData = snapshot.docs.map(doc => ({ 
-        ...doc.data(),
-        id: doc.id.toString() 
-      } as any));
+      const matchData = await Promise.all(snapshot.docs.map(async (doc) => {
+        const match = { 
+          ...doc.data(),
+          id: doc.id.toString() 
+        } as any;
+
+        // Fetch event bannerUrl for each match
+        if (match.eventId) {
+          const eventDoc = await getDoc(doc(db, "events", match.eventId));
+          if (eventDoc.exists) {
+            match.bannerUrl = (eventDoc.data() as any).bannerUrl;
+          }
+        }
+        return match;
+      }));
       
       // Fetch team logos for each match
       const matchesWithLogos = await Promise.all(

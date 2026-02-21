@@ -37,6 +37,7 @@ export function ScoreCard({ match }: ScoreCardProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="relative overflow-hidden rounded-2xl border border-white/10 bg-card/50 hover:border-primary/50 transition-all group backdrop-blur-sm"
+      style={match.bannerUrl ? { backgroundImage: `url(${match.bannerUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' } : {}}
     >
       {/* Status Badge */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10">

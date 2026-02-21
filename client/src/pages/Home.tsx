@@ -52,16 +52,6 @@ export default function Home() {
         const registrationsSnapshot = await getDocs(registrationsQuery);
         event.registeredTeams = registrationsSnapshot.docs.length;
 
-        // Fetch team logo from one of the approved registrations
-        if (registrationsSnapshot.docs.length > 0) {
-          const teamName = registrationsSnapshot.docs[0].data().teamName;
-          const teamQuery = query(collection(db, "teams"), where("name", "==", teamName), where("eventId", "==", event.id), limit(1));
-          const teamSnapshot = await getDocs(teamQuery);
-          if (!teamSnapshot.empty) {
-            event.logoUrl = teamSnapshot.docs[0].data().logoUrl;
-          }
-        }
-
         return event;
       }));
       
@@ -197,19 +187,12 @@ export default function Home() {
                       isFull ? "border-red-500/50 opacity-75" : "border-white/10 hover:border-accent/50"
                     }`}
                   >
-                    {event.logoUrl ? (
-                      <img 
-                        src={event.logoUrl}
-                        alt={event.title}
-                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-60"
-                      />
-                    ) : (
+                    
                       <img 
                         src={event.bannerUrl || HERO_BG}
                         alt={event.title}
                         className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-60"
                       />
-                    )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
                     
                     {/* Full Badge */}
