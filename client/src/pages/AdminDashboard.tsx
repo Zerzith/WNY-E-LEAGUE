@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
@@ -275,10 +276,36 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteRegistration = async (id: string) => {
-    if (!confirm("ยืนยันการลบการสมัครนี้? ข้อมูลที่เกี่ยวข้องทั้งหมดจะหายไป")) return;
+    if (!confirm("ยืนยันการลบการสมัครนี้?")) return;
     try {
       await deleteDoc(doc(db, "registrations", id));
       toast({ title: "ลบการสมัครเรียบร้อย" });
+    } catch (error) {
+      toast({ title: "ผิดพลาดในการลบ", variant: "destructive" });
+    }
+  };
+
+  const handleCreateNews = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await addDoc(collection(db, "news"), {
+        title: newsTitle,
+        content: newsContent,
+        createdAt: serverTimestamp()
+      });
+      toast({ title: "สร้างข่าวสำเร็จ" });
+      setNewNewsTitle("");
+      setNewNewsContent("");
+    } catch (error) {
+      toast({ title: "เกิดข้อผิดพลาด", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteNews = async (id: string) => {
+    if (!confirm("ยืนยันการลบข่าวนี้?")) return;
+    try {
+      await deleteDoc(doc(db, "news", id));
+      toast({ title: "ลบข่าวเรียบร้อย" });
     } catch (error) {
       toast({ title: "ผิดพลาดในการลบ", variant: "destructive" });
     }
@@ -288,6 +315,10 @@ export default function AdminDashboard() {
     e.preventDefault();
     if (!selectedEventId || !newMatchTeamA || !newMatchTeamB) {
       toast({ title: "กรุณาเลือกการแข่งขันและทีมให้ครบถ้วน", variant: "destructive" });
+      return;
+    }
+    if (newMatchTeamA === newMatchTeamB) {
+      toast({ title: "ทีม A และ ทีม B ต้องไม่ซ้ำกัน", variant: "destructive" });
       return;
     }
     try {
@@ -303,6 +334,8 @@ export default function AdminDashboard() {
         createdAt: serverTimestamp()
       });
       toast({ title: "สร้างแมตช์สำเร็จ" });
+      setNewMatchRound("1");
+      setNewMatchGroup("A");
       setNewMatchTeamA("");
       setNewMatchTeamB("");
     } catch (error) {
@@ -312,25 +345,20 @@ export default function AdminDashboard() {
 
   const handleUpdateScore = async (matchId: string, team: 'A' | 'B', score: number) => {
     try {
-      await updateDoc(doc(db, "matches", matchId), {
-        [`score${team}`]: score,
-        updatedAt: serverTimestamp()
-      });
+      const field = team === 'A' ? 'scoreA' : 'scoreB';
+      await updateDoc(doc(db, "matches", matchId), { [field]: score });
       toast({ title: "อัปเดตคะแนนสำเร็จ" });
     } catch (error) {
-      toast({ title: "เกิดข้อผิดพลาด", variant: "destructive" });
+      toast({ title: "ผิดพลาดในการอัปเดตคะแนน", variant: "destructive" });
     }
   };
 
   const handleUpdateMatchStatus = async (matchId: string, status: string) => {
     try {
-      await updateDoc(doc(db, "matches", matchId), {
-        status: status,
-        updatedAt: serverTimestamp()
-      });
-      toast({ title: "อัปเดตสถานะแมตช์สำเร็จ" });
+      await updateDoc(doc(db, "matches", matchId), { status });
+      toast({ title: `เปลี่ยนสถานะเป็น ${status}` });
     } catch (error) {
-      toast({ title: "เกิดข้อผิดพลาด", variant: "destructive" });
+      toast({ title: "ผิดพลาดในการอัปเดตสถานะ", variant: "destructive" });
     }
   };
 
@@ -339,32 +367,6 @@ export default function AdminDashboard() {
     try {
       await deleteDoc(doc(db, "matches", id));
       toast({ title: "ลบแมตช์เรียบร้อย" });
-    } catch (error) {
-      toast({ title: "ผิดพลาดในการลบ", variant: "destructive" });
-    }
-  };
-
-  const handleCreateNews = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await addDoc(collection(db, "news"), {
-        title: newsTitle,
-        content: newsContent,
-        createdAt: serverTimestamp()
-      });
-      toast({ title: "สร้างข่าวสารสำเร็จ" });
-      setNewNewsTitle("");
-      setNewNewsContent("");
-    } catch (error) {
-      toast({ title: "เกิดข้อผิดพลาด", variant: "destructive" });
-    }
-  };
-
-  const handleDeleteNews = async (id: string) => {
-    if (!confirm("ยืนยันการลบข่าวสารนี้?")) return;
-    try {
-      await deleteDoc(doc(db, "news", id));
-      toast({ title: "ลบข่าวสารเรียบร้อย" });
     } catch (error) {
       toast({ title: "ผิดพลาดในการลบ", variant: "destructive" });
     }
@@ -382,7 +384,6 @@ export default function AdminDashboard() {
               <TabsTrigger value="news" className="px-6 py-2.5">ข่าวสาร</TabsTrigger>
               <TabsTrigger value="registrations" className="px-6 py-2.5">คำขอสมัคร</TabsTrigger>
               <TabsTrigger value="matches" className="px-6 py-2.5">สายแข่ง & คะแนน</TabsTrigger>
-              <TabsTrigger value="teams" className="px-6 py-2.5">ทีมทั้งหมด</TabsTrigger>
             </TabsList>
           </div>
 
@@ -396,7 +397,7 @@ export default function AdminDashboard() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="newTitle">ชื่อการแข่งขัน</Label>
-                      <Input id="newTitle" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="เช่น Valorant Tournament Season 1" required />
+                      <Input id="newTitle" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="เช่น Valorant Champions Tour" required />
                     </div>
                     <div>
                       <Label htmlFor="newGame">เกม</Label>
@@ -412,23 +413,21 @@ export default function AdminDashboard() {
                       </Select>
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
                       <Label htmlFor="newMaxTeams">จำนวนทีมสูงสุด</Label>
-                      <Input id="newMaxTeams" type="number" value={newMaxTeams} onChange={(e) => setNewMaxTeams(e.target.value)} placeholder="เช่น 16" required />
+                      <Input id="newMaxTeams" type="number" value={newMaxTeams} onChange={(e) => setNewMaxTeams(e.target.value)} required />
                     </div>
                     <div>
-                      <Label htmlFor="newMembers">จำนวนผู้เล่นต่อทีม</Label>
-                      <Input id="newMembers" type="number" value={newMembers} onChange={(e) => setNewMembers(e.target.value)} placeholder="เช่น 5" required />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="newSubs">จำนวนตัวสำรองสูงสุด</Label>
-                      <Input id="newSubs" type="number" value={newSubs} onChange={(e) => setNewSubs(e.target.value)} placeholder="เช่น 1" />
+                      <Label htmlFor="newMembers">ผู้เล่นต่อทีม</Label>
+                      <Input id="newMembers" type="number" value={newMembers} onChange={(e) => setNewMembers(e.target.value)} required />
                     </div>
                     <div>
-                      <Label htmlFor="newDate">วันที่จัดการแข่งขัน</Label>
+                      <Label htmlFor="newSubs">ตัวสำรองสูงสุด</Label>
+                      <Input id="newSubs" type="number" value={newSubs} onChange={(e) => setNewSubs(e.target.value)} required />
+                    </div>
+                    <div>
+                      <Label htmlFor="newDate">วันที่แข่งขัน</Label>
                       <Input id="newDate" type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} required />
                     </div>
                   </div>
@@ -437,8 +436,8 @@ export default function AdminDashboard() {
                     <Input id="newRegDeadline" type="date" value={newRegDeadline} onChange={(e) => setNewRegDeadline(e.target.value)} required />
                   </div>
                   <div>
-                    <Label htmlFor="newBannerUrl">URL แบนเนอร์ (สำหรับหน้าแรก)</Label>
-                    <Input id="newBannerUrl" type="url" value={newBannerUrl} onChange={(e) => setNewBannerUrl(e.target.value)} placeholder="https://example.com/banner.jpg" />
+                    <Label htmlFor="newBannerUrl">URL แบนเนอร์</Label>
+                    <Input id="newBannerUrl" value={newBannerUrl} onChange={(e) => setNewBannerUrl(e.target.value)} placeholder="ใส่ URL รูปภาพแบนเนอร์" />
                   </div>
                   <Button type="submit" className="w-full"><Plus className="mr-2 h-4 w-4" />สร้างการแข่งขัน</Button>
                 </form>
@@ -449,14 +448,14 @@ export default function AdminDashboard() {
                     <Card key={event.id} className="bg-card/70 border-white/10">
                       <CardContent className="p-4 flex items-center justify-between">
                         <div>
-                          <p className="font-semibold">{event.title} ({event.game})</p>
-                          <p className="text-sm text-muted-foreground">{event.date} | ทีม: {event.maxTeams}</p>
+                          <p className="font-semibold text-lg">{event.title}</p>
+                          <p className="text-sm text-muted-foreground">{event.game} | <Calendar className="inline-block h-4 w-4 mr-1" /> {event.date}</p>
                         </div>
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm" onClick={() => {
-                            setIsLiveStreamDialogOpen(true);
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" variant="outline" onClick={() => {
                             setLiveStreamEventId(event.id);
                             setLiveStreamUrl(event.liveStreamUrl || "");
+                            setIsLiveStreamDialogOpen(true);
                           }}><MonitorPlay className="h-4 w-4" /></Button>
                           <Button variant="destructive" size="sm" onClick={() => handleDeleteEvent(event.id)}><Trash2 className="h-4 w-4" /></Button>
                         </div>
@@ -470,23 +469,23 @@ export default function AdminDashboard() {
 
           <TabsContent value="news" className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Card className="bg-card/50 border-white/10 overflow-hidden">
-              <CardHeader className="flex flex-row items-center justify-between">
+              <CardHeader>
                 <CardTitle className="text-xl">จัดการข่าวสาร</CardTitle>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleCreateNews} className="space-y-4">
                   <div>
                     <Label htmlFor="newsTitle">หัวข้อข่าว</Label>
-                    <Input id="newsTitle" value={newsTitle} onChange={(e) => setNewNewsTitle(e.target.value)} placeholder="หัวข้อข่าวสาร" required />
+                    <Input id="newsTitle" value={newsTitle} onChange={(e) => setNewNewsTitle(e.target.value)} placeholder="หัวข้อข่าว" required />
                   </div>
                   <div>
-                    <Label htmlFor="newsContent">เนื้อหาข่าว</Label>
-                    <Input id="newsContent" value={newsContent} onChange={(e) => setNewNewsContent(e.target.value)} placeholder="รายละเอียดข่าวสาร" required />
+                    <Label htmlFor="newsContent">เนื้อหา</Label>
+                    <Input id="newsContent" value={newsContent} onChange={(e) => setNewNewsContent(e.target.value)} placeholder="เนื้อหาข่าว" required />
                   </div>
-                  <Button type="submit" className="w-full"><Megaphone className="mr-2 h-4 w-4" />สร้างข่าวสาร</Button>
+                  <Button type="submit" className="w-full"><Megaphone className="mr-2 h-4 w-4" />ประกาศข่าว</Button>
                 </form>
 
-                <h3 className="text-lg font-semibold mt-8 mb-4">ข่าวสารที่มีอยู่</h3>
+                <h3 className="text-lg font-semibold mt-8 mb-4">ข่าวที่มีอยู่</h3>
                 <div className="space-y-4">
                   {news.map((item) => (
                     <Card key={item.id} className="bg-card/70 border-white/10">
@@ -507,7 +506,7 @@ export default function AdminDashboard() {
           <TabsContent value="registrations" className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Card className="bg-card/50 border-white/10 overflow-hidden">
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-xl">จัดการคำขอสมัคร</CardTitle>
+                <CardTitle className="text-xl">คำขอสมัครเข้าร่วม</CardTitle>
                 <Select value={selectedRegistrationEvent} onValueChange={setSelectedRegistrationEvent}>
                   <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="เลือกการแข่งขัน" />
@@ -527,19 +526,31 @@ export default function AdminDashboard() {
                   ) : (
                     filteredRegistrations.map((reg) => (
                       <Card key={reg.id} className="bg-card/70 border-white/10">
-                        <CardContent className="p-4">
-                          <p className="font-semibold">ทีม: {reg.teamName}</p>
-                          <p className="text-sm text-muted-foreground">เกม: {reg.game} | โหมด: {reg.gameMode}</p>
-                          <p className="text-sm text-muted-foreground">ผู้สมัคร: {reg.applicantDisplayName} ({reg.applicantEmail})</p>
-                          <p className="text-sm text-muted-foreground">สถานะ: <Badge variant={reg.status === "approved" ? "default" : reg.status === "rejected" ? "destructive" : "secondary"}>{reg.status}</Badge></p>
-                          <div className="flex gap-2 mt-4">
-                            {reg.status === "pending" && (
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-3">
+                            {reg.logoUrl && <AvatarCustom src={reg.logoUrl} alt={reg.teamName} className="w-10 h-10" />}
+                            {reg.teamName}
+                          </CardTitle>
+                          <CardDescription>สมัครสำหรับ: {events.find(e => e.id === reg.eventId)?.title || 'N/A'}</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <p><strong>ผู้สมัคร:</strong> {reg.applicantDisplayName} ({reg.applicantEmail})</p>
+                          <p><strong>สมาชิก:</strong></p>
+                          <ul className="list-disc pl-5 text-muted-foreground">
+                            {reg.members.map((member: any, index: number) => (
+                              <li key={index}>{censorText(member.name)} - {censorText(member.id)}</li>
+                            ))}
+                          </ul>
+                          <div className="flex justify-end gap-2 mt-4">
+                            {reg.status === 'pending' ? (
                               <>
-                                <Button size="sm" onClick={() => handleApproveRegistration(reg)}><Check className="mr-2 h-4 w-4" />อนุมัติ</Button>
-                                <Button variant="outline" size="sm" onClick={() => handleRejectRegistration(reg.id)}><X className="mr-2 h-4 w-4" />ปฏิเสธ</Button>
+                                <Button size="sm" className="bg-green-500 hover:bg-green-600" onClick={() => handleApproveRegistration(reg)}><UserCheck className="h-4 w-4 mr-2" />อนุมัติ</Button>
+                                <Button size="sm" variant="destructive" onClick={() => handleRejectRegistration(reg.id)}><UserX className="h-4 w-4 mr-2" />ปฏิเสธ</Button>
                               </>
+                            ) : (
+                              <Badge variant={reg.status === 'approved' ? 'success' : 'destructive'}>{reg.status}</Badge>
                             )}
-                            <Button variant="destructive" size="sm" onClick={() => handleDeleteRegistration(reg.id)}><Trash2 className="h-4 w-4" />ลบ</Button>
+                            <Button size="sm" variant="ghost" onClick={() => handleDeleteRegistration(reg.id)}><Trash2 className="h-4 w-4" /></Button>
                           </div>
                         </CardContent>
                       </Card>
@@ -671,52 +682,6 @@ export default function AdminDashboard() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="teams" className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <Card className="bg-card/50 border-white/10 overflow-hidden">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-xl">ทีมที่อนุมัติแล้ว</CardTitle>
-                <Select value={selectedTeamEvent} onValueChange={setSelectedTeamEvent}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="เลือกการแข่งขัน" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">ทั้งหมด</SelectItem>
-                    {events.map(event => (
-                      <SelectItem key={event.id} value={event.id}>{event.title}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {filteredTeams.length === 0 ? (
-                    <p className="text-muted-foreground">ไม่มีทีมที่อนุมัติ</p>
-                  ) : (
-                    filteredTeams.map((team) => (
-                      <Card key={team.id} className="bg-card/70 border-white/10">
-                        <CardContent className="p-4 flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            {team.logoUrl && <AvatarCustom src={team.logoUrl} alt={team.name} className="w-10 h-10" />}
-                            <div>
-                              <p className="font-semibold">{team.name}</p>
-                              <p className="text-sm text-muted-foreground">{team.game} | สมาชิก: {team.members.length}</p>
-                            </div>
-                          </div>
-                          <Button variant="destructive" size="sm" onClick={() => {
-                            if (confirm("ยืนยันการลบทีมนี้? การลบทีมจะลบข้อมูลการสมัครที่เกี่ยวข้องด้วย")) {
-                              // Logic to delete team and associated registration
-                              // This would involve more complex Firestore operations
-                              toast({ title: "ฟังก์ชันลบทีมยังไม่สมบูรณ์", description: "ต้องมีการจัดการข้อมูลที่ซับซ้อนขึ้น", variant: "warning" });
-                            }
-                          }}><Trash2 className="h-4 w-4" /></Button>
-                        </CardContent>
-                      </Card>
-                    ))
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
 
         <Dialog open={isLiveStreamDialogOpen} onOpenChange={setIsLiveStreamDialogOpen}>
