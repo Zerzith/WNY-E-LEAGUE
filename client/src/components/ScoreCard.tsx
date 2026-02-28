@@ -20,16 +20,14 @@ interface ScoreCardProps {
 }
 
 export function ScoreCard({ match }: ScoreCardProps) {
-  const isLive = match.status === 'ongoing' || match.status === 'live';
-  const isCompleted = match.status === 'completed' || match.status === 'finished';
+  const isLive = match.status === 'live';
+  const isCompleted = match.status === 'finished';
   
   const getStatusText = (status: string) => {
     switch(status) {
-      case 'ongoing':
-      case 'live': return 'กำลังแข่งขัน';
-      case 'completed':
-      case 'finished': return 'จบการแข่งขัน';
-      case 'pending': return 'รอการแข่งขัน';
+      case 'live': return 'กำลังดำเนินการ';
+      case 'finished': return 'จบการแข่งขันแล้ว';
+      case 'upcoming': return 'ยังไม่เริ่ม';
       default: return status;
     }
   };
