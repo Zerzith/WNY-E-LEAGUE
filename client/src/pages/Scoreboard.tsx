@@ -49,22 +49,18 @@ export default function Scoreboard() {
         matchData.map(async (match) => {
           try {
             // Fetch registrations for both teams
-            const registrationsQuery = query(
-              collection(db, "registrations"),
-              where("teamName", "in", [match.teamA, match.teamB])
-            );
-            
-            const registrationsSnapshot = await getDocs(registrationsQuery);
-            const registrations: any = {};
-            
-            registrationsSnapshot.docs.forEach(doc => {
-              registrations[doc.data().teamName] = doc.data().logoUrl;
-            });
-            
+            const teamADoc = await getDoc(doc(db, "teams", match.teamA));
+            const teamBDoc = await getDoc(doc(db, "teams", match.teamB));
+
+            const teamAData = teamADoc.exists() ? teamADoc.data() : null;
+            const teamBData = teamBDoc.exists() ? teamBDoc.data() : null;
+
             return {
               ...match,
-              logoUrlA: registrations[match.teamA] || undefined,
-              logoUrlB: registrations[match.teamB] || undefined,
+              teamAName: teamAData?.name || "N/A",
+              teamBName: teamBData?.name || "N/A",
+              logoUrlA: teamAData?.logoUrl || undefined,
+              logoUrlB: teamBData?.logoUrl || undefined,
             };
           } catch (error) {
             console.error("Error fetching logos for match:", match.id, error);

@@ -665,10 +665,20 @@ export default function AdminDashboard() {
                             </div>
                           </div>
                           <div className="flex justify-between items-center mt-4">
-                            <Badge variant={match.status === "live" ? "default" : match.status === "finished" ? "success" : "secondary"}>{match.status}</Badge>
+                            <Badge variant={match.status === "live" ? "default" : match.status === "finished" ? "success" : "secondary"}>
+                              {match.status === "upcoming" && "ยังไม่เริ่ม"}
+                              {match.status === "live" && "กำลังดำเนินการ"}
+                              {match.status === "finished" && "จบการแข่งขันแล้ว"}
+                            </Badge>
                             <div className="flex gap-2">
-                              <Button size="sm" variant="outline" onClick={() => handleUpdateMatchStatus(match.id, match.status === "live" ? "upcoming" : "live")}>
-                                {match.status === "live" ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              <Button size="sm" variant="outline" onClick={() => handleUpdateMatchStatus(match.id, "upcoming")} disabled={match.status === "upcoming"}>
+                                <Calendar className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => handleUpdateMatchStatus(match.id, "live")} disabled={match.status === "live"}>
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => handleUpdateMatchStatus(match.id, "finished")} disabled={match.status === "finished"}>
+                                <Trophy className="h-4 w-4" />
                               </Button>
                               <Button variant="destructive" size="sm" onClick={() => handleDeleteMatch(match.id)}><Trash2 className="h-4 w-4" /></Button>
                             </div>

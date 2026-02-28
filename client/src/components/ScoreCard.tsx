@@ -6,6 +6,8 @@ interface ScoreCardProps {
     id: string;
     teamA: string;
     teamB: string;
+    teamAName?: string;
+    teamBName?: string;
     scoreA: number;
     scoreB: number;
     game?: string;
@@ -61,12 +63,12 @@ export function ScoreCard({ match }: ScoreCardProps) {
               {match.logoUrlA ? (
                 <img src={match.logoUrlA} alt={match.teamA} className="w-full h-full object-cover" />
               ) : (
-                <span className="text-3xl font-display font-bold text-white">{match.teamA.charAt(0)}</span>
+                <span className="text-3xl font-display font-bold text-white">{match.teamAName?.charAt(0) || match.teamA.charAt(0)}</span>
               )}
             </div>
             <div className="space-y-1">
               <h3 className={`font-display font-bold text-sm md:text-lg line-clamp-1 ${match.scoreA > match.scoreB && isCompleted ? 'text-primary' : 'text-white'}`}>
-                {match.teamA}
+                {match.teamAName || match.teamA}
               </h3>
               {match.scoreA > match.scoreB && isCompleted && (
                 <div className="flex items-center justify-center gap-1 text-primary">
@@ -97,12 +99,12 @@ export function ScoreCard({ match }: ScoreCardProps) {
               {match.logoUrlB ? (
                 <img src={match.logoUrlB} alt={match.teamB} className="w-full h-full object-cover" />
               ) : (
-                <span className="text-3xl font-display font-bold text-white">{match.teamB.charAt(0)}</span>
+                <span className="text-3xl font-display font-bold text-white">{match.teamBName?.charAt(0) || match.teamB.charAt(0)}</span>
               )}
             </div>
             <div className="space-y-1">
               <h3 className={`font-display font-bold text-sm md:text-lg line-clamp-1 ${match.scoreB > match.scoreA && isCompleted ? 'text-primary' : 'text-white'}`}>
-                {match.teamB}
+                {match.teamBName || match.teamB}
               </h3>
               {match.scoreB > match.scoreA && isCompleted && (
                 <div className="flex items-center justify-center gap-1 text-primary">
