@@ -319,7 +319,7 @@ function BracketMatch({ match }: { match: Match }) {
             </span>
           </div>
           <div className="flex items-center gap-2">
-            {hasRoVData && isRoV ? (
+            {isRoV ? (
               <div className="flex items-center gap-2 text-xs font-bold">
                 {match.winsA === 1 && match.drawsA === 0 && match.lossesA === 0 ? (
                   <span className="text-green-400 px-2 py-1 bg-green-400/10 rounded border border-green-400/30">ชนะ</span>
@@ -336,7 +336,7 @@ function BracketMatch({ match }: { match: Match }) {
                 {match.scoreA}
               </span>
             )}
-            {winnerA && (
+            {winnerB && (
               <div className="text-xs font-bold px-2 py-1 bg-primary/30 text-primary rounded border border-primary/50">👑</div>
             )}
           </div>
@@ -361,7 +361,7 @@ function BracketMatch({ match }: { match: Match }) {
             </span>
           </div>
           <div className="flex items-center gap-2">
-            {hasRoVData && isRoV ? (
+            {isRoV ? (
               <div className="flex items-center gap-2 text-xs font-bold">
                 {match.winsB === 1 && match.drawsB === 0 && match.lossesB === 0 ? (
                   <span className="text-green-400 px-2 py-1 bg-green-400/10 rounded border border-green-400/30">ชนะ</span>
