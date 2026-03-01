@@ -369,15 +369,38 @@ export default function AdminDashboard() {
   };
   
   const handleUpdateRoVScore = async (matchId: string, team: 'A' | 'B', type: 'wins' | 'losses' | 'draws', value: number) => {
+
+  const handleUpdateRoVScore = async (matchId: string, team: 'A' | 'B', type: string, value: any) => {
     try {
-      const field = team === 'A' ? `${type}A` : `${type}B`;
-      await updateDoc(doc(db, "matches", matchId), { [field]: value });
+      const updateData: any = {};
+      
+      if (type === 'result') {
+        // Set result based on button click
+        if (value === 'win') {
+          updateData[`wins${team}`] = 1;
+          updateData[`draws${team}`] = 0;
+          updateData[`losses${team}`] = 0;
+        } else if (value === 'draw') {
+          updateData[`wins${team}`] = 0;
+          updateData[`draws${team}`] = 1;
+          updateData[`losses${team}`] = 0;
+        } else if (value === 'loss') {
+          updateData[`wins${team}`] = 0;
+          updateData[`draws${team}`] = 0;
+          updateData[`losses${team}`] = 1;
+        }
+      } else {
+        // Original number input handling
+        const field = team === 'A' ? `${type}A` : `${type}B`;
+        updateData[field] = value;
+      }
+      
+      await updateDoc(doc(db, "matches", matchId), updateData);
       toast({ title: "อัปเดตคะแนน RoV สำเร็จ" });
     } catch (error) {
       toast({ title: "ผิดพลาดในการอัปเดตคะแนน RoV", variant: "destructive" });
     }
   };
-
   const handleUpdateMatchStatus = async (matchId: string, status: string) => {
     try {
       const statusMap: { [key: string]: string } = {
@@ -710,46 +733,72 @@ export default function AdminDashboard() {
                             </div>
                           </div>
                           {(match.winsA !== undefined || match.winsB !== undefined) && (
-                            <div className="mt-3 grid grid-cols-6 gap-2 text-xs">
-                              <div>
-                                <Label className="text-xs">ชนะ A</Label>
-                                <Input type="number" value={match.winsA || 0} onChange={(e) => handleUpdateRoVScore(match.id, 'A', 'wins', parseInt(e.target.value))} className="h-8" />
-                              </div>
-                              <div>
-                                <Label className="text-xs">เสมอ A</Label>
-                                <Input type="number" value={match.drawsA || 0} onChange={(e) => handleUpdateRoVScore(match.id, 'A', 'draws', parseInt(e.target.value))} className="h-8" />
-                              </div>
-                              <div>
-                                <Label className="text-xs">แพ้ A</Label>
-                                <Input type="number" value={match.lossesA || 0} onChange={(e) => handleUpdateRoVScore(match.id, 'A', 'losses', parseInt(e.target.value))} className="h-8" />
-                              </div>
-                              <div>
-                                <Label className="text-xs">ชนะ B</Label>
-                                <Input type="number" value={match.winsB || 0} onChange={(e) => handleUpdateRoVScore(match.id, 'B', 'wins', parseInt(e.target.value))} className="h-8" />
-                              </div>
-                              <div>
-                                <Label className="text-xs">เสมอ B</Label>
-                                <Input type="number" value={match.drawsB || 0} onChange={(e) => handleUpdateRoVScore(match.id, 'B', 'draws', parseInt(e.target.value))} className="h-8" />
-                              </div>
-                              <div>
-                                <Label className="text-xs">แพ้ B</Label>
-                                <Input type="number" value={match.lossesB || 0} onChange={(e) => handleUpdateRoVScore(match.id, 'B', 'losses', parseInt(e.target.value))} className="h-8" />
+                            <div className="mt-4 space-y-3">
+                              <div className="grid grid-cols-2 gap-4">
+                                {/* Team A Result */}
+                                <div>
+                                  <Label className="text-xs font-semibold mb-2 block">ผลลัพธ์ {teamA?.name || 'ทีม A'}</Label>
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant={match.winsA === 1 && match.drawsA === 0 && match.lossesA === 0 ? "default" : "outline"}
+                                      onClick={() => handleUpdateRoVScore(match.id, 'A', 'result', 'win')}
+                                      className="flex-1"
+                                    >
+                                      ชนะ
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant={match.drawsA === 1 && match.winsA === 0 && match.lossesA === 0 ? "default" : "outline"}
+                                      onClick={() => handleUpdateRoVScore(match.id, 'A', 'result', 'draw')}
+                                      className="flex-1"
+                                    >
+                                      เสมอ
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant={match.lossesA === 1 && match.winsA === 0 && match.drawsA === 0 ? "default" : "outline"}
+                                      onClick={() => handleUpdateRoVScore(match.id, 'A', 'result', 'loss')}
+                                      className="flex-1"
+                                    >
+                                      แพ้
+                                    </Button>
+                                  </div>
+                                </div>
+
+                                {/* Team B Result */}
+                                <div>
+                                  <Label className="text-xs font-semibold mb-2 block">ผลลัพธ์ {teamB?.name || 'ทีม B'}</Label>
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant={match.winsB === 1 && match.drawsB === 0 && match.lossesB === 0 ? "default" : "outline"}
+                                      onClick={() => handleUpdateRoVScore(match.id, 'B', 'result', 'win')}
+                                      className="flex-1"
+                                    >
+                                      ชนะ
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant={match.drawsB === 1 && match.winsB === 0 && match.lossesB === 0 ? "default" : "outline"}
+                                      onClick={() => handleUpdateRoVScore(match.id, 'B', 'result', 'draw')}
+                                      className="flex-1"
+                                    >
+                                      เสมอ
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant={match.lossesB === 1 && match.winsB === 0 && match.drawsB === 0 ? "default" : "outline"}
+                                      onClick={() => handleUpdateRoVScore(match.id, 'B', 'result', 'loss')}
+                                      className="flex-1"
+                                    >
+                                      แพ้
+                                    </Button>
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           )}
-                          <div className="flex justify-between items-center mt-4">
-                            <Badge variant={match.status === "ongoing" ? "default" : match.status === "completed" ? "success" : "secondary"}>
-                              {match.status === "pending" && "ยังไม่เริ่ม"}
-                              {match.status === "ongoing" && "กำลังดำเนินการ"}
-                              {match.status === "completed" && "จบการแข่งขันแล้ว"}
-                            </Badge>
-                            <div className="flex gap-2">
-                              <Button size="sm" variant="outline" onClick={() => handleUpdateMatchStatus(match.id, "pending")} disabled={match.status === "pending"}>
-                                <Calendar className="h-4 w-4" />
-                              </Button>
-                              <Button size="sm" variant="outline" onClick={() => handleUpdateMatchStatus(match.id, "ongoing")} disabled={match.status === "ongoing"}>
-                                <Eye className="h-4 w-4" />
-                              </Button>
                               <Button size="sm" variant="outline" onClick={() => handleUpdateMatchStatus(match.id, "completed")} disabled={match.status === "completed"}>
                                 <Trophy className="h-4 w-4" />
                               </Button>
