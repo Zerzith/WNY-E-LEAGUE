@@ -21,6 +21,13 @@ interface Match {
   teamBName?: string;
   logoUrlA?: string;
   logoUrlB?: string;
+  game?: string;
+  winsA?: number;
+  winsB?: number;
+  lossesA?: number;
+  lossesB?: number;
+  drawsA?: number;
+  drawsB?: number;
 }
 
 interface Tournament {
@@ -234,8 +241,21 @@ function BracketMatch({ match }: { match: Match }) {
   const isCompleted = match.status === "completed";
   const isOngoing = match.status === "ongoing";
   const isPending = match.status === "pending";
-  const winnerA = isCompleted && match.scoreA > match.scoreB;
-  const winnerB = isCompleted && match.scoreB > match.scoreA;
+  
+  // Check if this is a RoV match
+  const isRoV = match.game?.toLowerCase().includes('rov') || match.game?.toLowerCase().includes('realm');
+  const hasRoVData = match.winsA !== undefined && match.winsB !== undefined;
+  
+  // For RoV: determine winner based on wins
+  const rovWinnerA = isCompleted && hasRoVData && (match.winsA || 0) > (match.winsB || 0);
+  const rovWinnerB = isCompleted && hasRoVData && (match.winsB || 0) > (match.winsA || 0);
+  
+  // For regular games: determine winner based on score
+  const regularWinnerA = isCompleted && !hasRoVData && match.scoreA > match.scoreB;
+  const regularWinnerB = isCompleted && !hasRoVData && match.scoreB > match.scoreA;
+  
+  const winnerA = hasRoVData ? rovWinnerA : regularWinnerA;
+  const winnerB = hasRoVData ? rovWinnerB : regularWinnerB;
   
   const getStatusBadge = () => {
     if (isOngoing) {
@@ -299,9 +319,19 @@ function BracketMatch({ match }: { match: Match }) {
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className={`font-mono font-black text-lg ${winnerA ? "text-primary" : "text-white/20"}`}>
-              {match.scoreA}
-            </span>
+            {hasRoVData && isRoV ? (
+              <div className="flex items-center gap-1 text-xs">
+                <span className={`font-mono font-bold ${winnerA ? "text-green-400" : "text-white/20"}`}>{match.winsA || 0}</span>
+                <span className="text-white/30">-</span>
+                <span className={`font-mono font-bold ${winnerA ? "text-yellow-400" : "text-white/20"}`}>{match.drawsA || 0}</span>
+                <span className="text-white/30">-</span>
+                <span className={`font-mono font-bold ${winnerA ? "text-red-400" : "text-white/20"}`}>{match.lossesA || 0}</span>
+              </div>
+            ) : (
+              <span className={`font-mono font-black text-lg ${winnerA ? "text-primary" : "text-white/20"}`}>
+                {match.scoreA}
+              </span>
+            )}
             {winnerA && (
               <div className="text-xs font-bold px-2 py-1 bg-primary/30 text-primary rounded border border-primary/50">👑</div>
             )}
@@ -327,9 +357,19 @@ function BracketMatch({ match }: { match: Match }) {
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className={`font-mono font-black text-lg ${winnerB ? "text-primary" : "text-white/20"}`}>
-              {match.scoreB}
-            </span>
+            {hasRoVData && isRoV ? (
+              <div className="flex items-center gap-1 text-xs">
+                <span className={`font-mono font-bold ${winnerB ? "text-green-400" : "text-white/20"}`}>{match.winsB || 0}</span>
+                <span className="text-white/30">-</span>
+                <span className={`font-mono font-bold ${winnerB ? "text-yellow-400" : "text-white/20"}`}>{match.drawsB || 0}</span>
+                <span className="text-white/30">-</span>
+                <span className={`font-mono font-bold ${winnerB ? "text-red-400" : "text-white/20"}`}>{match.lossesB || 0}</span>
+              </div>
+            ) : (
+              <span className={`font-mono font-black text-lg ${winnerB ? "text-primary" : "text-white/20"}`}>
+                {match.scoreB}
+              </span>
+            )}
             {winnerB && (
               <div className="text-xs font-bold px-2 py-1 bg-primary/30 text-primary rounded border border-primary/50">👑</div>
             )}

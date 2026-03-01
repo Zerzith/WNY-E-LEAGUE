@@ -683,19 +683,27 @@ export default function AdminDashboard() {
                               {teamA?.logoUrl && <AvatarCustom src={teamA.logoUrl} alt={teamA.name} className="w-6 h-6" />}
                               <span>{teamA?.name || "N/A"}</span>
                             </div>
-                            <Input
-                              type="number"
-                              value={match.scoreA}
-                              onChange={(e) => handleUpdateScore(match.id, 'A', parseInt(e.target.value))}
-                              className="w-20 text-center"
-                            />
+                            <div className="flex items-center gap-1">
+                              <Input
+                                type="number"
+                                value={match.scoreA}
+                                onChange={(e) => handleUpdateScore(match.id, 'A', parseInt(e.target.value))}
+                                className="w-16 text-center text-xs"
+                                placeholder="0"
+                              />
+                              <span className="text-xs text-muted-foreground">pts</span>
+                            </div>
                             <span className="mx-2">-</span>
-                            <Input
-                              type="number"
-                              value={match.scoreB}
-                              onChange={(e) => handleUpdateScore(match.id, 'B', parseInt(e.target.value))}
-                              className="w-20 text-center"
-                            />
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs text-muted-foreground">pts</span>
+                              <Input
+                                type="number"
+                                value={match.scoreB}
+                                onChange={(e) => handleUpdateScore(match.id, 'B', parseInt(e.target.value))}
+                                className="w-16 text-center text-xs"
+                                placeholder="0"
+                              />
+                            </div>
                             <div className="flex items-center gap-2">
                               <span>{teamB?.name || "N/A"}</span>
                               {teamB?.logoUrl && <AvatarCustom src={teamB.logoUrl} alt={teamB.name} className="w-6 h-6" />}

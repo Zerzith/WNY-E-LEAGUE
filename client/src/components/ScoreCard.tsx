@@ -16,6 +16,12 @@ interface ScoreCardProps {
     bannerUrl?: string;
     logoUrlA?: string;
     logoUrlB?: string;
+    winsA?: number;
+    winsB?: number;
+    lossesA?: number;
+    lossesB?: number;
+    drawsA?: number;
+    drawsB?: number;
   };
 }
 
@@ -23,6 +29,10 @@ export function ScoreCard({ match }: ScoreCardProps) {
   const isLive = match.status === 'live' || match.status === 'ongoing';
   const isCompleted = match.status === 'finished' || match.status === 'completed';
   const isPending = match.status === 'pending' || match.status === 'upcoming';
+  
+  // Check if this is a RoV match
+  const isRoV = match.game?.toLowerCase().includes('rov') || match.game?.toLowerCase().includes('realm');
+  const hasRoVData = match.winsA !== undefined && match.winsB !== undefined;
   
   const getStatusText = (status: string) => {
     switch(status) {
@@ -56,8 +66,16 @@ export function ScoreCard({ match }: ScoreCardProps) {
     }
   };
   
-  const winnerA = isCompleted && match.scoreA > match.scoreB;
-  const winnerB = isCompleted && match.scoreB > match.scoreA;
+  // For RoV: determine winner based on wins
+  const rovWinnerA = isCompleted && hasRoVData && (match.winsA || 0) > (match.winsB || 0);
+  const rovWinnerB = isCompleted && hasRoVData && (match.winsB || 0) > (match.winsA || 0);
+  
+  // For regular games: determine winner based on score
+  const regularWinnerA = isCompleted && !hasRoVData && match.scoreA > match.scoreB;
+  const regularWinnerB = isCompleted && !hasRoVData && match.scoreB > match.scoreA;
+  
+  const winnerA = hasRoVData ? rovWinnerA : regularWinnerA;
+  const winnerB = hasRoVData ? rovWinnerB : regularWinnerB;
 
   return (
     <motion.div 
@@ -102,11 +120,43 @@ export function ScoreCard({ match }: ScoreCardProps) {
 
           {/* Score Center */}
           <div className="flex flex-col items-center gap-2">
-            <div className="flex items-center gap-3 md:gap-5 font-display font-bold text-3xl md:text-5xl bg-black/60 px-6 py-3 rounded-2xl border border-white/5 shadow-2xl">
-              <span className={match.scoreA >= match.scoreB ? 'text-white' : 'text-white/40'}>{match.scoreA}</span>
-              <span className="text-primary/40 text-2xl md:text-4xl">:</span>
-              <span className={match.scoreB >= match.scoreA ? 'text-white' : 'text-white/40'}>{match.scoreB}</span>
-            </div>
+            {/* RoV Score Display */}
+            {hasRoVData && isRoV ? (
+              <div className="flex flex-col items-center gap-2">
+                {/* W-D-L Format */}
+                <div className="flex items-center gap-2 md:gap-4 font-display font-bold text-lg md:text-2xl bg-black/60 px-4 py-2 rounded-xl border border-white/5 shadow-2xl">
+                  <div className="flex flex-col items-center">
+                    <span className="text-green-400 text-xl md:text-2xl">{match.winsA || 0}</span>
+                    <span className="text-[8px] text-green-400/60 font-normal">ชนะ</span>
+                  </div>
+                  <span className="text-primary/40 text-lg md:text-xl">-</span>
+                  <div className="flex flex-col items-center">
+                    <span className="text-yellow-400 text-xl md:text-2xl">{match.drawsA || 0}</span>
+                    <span className="text-[8px] text-yellow-400/60 font-normal">เสมอ</span>
+                  </div>
+                  <span className="text-primary/40 text-lg md:text-xl">-</span>
+                  <div className="flex flex-col items-center">
+                    <span className="text-red-400 text-xl md:text-2xl">{match.lossesA || 0}</span>
+                    <span className="text-[8px] text-red-400/60 font-normal">แพ้</span>
+                  </div>
+                </div>
+                
+                {/* Score Points */}
+                <div className="flex items-center gap-3 md:gap-5 font-display font-bold text-2xl md:text-3xl bg-black/40 px-4 py-2 rounded-lg border border-white/5">
+                  <span className={match.scoreA >= match.scoreB ? 'text-white' : 'text-white/40'}>{match.scoreA}</span>
+                  <span className="text-primary/40 text-lg md:text-2xl">:</span>
+                  <span className={match.scoreB >= match.scoreA ? 'text-white' : 'text-white/40'}>{match.scoreB}</span>
+                </div>
+              </div>
+            ) : (
+              /* Regular Score Display */
+              <div className="flex items-center gap-3 md:gap-5 font-display font-bold text-3xl md:text-5xl bg-black/60 px-6 py-3 rounded-2xl border border-white/5 shadow-2xl">
+                <span className={match.scoreA >= match.scoreB ? 'text-white' : 'text-white/40'}>{match.scoreA}</span>
+                <span className="text-primary/40 text-2xl md:text-4xl">:</span>
+                <span className={match.scoreB >= match.scoreA ? 'text-white' : 'text-white/40'}>{match.scoreB}</span>
+              </div>
+            )}
+            
             {match.game && (
               <span className="text-[10px] text-white/40 font-bold uppercase tracking-[0.2em]">
                 {match.game}
