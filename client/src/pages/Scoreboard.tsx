@@ -234,79 +234,73 @@ export default function Scoreboard() {
         </div>
       )}
 
-      {matches.length === 0 ? (
-        <div className="text-center py-12 bg-card/20 rounded-3xl border border-dashed border-white/10">
-          <p className="text-muted-foreground">ยังไม่มีการแข่งขัน</p>
-        </div>
-      ) : (
-        <Tabs defaultValue="standings" className="w-full">
-          <TabsList className="grid w-full max-w-md grid-cols-2 mb-8">
-            <TabsTrigger value="standings">ตารางอันดับ</TabsTrigger>
-            <TabsTrigger value="matches">ผลการแข่งขัน</TabsTrigger>
-          </TabsList>
+      <Tabs defaultValue="standings" className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2 mb-8">
+          <TabsTrigger value="standings">ตารางอันดับ</TabsTrigger>
+          <TabsTrigger value="matches">ผลการแข่งขัน</TabsTrigger>
+        </TabsList>
 
-          <TabsContent value="standings" className="space-y-6">
-            {standings.length > 0 ? (
-              <Card className="bg-card/50 border-white/10 overflow-hidden">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="w-5 h-5 text-primary" />
-                    ตารางอันดับทีม
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-white/10">
-                          <th className="text-left py-3 px-4 font-semibold text-white/80">อันดับ</th>
-                          <th className="text-left py-3 px-4 font-semibold text-white/80">ทีม</th>
-                          <th className="text-center py-3 px-4 font-semibold text-white/80">แข่ง</th>
-                          <th className="text-center py-3 px-4 font-semibold text-white/80">ชนะ</th>
-                          <th className="text-center py-3 px-4 font-semibold text-white/80">เสมอ</th>
-                          <th className="text-center py-3 px-4 font-semibold text-white/80">แพ้</th>
-                          <th className="text-center py-3 px-4 font-semibold text-white/80">คะแนน</th>
+        <TabsContent value="standings" className="space-y-6">
+          {standings.length > 0 ? (
+            <Card className="bg-card/50 border-white/10 overflow-hidden">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="w-5 h-5 text-primary" />
+                  ตารางอันดับทีม
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-white/10">
+                        <th className="text-left py-3 px-4 font-semibold text-white/80">อันดับ</th>
+                        <th className="text-left py-3 px-4 font-semibold text-white/80">ทีม</th>
+                        <th className="text-center py-3 px-4 font-semibold text-white/80">แข่ง</th>
+                        <th className="text-center py-3 px-4 font-semibold text-white/80">ชนะ</th>
+                        <th className="text-center py-3 px-4 font-semibold text-white/80">เสมอ</th>
+                        <th className="text-center py-3 px-4 font-semibold text-white/80">แพ้</th>
+                        <th className="text-center py-3 px-4 font-semibold text-white/80">คะแนน</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {standings.map((standing, index) => (
+                        <tr key={standing.teamId} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                          <td className="py-3 px-4 text-white font-bold">{index + 1}</td>
+                          <td className="py-3 px-4 text-white font-semibold">{standing.teamName}</td>
+                          <td className="text-center py-3 px-4 text-white/80">{standing.matches}</td>
+                          <td className="text-center py-3 px-4 text-green-400 font-semibold">{standing.wins}</td>
+                          <td className="text-center py-3 px-4 text-yellow-400 font-semibold">{standing.draws}</td>
+                          <td className="text-center py-3 px-4 text-red-400 font-semibold">{standing.losses}</td>
+                          <td className="text-center py-3 px-4 text-primary font-bold text-lg">{standing.points}</td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {standings.map((standing, index) => (
-                          <tr key={standing.teamId} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                            <td className="py-3 px-4 text-white font-bold">{index + 1}</td>
-                            <td className="py-3 px-4 text-white font-semibold">{standing.teamName}</td>
-                            <td className="text-center py-3 px-4 text-white/80">{standing.matches}</td>
-                            <td className="text-center py-3 px-4 text-green-400 font-semibold">{standing.wins}</td>
-                            <td className="text-center py-3 px-4 text-yellow-400 font-semibold">{standing.draws}</td>
-                            <td className="text-center py-3 px-4 text-red-400 font-semibold">{standing.losses}</td>
-                            <td className="text-center py-3 px-4 text-primary font-bold text-lg">{standing.points}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="text-center py-12 bg-card/20 rounded-3xl border border-dashed border-white/10">
-                <p className="text-muted-foreground">ยังไม่มีผลการแข่งขัน</p>
-              </div>
-            )}
-          </TabsContent>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="text-center py-12 bg-card/20 rounded-3xl border border-dashed border-white/10">
+              <p className="text-muted-foreground">ยังไม่มีผลการแข่งขัน</p>
+            </div>
+          )}
+        </TabsContent>
 
-          <TabsContent value="matches" className="space-y-6">
-            {matches.length > 0 ? (
-              <div className="space-y-6 max-w-4xl">
-                {matches.map((match) => (
-                  <ScoreCard key={match.id} match={match} />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12 bg-card/20 rounded-3xl border border-dashed border-white/10">
-                <p className="text-muted-foreground">ยังไม่มีการแข่งขัน</p>
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
-      )}
+        <TabsContent value="matches" className="space-y-6">
+          {matches.length > 0 ? (
+            <div className="space-y-6 max-w-4xl">
+              {matches.map((match) => (
+                <ScoreCard key={match.id} match={match} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 bg-card/20 rounded-3xl border border-dashed border-white/10">
+              <p className="text-muted-foreground">ยังไม่มีการแข่งขัน</p>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
