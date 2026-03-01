@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { AvatarCustom } from "@/components/ui/avatar-custom";
-import { Loader2, Upload, Plus, Trash2, ShieldCheck, Users, Gamepad2, Camera, AlertCircle } from "lucide-react";
+import { Loader2, Upload, Plus, Trash2, ShieldCheck, Users, Gamepad2, Camera } from "lucide-react";
+
 
 const CLOUD_NAME = "djubsqri6";
 const UPLOAD_PRESET = "wangnamyenesport";
@@ -24,9 +25,6 @@ interface Member {
   gameName: string;
   grade: string;
   department: string;
-  studentId: string;
-  phone: string;
-  email: string;
 }
 
 interface Tournament {
@@ -54,7 +52,7 @@ export default function RegisterTeam() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isLoadingTournaments, setIsLoadingTournaments] = useState(true);
   const [members, setMembers] = useState<Member[]>([
-    { name: "", gameName: "", grade: "", department: "", studentId: "", phone: "", email: "" }
+    { name: "", gameName: "", grade: "", department: "" }
   ]);
 
   const gameRules = {
@@ -70,6 +68,7 @@ export default function RegisterTeam() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const tournamentsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tournament));
       
+      // Check team count for each tournament and auto-close if full
       tournamentsData.forEach(async (tournament) => {
         const registrationsQuery = query(
           collection(db, "registrations"),
@@ -83,6 +82,7 @@ export default function RegisterTeam() {
         
         const teamCount = registrationsSnapshot.docs.length;
         if (tournament.maxTeams && teamCount >= tournament.maxTeams && tournament.status === "ongoing") {
+          // Auto-close registration when full
           await updateDoc(doc(db, "events", tournament.id), {
             status: "closed"
           });
@@ -95,6 +95,8 @@ export default function RegisterTeam() {
     return () => unsubscribe();
   }, []);
 
+
+
   if (!user) {
     setLocation("/login");
     return null;
@@ -102,7 +104,7 @@ export default function RegisterTeam() {
 
   const handleAddMember = () => {
     if (members.length < currentGameRules.max) {
-      setMembers([...members, { name: "", gameName: "", grade: "", department: "", studentId: "", phone: "", email: "" }]);
+      setMembers([...members, { name: "", gameName: "", grade: "", department: "" }]);
     }
   };
 
@@ -140,46 +142,26 @@ export default function RegisterTeam() {
     reader.readAsDataURL(file);
   };
 
-  const validateMembers = () => {
-    for (const member of members) {
-      if (!member.name || !member.gameName || !member.studentId || !member.phone || !member.email) {
-        return false;
-      }
-      // Basic email validation
-      if (!member.email.includes("@")) {
-        return false;
-      }
-      // Basic phone validation (Thai format)
-      if (!/^[0-9]{10}$/.test(member.phone.replace(/[^0-9]/g, ""))) {
-        return false;
-      }
-    }
-    return true;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!teamName || !game || !selectedTournament) {
-      toast({ title: "กรุณากรอกข้อมูลการแข่งขันให้ครบถ้วน", variant: "destructive" });
+      toast({ title: "กรุณากรอกข้อมูลให้ครบถ้วน", variant: "destructive" });
       return;
     }
 
-    const validMembers = members.filter(m => m.name && m.gameName && m.studentId && m.phone && m.email);
+    const validMembers = members.filter(m => m.name && m.gameName);
     if (validMembers.length < currentGameRules.min) {
-      toast({ title: `กรุณาเพิ่มสมาชิกอย่างน้อย ${currentGameRules.min} คน พร้อมข้อมูลที่ครบถ้วน`, variant: "destructive" });
+      toast({ title: `กรุณาเพิ่มสมาชิกอย่างน้อย ${currentGameRules.min} คน`, variant: "destructive" });
       return;
     }
 
-    if (!validateMembers()) {
-      toast({ title: "กรุณากรอกข้อมูลสมาชิกให้ครบถ้วนและถูกต้อง", variant: "destructive" });
-      return;
-    }
-
-    let logoUrl = logoPreview;
+    let logoUrl = logoPreview; // Use logoPreview as the source of truth for the URL
     try {
       setIsUploading(true);
       
+      // If logoFile exists, it means a new file was selected and needs to be uploaded
       if (logoFile) {
+        // Validation is now handled in handleLogoChange
         try {
           const formData = new FormData();
           formData.append("file", logoFile);
@@ -199,9 +181,13 @@ export default function RegisterTeam() {
           }
         } catch (uploadError: any) {
           console.error("Logo upload error:", uploadError);
-          toast({ title: "ไม่สามารถอัปโหลดโลโก้ได้ แต่จะลงทะเบียนโดยไม่มีโลโก้", variant: "default" });
+          let errorMessage = "ไม่สามารถอัปโหลดโลโก้ได้";
+          if (uploadError instanceof Error) {
+            errorMessage += `: ${uploadError.message}`;
+          }
+          toast({ title: errorMessage + " แต่จะลงทะเบียนโดยไม่มีโลโก้", variant: "default" });
           setIsUploading(false);
-          return;
+          return; // Stop submission if upload fails
         }
       }
 
@@ -228,7 +214,7 @@ export default function RegisterTeam() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-12 max-w-5xl">
+    <div className="container mx-auto px-4 py-12 max-w-4xl">
       <div className="flex items-center gap-3 mb-8">
         <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
           <ShieldCheck className="text-white w-7 h-7" />
@@ -239,15 +225,15 @@ export default function RegisterTeam() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        <div className="lg:col-span-3 space-y-8">
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-8">
           <Card className="bg-card/50 border-white/10 backdrop-blur-sm">
             <CardHeader>
               <CardTitle className="flex items-center gap-2"><Gamepad2 className="w-5 h-5 text-primary" /> ข้อมูลการแข่งขัน</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
-                <Label>เลือกรายการแข่งขัน <span className="text-red-500">*</span></Label>
+                <Label>เลือกรายการแข่งขัน</Label>
                 <Select value={selectedTournament} onValueChange={setSelectedTournament}>
                   <SelectTrigger className="bg-background/50 border-white/10">
                     <SelectValue placeholder="เลือกรายการแข่งขัน" />
@@ -262,11 +248,11 @@ export default function RegisterTeam() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>ชื่อทีม <span className="text-red-500">*</span></Label>
+                  <Label>ชื่อทีม</Label>
                   <Input value={teamName} onChange={e => setTeamName(e.target.value)} placeholder="ชื่อทีมของคุณ" className="bg-background/50 border-white/10" />
                 </div>
                 <div className="space-y-2">
-                  <Label>เกมที่ลงแข่ง <span className="text-red-500">*</span></Label>
+                  <Label>เกมที่ลงแข่ง</Label>
                   <Select value={game} onValueChange={setGame}>
                     <SelectTrigger className="bg-background/50 border-white/10">
                       <SelectValue placeholder="เลือกเกม" />
@@ -290,101 +276,39 @@ export default function RegisterTeam() {
               </Button>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 flex gap-2 text-sm text-blue-300">
-                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                <p>กรุณากรอกข้อมูลสมาชิกให้ครบถ้วน ต้องมีสมาชิกอย่างน้อย {currentGameRules.min} คน</p>
-              </div>
-              
               {members.map((member, index) => (
                 <div key={index} className="p-4 rounded-lg bg-white/5 border border-white/5 space-y-4 relative group">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-semibold text-white">สมาชิกคนที่ {index + 1}</h4>
-                    {members.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="icon"
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => handleRemoveMember(index)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-xs">ชื่อ-นามสกุล <span className="text-red-500">*</span></Label>
-                      <Input 
-                        value={member.name} 
-                        onChange={e => handleMemberChange(index, 'name', e.target.value)} 
-                        placeholder="ชื่อจริง-นามสกุล" 
-                        className="bg-background/50 border-white/10 h-9" 
-                      />
+                      <Label className="text-xs">ชื่อ-นามสกุล</Label>
+                      <Input value={member.name} onChange={e => handleMemberChange(index, 'name', e.target.value)} placeholder="ชื่อจริง" className="bg-background/50 border-white/10 h-9" />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs">ชื่อในเกม (IGN) <span className="text-red-500">*</span></Label>
-                      <Input 
-                        value={member.gameName} 
-                        onChange={e => handleMemberChange(index, 'gameName', e.target.value)} 
-                        placeholder="In-game Name" 
-                        className="bg-background/50 border-white/10 h-9" 
-                      />
+                      <Label className="text-xs">ชื่อในเกม (IGN)</Label>
+                      <Input value={member.gameName} onChange={e => handleMemberChange(index, 'gameName', e.target.value)} placeholder="In-game Name" className="bg-background/50 border-white/10 h-9" />
                     </div>
                   </div>
-
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-xs">รหัสประจำตัวนักเรียน <span className="text-red-500">*</span></Label>
-                      <Input 
-                        value={member.studentId} 
-                        onChange={e => handleMemberChange(index, 'studentId', e.target.value)} 
-                        placeholder="เช่น 64001" 
-                        className="bg-background/50 border-white/10 h-9" 
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">เบอร์โทรศัพท์ <span className="text-red-500">*</span></Label>
-                      <Input 
-                        value={member.phone} 
-                        onChange={e => handleMemberChange(index, 'phone', e.target.value)} 
-                        placeholder="0xxxxxxxxx" 
-                        className="bg-background/50 border-white/10 h-9" 
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-xs">อีเมล <span className="text-red-500">*</span></Label>
-                      <Input 
-                        value={member.email} 
-                        onChange={e => handleMemberChange(index, 'email', e.target.value)} 
-                        placeholder="email@example.com" 
-                        className="bg-background/50 border-white/10 h-9" 
-                        type="email"
-                      />
-                    </div>
                     <div className="space-y-2">
                       <Label className="text-xs">แผนกวิชา</Label>
-                      <Input 
-                        value={member.department} 
-                        onChange={e => handleMemberChange(index, 'department', e.target.value)} 
-                        placeholder="เช่น คอมพิวเตอร์ธุรกิจ" 
-                        className="bg-background/50 border-white/10 h-9" 
-                      />
+                      <Input value={member.department} onChange={e => handleMemberChange(index, 'department', e.target.value)} placeholder="เช่น คอมพิวเตอร์ธุรกิจ" className="bg-background/50 border-white/10 h-9" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs">ชั้นปี</Label>
+                      <Input value={member.grade} onChange={e => handleMemberChange(index, 'grade', e.target.value)} placeholder="เช่น ปวช.1" className="bg-background/50 border-white/10 h-9" />
                     </div>
                   </div>
-
-                  <div className="space-y-2">
-                    <Label className="text-xs">ชั้นปี</Label>
-                    <Input 
-                      value={member.grade} 
-                      onChange={e => handleMemberChange(index, 'grade', e.target.value)} 
-                      placeholder="เช่น ปวช.1" 
-                      className="bg-background/50 border-white/10 h-9" 
-                    />
-                  </div>
+                  {members.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => handleRemoveMember(index)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  )}
                 </div>
               ))}
             </CardContent>
@@ -394,7 +318,7 @@ export default function RegisterTeam() {
         <div className="lg:col-span-1 space-y-8">
           <Card className="bg-card/50 border-white/10 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Upload className="w-5 h-5 text-primary" /> โลโก้ทีม</CardTitle>
+              <CardTitle className="flex items-center gap-2"><Upload className="w-5 h-5 text-primary" /> อัปโหลดโลโก้ทีม</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-6">
               <div className="relative group">
@@ -405,7 +329,7 @@ export default function RegisterTeam() {
                   className="ring-4 ring-primary/20"
                 />
                 <button
-                  type="button"
+                  type="button" // Ensure this button does not submit the form
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploading}
                   className="absolute bottom-0 right-0 bg-primary p-3 rounded-full hover:bg-primary/80 transition-all shadow-lg disabled:opacity-50"
@@ -426,12 +350,12 @@ export default function RegisterTeam() {
                 />
               </div>
               <p className="text-sm text-muted-foreground text-center">
-                ขนาดไฟล์ไม่เกิน {MAX_FILE_SIZE_MB}MB
+                ขนาดไฟล์ไม่เกิน {MAX_FILE_SIZE_MB}MB. รองรับ JPG, PNG, GIF, WEBP
               </p>
             </CardContent>
           </Card>
 
-          <Button type="submit" className="w-full h-12 text-base" disabled={isUploading || isLoadingTournaments}>
+          <Button type="submit" className="w-full" disabled={isUploading || isLoadingTournaments}>
             {isUploading ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
