@@ -143,11 +143,15 @@ export default function EditRegistration() {
       return;
     }
 
-    // Validate members - email is optional
-    const validMembers = members.filter(m => m.name && m.gameName && m.studentId && m.phone && m.department && m.grade);
+    // Validate members - email and phone are optional
+    const validMembers = members.filter(m => m.name && m.gameName && m.studentId && m.department && m.grade);
 
-    // Validate email format if provided
+    // Validate phone and email format if provided
     for (const member of validMembers) {
+      if (member.phone && !/^[0-9]{10}$/.test(member.phone.replace(/[^0-9]/g, ""))) {
+        toast({ title: "เบอร์โทรศัพท์ไม่ถูกต้อง", variant: "destructive" });
+        return;
+      }
       if (member.email && !member.email.includes("@")) {
         toast({ title: "รูปแบบอีเมลไม่ถูกต้อง", variant: "destructive" });
         return;
@@ -333,7 +337,7 @@ export default function EditRegistration() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs">เบอร์โทรศัพท์ <span className="text-red-500">*</span></Label>
+                    <Label className="text-xs">เบอร์โทรศัพท์</Label>
                     <Input
                       value={member.phone}
                       onChange={(e) => handleMemberChange(index, 'phone', e.target.value)}

@@ -142,13 +142,16 @@ export default function RegisterTeam() {
 
   const validateMembers = () => {
     for (const member of members) {
-      if (!member.name || !member.gameName || !member.studentId || !member.phone || !member.department || !member.grade) {
+      // Required fields: name, gameName, studentId, department, grade
+      if (!member.name || !member.gameName || !member.studentId || !member.department || !member.grade) {
         return false;
       }
+      // Phone validation - only if provided
+      if (member.phone && !/^[0-9]{10}$/.test(member.phone.replace(/[^0-9]/g, ""))) {
+        return false;
+      }
+      // Email validation - only if provided
       if (member.email && !member.email.includes("@")) {
-        return false;
-      }
-      if (!/^[0-9]{10}$/.test(member.phone.replace(/[^0-9]/g, ""))) {
         return false;
       }
     }
@@ -162,7 +165,7 @@ export default function RegisterTeam() {
       return;
     }
 
-    const validMembers = members.filter(m => m.name && m.gameName && m.studentId && m.phone && m.department && m.grade);
+    const validMembers = members.filter(m => m.name && m.gameName && m.studentId && m.department && m.grade);
     if (validMembers.length < currentGameRules.min) {
       toast({ title: `กรุณาเพิ่มสมาชิกอย่างน้อย ${currentGameRules.min} คน พร้อมข้อมูลที่ครบถ้วน`, variant: "destructive" });
       return;
@@ -342,7 +345,7 @@ export default function RegisterTeam() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs">เบอร์โทรศัพท์ <span className="text-red-500">*</span></Label>
+                      <Label className="text-xs">เบอร์โทรศัพท์</Label>
                       <Input 
                         value={member.phone} 
                         onChange={e => handleMemberChange(index, 'phone', e.target.value)} 
