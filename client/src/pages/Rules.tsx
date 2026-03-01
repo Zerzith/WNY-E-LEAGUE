@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, FileText, AlertCircle, CheckCircle2, Trophy } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
-import { AvatarCustom } from "@/components/AvatarCustom";
+import { AvatarCustom } from "@/components/ui/avatar-custom";
 
 interface Rule {
   id: string;
