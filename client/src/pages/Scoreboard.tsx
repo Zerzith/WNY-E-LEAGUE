@@ -22,6 +22,12 @@ interface Match {
   logoUrlB?: string;
   teamAName?: string;
   teamBName?: string;
+  winsA?: number;
+  winsB?: number;
+  lossesA?: number;
+  lossesB?: number;
+  drawsA?: number;
+  drawsB?: number;
 }
 
 interface TeamStanding {
@@ -43,6 +49,7 @@ export default function Scoreboard() {
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<string>("");
   const [events, setEvents] = useState<any[]>([]);
+  const [selectedEventData, setSelectedEventData] = useState<any>(null);
 
   // Fetch events
   useEffect(() => {
@@ -52,10 +59,17 @@ export default function Scoreboard() {
       setEvents(eventsData);
       if (eventsData.length > 0 && !selectedEvent) {
         setSelectedEvent(eventsData[0].id);
+        setSelectedEventData(eventsData[0]);
       }
     });
     return () => unsubscribe();
   }, []);
+  
+  // Update selected event data when selectedEvent changes
+  useEffect(() => {
+    const eventData = events.find(e => e.id === selectedEvent);
+    setSelectedEventData(eventData);
+  }, [selectedEvent, events]);
 
   // Fetch matches and calculate standings
   useEffect(() => {
@@ -113,13 +127,17 @@ export default function Scoreboard() {
       
       // Calculate standings from matches
       const standingsMap = new Map<string, TeamStanding>();
+      const isRoVGame = matchesWithLogos.some(m => m.game?.toLowerCase().includes('rov') || m.game?.toLowerCase().includes('realm'));
       
       matchesWithLogos.forEach(match => {
         // Include all matches regardless of status for standings
         const teamA = match.teamAName || match.teamA;
         const teamB = match.teamBName || match.teamB;
         
-        if (match.scoreA !== undefined && match.scoreB !== undefined) {
+        // For RoV, use wins/losses/draws format if available
+        const hasRoVData = match.winsA !== undefined && match.winsB !== undefined;
+        
+        if ((hasRoVData && isRoVGame) || (match.scoreA !== undefined && match.scoreB !== undefined)) {
           
           if (!standingsMap.has(teamA)) {
             standingsMap.set(teamA, {
@@ -153,31 +171,49 @@ export default function Scoreboard() {
           const standingA = standingsMap.get(teamA)!;
           const standingB = standingsMap.get(teamB)!;
           
-          standingA.goalsFor += match.scoreA;
-          standingA.goalsAgainst += match.scoreB;
-          standingA.matches += 1;
-          
-          standingB.goalsFor += match.scoreB;
-          standingB.goalsAgainst += match.scoreA;
-          standingB.matches += 1;
-          
-          if (match.scoreA > match.scoreB) {
-            standingA.wins += 1;
-            standingA.points += 3;
-            standingB.losses += 1;
-          } else if (match.scoreB > match.scoreA) {
-            standingB.wins += 1;
-            standingB.points += 3;
-            standingA.losses += 1;
+          // For RoV: use wins/losses/draws format
+          if (hasRoVData && isRoVGame) {
+            standingA.wins += match.winsA || 0;
+            standingA.losses += match.lossesA || 0;
+            standingA.draws += match.drawsA || 0;
+            standingA.matches += 1;
+            
+            standingB.wins += match.winsB || 0;
+            standingB.losses += match.lossesB || 0;
+            standingB.draws += match.drawsB || 0;
+            standingB.matches += 1;
+            
+            // Calculate points for RoV
+            standingA.points = (standingA.wins * 3) + standingA.draws;
+            standingB.points = (standingB.wins * 3) + standingB.draws;
           } else {
-            standingA.draws += 1;
-            standingA.points += 1;
-            standingB.draws += 1;
-            standingB.points += 1;
+            // Standard scoring for other games
+            standingA.goalsFor += match.scoreA;
+            standingA.goalsAgainst += match.scoreB;
+            standingA.matches += 1;
+            
+            standingB.goalsFor += match.scoreB;
+            standingB.goalsAgainst += match.scoreA;
+            standingB.matches += 1;
+            
+            if (match.scoreA > match.scoreB) {
+              standingA.wins += 1;
+              standingA.points += 3;
+              standingB.losses += 1;
+            } else if (match.scoreB > match.scoreA) {
+              standingB.wins += 1;
+              standingB.points += 3;
+              standingA.losses += 1;
+            } else {
+              standingA.draws += 1;
+              standingA.points += 1;
+              standingB.draws += 1;
+              standingB.points += 1;
+            }
+            
+            standingA.goalDifference = standingA.goalsFor - standingA.goalsAgainst;
+            standingB.goalDifference = standingB.goalsFor - standingB.goalsAgainst;
           }
-          
-          standingA.goalDifference = standingA.goalsFor - standingA.goalsAgainst;
-          standingB.goalDifference = standingB.goalsFor - standingB.goalsAgainst;
         }
       });
       

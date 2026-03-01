@@ -20,17 +20,44 @@ interface ScoreCardProps {
 }
 
 export function ScoreCard({ match }: ScoreCardProps) {
-  const isLive = match.status === 'live';
-  const isCompleted = match.status === 'finished';
+  const isLive = match.status === 'live' || match.status === 'ongoing';
+  const isCompleted = match.status === 'finished' || match.status === 'completed';
+  const isPending = match.status === 'pending' || match.status === 'upcoming';
   
   const getStatusText = (status: string) => {
     switch(status) {
-      case 'live': return 'กำลังดำเนินการ';
-      case 'finished': return 'จบการแข่งขันแล้ว';
-      case 'upcoming': return 'ยังไม่เริ่ม';
-      default: return status;
+      case 'live': 
+      case 'ongoing': 
+        return 'กำลังดำเนินการ';
+      case 'finished': 
+      case 'completed': 
+        return 'จบการแข่งขันแล้ว';
+      case 'pending':
+      case 'upcoming': 
+        return 'ยังไม่เริ่ม';
+      default: 
+        return status;
     }
   };
+  
+  const getStatusColor = (status: string) => {
+    switch(status) {
+      case 'live': 
+      case 'ongoing': 
+        return 'bg-red-600 text-white animate-pulse';
+      case 'finished': 
+      case 'completed': 
+        return 'bg-green-600/20 text-green-400 border-x border-b border-green-500/30';
+      case 'pending':
+      case 'upcoming': 
+        return 'bg-gray-600/20 text-gray-400 border-x border-b border-gray-500/30';
+      default: 
+        return 'bg-white/10 text-white/50 border-x border-b border-white/10';
+    }
+  };
+  
+  const winnerA = isCompleted && match.scoreA > match.scoreB;
+  const winnerB = isCompleted && match.scoreB > match.scoreA;
 
   return (
     <motion.div 
@@ -43,11 +70,7 @@ export function ScoreCard({ match }: ScoreCardProps) {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10">
         <span className={`
           px-4 py-1 rounded-b-xl text-[10px] font-bold uppercase tracking-widest
-          ${isLive 
-            ? 'bg-red-600 text-white animate-pulse' 
-            : isCompleted 
-              ? 'bg-green-600/20 text-green-500 border-x border-b border-green-500/30'
-              : 'bg-white/10 text-white/50 border-x border-b border-white/10'}
+          ${getStatusColor(match.status)}
         `}>
           {getStatusText(match.status)}
         </span>
@@ -57,7 +80,7 @@ export function ScoreCard({ match }: ScoreCardProps) {
         <div className="flex items-center justify-between gap-4 md:gap-8">
           {/* Team A */}
           <div className="flex-1 text-center flex flex-col items-center gap-3">
-            <div className={`w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center border border-white/10 group-hover:border-primary/30 transition-all shadow-xl overflow-hidden ${match.scoreA > match.scoreB && isCompleted ? 'ring-2 ring-primary ring-offset-4 ring-offset-background' : ''}`}>
+            <div className={`w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center border border-white/10 group-hover:border-primary/30 transition-all shadow-xl overflow-hidden ${winnerA ? 'ring-2 ring-primary ring-offset-4 ring-offset-background' : ''}`}>
               {match.logoUrlA ? (
                 <img src={match.logoUrlA} alt={match.teamA} className="w-full h-full object-cover" />
               ) : (
@@ -65,13 +88,13 @@ export function ScoreCard({ match }: ScoreCardProps) {
               )}
             </div>
             <div className="space-y-1">
-              <h3 className={`font-display font-bold text-sm md:text-lg line-clamp-1 ${match.scoreA > match.scoreB && isCompleted ? 'text-primary' : 'text-white'}`}>
+              <h3 className={`font-display font-bold text-sm md:text-lg line-clamp-1 ${winnerA ? 'text-primary' : 'text-white'}`}>
                 {match.teamAName || match.teamA}
               </h3>
-              {match.scoreA > match.scoreB && isCompleted && (
+              {winnerA && (
                 <div className="flex items-center justify-center gap-1 text-primary">
                   <Trophy className="w-3 h-3" />
-                  <span className="text-[10px] font-bold uppercase">Winner</span>
+                  <span className="text-[10px] font-bold uppercase">ผู้ชนะ</span>
                 </div>
               )}
             </div>
@@ -93,7 +116,7 @@ export function ScoreCard({ match }: ScoreCardProps) {
 
           {/* Team B */}
           <div className="flex-1 text-center flex flex-col items-center gap-3">
-            <div className={`w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center border border-white/10 group-hover:border-primary/30 transition-all shadow-xl overflow-hidden ${match.scoreB > match.scoreA && isCompleted ? 'ring-2 ring-primary ring-offset-4 ring-offset-background' : ''}`}>
+            <div className={`w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center border border-white/10 group-hover:border-primary/30 transition-all shadow-xl overflow-hidden ${winnerB ? 'ring-2 ring-primary ring-offset-4 ring-offset-background' : ''}`}>
               {match.logoUrlB ? (
                 <img src={match.logoUrlB} alt={match.teamB} className="w-full h-full object-cover" />
               ) : (
@@ -101,13 +124,13 @@ export function ScoreCard({ match }: ScoreCardProps) {
               )}
             </div>
             <div className="space-y-1">
-              <h3 className={`font-display font-bold text-sm md:text-lg line-clamp-1 ${match.scoreB > match.scoreA && isCompleted ? 'text-primary' : 'text-white'}`}>
+              <h3 className={`font-display font-bold text-sm md:text-lg line-clamp-1 ${winnerB ? 'text-primary' : 'text-white'}`}>
                 {match.teamBName || match.teamB}
               </h3>
-              {match.scoreB > match.scoreA && isCompleted && (
+              {winnerB && (
                 <div className="flex items-center justify-center gap-1 text-primary">
                   <Trophy className="w-3 h-3" />
-                  <span className="text-[10px] font-bold uppercase">Winner</span>
+                  <span className="text-[10px] font-bold uppercase">ผู้ชนะ</span>
                 </div>
               )}
             </div>

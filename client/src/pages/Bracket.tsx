@@ -233,8 +233,36 @@ export default function Bracket() {
 function BracketMatch({ match }: { match: Match }) {
   const isCompleted = match.status === "completed";
   const isOngoing = match.status === "ongoing";
+  const isPending = match.status === "pending";
   const winnerA = isCompleted && match.scoreA > match.scoreB;
   const winnerB = isCompleted && match.scoreB > match.scoreA;
+  
+  const getStatusBadge = () => {
+    if (isOngoing) {
+      return {
+        text: "กำลังดำเนินการ",
+        bgColor: "bg-red-600",
+        textColor: "text-white",
+        animate: "animate-pulse"
+      };
+    }
+    if (isCompleted) {
+      return {
+        text: "จบการแข่งขันแล้ว",
+        bgColor: "bg-green-600/20",
+        textColor: "text-green-400",
+        animate: ""
+      };
+    }
+    return {
+      text: "ยังไม่เริ่ม",
+      bgColor: "bg-gray-600/20",
+      textColor: "text-gray-400",
+      animate: ""
+    };
+  };
+  
+  const statusBadge = getStatusBadge();
 
   return (
     <motion.div
@@ -247,18 +275,16 @@ function BracketMatch({ match }: { match: Match }) {
           isOngoing ? "ring-2 ring-red-500/50 border-red-500/50" : ""
         } ${isCompleted ? "shadow-2xl shadow-black/50" : ""}`}
       >
-        {/* Match Status Indicator */}
-        {isOngoing && (
-          <div className="absolute top-0 right-0 px-2 py-0.5 bg-red-600 text-[8px] font-black text-white uppercase tracking-tighter animate-pulse rounded-bl-lg">
-            LIVE
-          </div>
-        )}
+        {/* Match Status Badge */}
+        <div className={`absolute top-0 right-0 px-3 py-1 ${statusBadge.bgColor} text-[10px] font-bold text-white uppercase tracking-tighter ${statusBadge.animate} rounded-bl-lg border-l border-b border-white/10`}>
+          {statusBadge.text}
+        </div>
 
         {/* Team A */}
         <div
           className={`flex justify-between items-center p-4 border-b border-white/5 transition-colors ${
-            winnerA ? "bg-primary/10" : ""
-          }`}
+            winnerA ? "bg-primary/20 border-b-primary/50" : ""
+          } ${winnerA ? "ring-1 ring-primary/30" : ""}`}
         >
           <div className="flex items-center gap-3 overflow-hidden">
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs overflow-hidden ${winnerA ? 'bg-primary text-white' : 'bg-white/5 text-white/40'}`}>
@@ -268,20 +294,25 @@ function BracketMatch({ match }: { match: Match }) {
                 censorText(match.teamA).charAt(0)
               )}
             </div>
-            <span className={`font-bold truncate text-sm ${winnerA ? "text-white" : "text-white/40"}`}>
+            <span className={`font-bold truncate text-sm ${winnerA ? "text-primary font-black" : "text-white/40"}`}>
               {match.teamAName || match.teamA || "TBD"}
             </span>
           </div>
-          <span className={`font-mono font-black text-lg ${winnerA ? "text-primary" : "text-white/20"}`}>
-            {match.scoreA}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className={`font-mono font-black text-lg ${winnerA ? "text-primary" : "text-white/20"}`}>
+              {match.scoreA}
+            </span>
+            {winnerA && (
+              <div className="text-xs font-bold px-2 py-1 bg-primary/30 text-primary rounded border border-primary/50">👑</div>
+            )}
+          </div>
         </div>
 
         {/* Team B */}
         <div
           className={`flex justify-between items-center p-4 transition-colors ${
-            winnerB ? "bg-primary/10" : ""
-          }`}
+            winnerB ? "bg-primary/20 border-t-primary/50" : ""
+          } ${winnerB ? "ring-1 ring-primary/30" : ""}`}
         >
           <div className="flex items-center gap-3 overflow-hidden">
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs overflow-hidden ${winnerB ? 'bg-primary text-white' : 'bg-white/5 text-white/40'}`}>
@@ -291,13 +322,18 @@ function BracketMatch({ match }: { match: Match }) {
                 censorText(match.teamB).charAt(0)
               )}
             </div>
-            <span className={`font-bold truncate text-sm ${winnerB ? "text-white" : "text-white/40"}`}>
+            <span className={`font-bold truncate text-sm ${winnerB ? "text-primary font-black" : "text-white/40"}`}>
               {match.teamBName || match.teamB || "TBD"}
             </span>
           </div>
-          <span className={`font-mono font-black text-lg ${winnerB ? "text-primary" : "text-white/20"}`}>
-            {match.scoreB}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className={`font-mono font-black text-lg ${winnerB ? "text-primary" : "text-white/20"}`}>
+              {match.scoreB}
+            </span>
+            {winnerB && (
+              <div className="text-xs font-bold px-2 py-1 bg-primary/30 text-primary rounded border border-primary/50">👑</div>
+            )}
+          </div>
         </div>
       </Card>
     </motion.div>
