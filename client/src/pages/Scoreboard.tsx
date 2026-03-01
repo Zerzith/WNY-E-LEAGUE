@@ -140,7 +140,10 @@ export default function Scoreboard() {
         const hasRoVData = match.winsA !== undefined && match.winsB !== undefined;
         
         // Include matches with any status (pending, ongoing, completed)
-        if ((hasRoVData && isRoVGame) || (match.scoreA !== undefined && match.scoreB !== undefined)) {
+        // Check if match has valid data (scoreA and scoreB exist, even if 0)
+        const hasValidScore = match.scoreA !== undefined && match.scoreB !== undefined;
+        
+        if ((hasRoVData && isRoVGame) || hasValidScore) {
           
           if (!standingsMap.has(teamA)) {
             standingsMap.set(teamA, {
