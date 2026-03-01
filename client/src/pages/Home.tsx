@@ -157,7 +157,7 @@ export default function Home() {
               <h2 className="text-3xl font-display font-bold text-white">การแข่งขันที่เปิดรับสมัคร</h2>
               <p className="text-muted-foreground mt-2">เข้าร่วมการแข่งขันที่กำลังจะมาถึง</p>
             </div>
-            <Link href="/hall-of-fame">
+            <Link href="/events">
               <Button variant="ghost" className="text-accent hover:text-accent/80 p-0 h-auto hover:bg-transparent">
                 ดูทั้งหมด <ArrowRight className="w-4 h-4 ml-1" />
               </Button>

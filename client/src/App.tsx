@@ -38,6 +38,7 @@ function Router() {
       <Route path="/chat" component={Chat} />
       <Route path="/profile" component={Profile} />
       <Route path="/event/:id" component={EventDetail} />
+      <Route path="/events" component={EventDetail} />
       <Route path="/admin" component={AdminDashboard} />
       <Route path="/about" component={About} />
       <Route path="/contact" component={Contact} />

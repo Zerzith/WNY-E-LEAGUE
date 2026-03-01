@@ -36,6 +36,7 @@ export default function EventDetail() {
   const [match, params] = useRoute("/event/:id");
   const { user } = useAuth();
   const [event, setEvent] = useState<Event | null>(null);
+  const [allEvents, setAllEvents] = useState<Event[]>([]);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [userRegistration, setUserRegistration] = useState<Registration | null>(null);
   const [isRegistering, setIsRegistering] = useState(false);
@@ -52,20 +53,33 @@ export default function EventDetail() {
 
   // Load event data
   useEffect(() => {
-    if (!eventId) return;
-
-    const loadEvent = async () => {
-      try {
-        const eventDoc = await getDoc(doc(db, "events", eventId));
-        if (eventDoc.exists()) {
-          setEvent({ id: eventDoc.id, ...eventDoc.data() } as Event);
+    const loadData = async () => {
+      if (eventId) {
+        try {
+          const eventDoc = await getDoc(doc(db, "events", eventId));
+          if (eventDoc.exists()) {
+            setEvent({ id: eventDoc.id, ...eventDoc.data() } as Event);
+          }
+          setLoading(false);
+        } catch (error) {
+          console.error("Error loading event:", error);
+          setLoading(false);
         }
-      } catch (error) {
-        console.error("Error loading event:", error);
+      } else {
+        try {
+          const eventsQuery = query(collection(db, "events"));
+          const eventsSnapshot = await getDocs(eventsQuery);
+          const events = eventsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Event));
+          setAllEvents(events);
+          setLoading(false);
+        } catch (error) {
+          console.error("Error loading events:", error);
+          setLoading(false);
+        }
       }
     };
 
-    loadEvent();
+    loadData();
   }, [eventId]);
 
   // Check if user is admin
