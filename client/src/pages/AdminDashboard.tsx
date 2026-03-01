@@ -323,7 +323,10 @@ export default function AdminDashboard() {
       return;
     }
     try {
-      await addDoc(collection(db, "matches"), {
+      const eventData = events.find(e => e.id === selectedEventId);
+      const isRoV = eventData?.game?.toLowerCase().includes('rov') || eventData?.game?.toLowerCase().includes('realm');
+      
+      const matchData: any = {
         eventId: selectedEventId,
         round: parseInt(newMatchRound),
         group: newMatchGroup,
@@ -331,9 +334,20 @@ export default function AdminDashboard() {
         teamB: newMatchTeamB,
         scoreA: 0,
         scoreB: 0,
-        status: "upcoming",
+        status: "pending",
         createdAt: serverTimestamp()
-      });
+      };
+      
+      if (isRoV) {
+        matchData.winsA = 0;
+        matchData.winsB = 0;
+        matchData.lossesA = 0;
+        matchData.lossesB = 0;
+        matchData.drawsA = 0;
+        matchData.drawsB = 0;
+      }
+      
+      await addDoc(collection(db, "matches"), matchData);
       toast({ title: "สร้างแมตช์สำเร็จ" });
       setNewMatchRound("1");
       setNewMatchGroup("A");
@@ -353,11 +367,27 @@ export default function AdminDashboard() {
       toast({ title: "ผิดพลาดในการอัปเดตคะแนน", variant: "destructive" });
     }
   };
+  
+  const handleUpdateRoVScore = async (matchId: string, team: 'A' | 'B', type: 'wins' | 'losses' | 'draws', value: number) => {
+    try {
+      const field = team === 'A' ? `${type}A` : `${type}B`;
+      await updateDoc(doc(db, "matches", matchId), { [field]: value });
+      toast({ title: "อัปเดตคะแนน RoV สำเร็จ" });
+    } catch (error) {
+      toast({ title: "ผิดพลาดในการอัปเดตคะแนน RoV", variant: "destructive" });
+    }
+  };
 
   const handleUpdateMatchStatus = async (matchId: string, status: string) => {
     try {
-      await updateDoc(doc(db, "matches", matchId), { status });
-      toast({ title: `เปลี่ยนสถานะเป็น ${status}` });
+      const statusMap: { [key: string]: string } = {
+        "pending": "pending",
+        "ongoing": "ongoing",
+        "completed": "completed"
+      };
+      await updateDoc(doc(db, "matches", matchId), { status: statusMap[status] || status });
+      const statusText = status === "pending" ? "ยังไม่เริ่ม" : status === "ongoing" ? "กำลังดำเนินการ" : "จบการแข่งขัน";
+      toast({ title: `เปลี่ยนสถานะเป็น ${statusText}` });
     } catch (error) {
       toast({ title: "ผิดพลาดในการอัปเดตสถานะ", variant: "destructive" });
     }
@@ -671,20 +701,48 @@ export default function AdminDashboard() {
                               {teamB?.logoUrl && <AvatarCustom src={teamB.logoUrl} alt={teamB.name} className="w-6 h-6" />}
                             </div>
                           </div>
+                          {(match.winsA !== undefined || match.winsB !== undefined) && (
+                            <div className="mt-3 grid grid-cols-6 gap-2 text-xs">
+                              <div>
+                                <Label className="text-xs">ชนะ A</Label>
+                                <Input type="number" value={match.winsA || 0} onChange={(e) => handleUpdateRoVScore(match.id, 'A', 'wins', parseInt(e.target.value))} className="h-8" />
+                              </div>
+                              <div>
+                                <Label className="text-xs">เสมอ A</Label>
+                                <Input type="number" value={match.drawsA || 0} onChange={(e) => handleUpdateRoVScore(match.id, 'A', 'draws', parseInt(e.target.value))} className="h-8" />
+                              </div>
+                              <div>
+                                <Label className="text-xs">แพ้ A</Label>
+                                <Input type="number" value={match.lossesA || 0} onChange={(e) => handleUpdateRoVScore(match.id, 'A', 'losses', parseInt(e.target.value))} className="h-8" />
+                              </div>
+                              <div>
+                                <Label className="text-xs">ชนะ B</Label>
+                                <Input type="number" value={match.winsB || 0} onChange={(e) => handleUpdateRoVScore(match.id, 'B', 'wins', parseInt(e.target.value))} className="h-8" />
+                              </div>
+                              <div>
+                                <Label className="text-xs">เสมอ B</Label>
+                                <Input type="number" value={match.drawsB || 0} onChange={(e) => handleUpdateRoVScore(match.id, 'B', 'draws', parseInt(e.target.value))} className="h-8" />
+                              </div>
+                              <div>
+                                <Label className="text-xs">แพ้ B</Label>
+                                <Input type="number" value={match.lossesB || 0} onChange={(e) => handleUpdateRoVScore(match.id, 'B', 'losses', parseInt(e.target.value))} className="h-8" />
+                              </div>
+                            </div>
+                          )}
                           <div className="flex justify-between items-center mt-4">
-                            <Badge variant={match.status === "live" ? "default" : match.status === "finished" ? "success" : "secondary"}>
-                              {match.status === "upcoming" && "ยังไม่เริ่ม"}
-                              {match.status === "live" && "กำลังดำเนินการ"}
-                              {match.status === "finished" && "จบการแข่งขันแล้ว"}
+                            <Badge variant={match.status === "ongoing" ? "default" : match.status === "completed" ? "success" : "secondary"}>
+                              {match.status === "pending" && "ยังไม่เริ่ม"}
+                              {match.status === "ongoing" && "กำลังดำเนินการ"}
+                              {match.status === "completed" && "จบการแข่งขันแล้ว"}
                             </Badge>
                             <div className="flex gap-2">
-                              <Button size="sm" variant="outline" onClick={() => handleUpdateMatchStatus(match.id, "upcoming")} disabled={match.status === "upcoming"}>
+                              <Button size="sm" variant="outline" onClick={() => handleUpdateMatchStatus(match.id, "pending")} disabled={match.status === "pending"}>
                                 <Calendar className="h-4 w-4" />
                               </Button>
-                              <Button size="sm" variant="outline" onClick={() => handleUpdateMatchStatus(match.id, "live")} disabled={match.status === "live"}>
+                              <Button size="sm" variant="outline" onClick={() => handleUpdateMatchStatus(match.id, "ongoing")} disabled={match.status === "ongoing"}>
                                 <Eye className="h-4 w-4" />
                               </Button>
-                              <Button size="sm" variant="outline" onClick={() => handleUpdateMatchStatus(match.id, "finished")} disabled={match.status === "finished"}>
+                              <Button size="sm" variant="outline" onClick={() => handleUpdateMatchStatus(match.id, "completed")} disabled={match.status === "completed"}>
                                 <Trophy className="h-4 w-4" />
                               </Button>
                               <Button variant="destructive" size="sm" onClick={() => handleDeleteMatch(match.id)}><Trash2 className="h-4 w-4" /></Button>
