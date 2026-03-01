@@ -17,6 +17,8 @@ interface Match {
   status: "pending" | "ongoing" | "completed";
   tournamentId: string;
   group?: string;
+  teamAName?: string;
+  teamBName?: string;
   logoUrlA?: string;
   logoUrlB?: string;
 }
@@ -70,29 +72,25 @@ export default function Bracket() {
       // Sort matches client-side by round
       matchesData.sort((a, b) => a.round - b.round);
       
-      // Fetch team logos from registrations
+      // Fetch team names and logos from teams collection
       const matchesWithLogos = await Promise.all(
         matchesData.map(async (match) => {
           try {
-            const registrationsQuery = query(
-              collection(db, "registrations"),
-              where("teamName", "in", [match.teamA, match.teamB])
-            );
+            const teamADoc = await getDoc(doc(db, "teams", match.teamA));
+            const teamBDoc = await getDoc(doc(db, "teams", match.teamB));
             
-            const registrationsSnapshot = await getDocs(registrationsQuery);
-            const registrations: any = {};
-            
-            registrationsSnapshot.docs.forEach(doc => {
-              registrations[doc.data().teamName] = doc.data().logoUrl;
-            });
+            const teamAData = teamADoc.exists() ? teamADoc.data() : null;
+            const teamBData = teamBDoc.exists() ? teamBDoc.data() : null;
             
             return {
               ...match,
-              logoUrlA: registrations[match.teamA] || undefined,
-              logoUrlB: registrations[match.teamB] || undefined,
+              teamAName: teamAData?.name || match.teamA,
+              teamBName: teamBData?.name || match.teamB,
+              logoUrlA: teamAData?.logoUrl || undefined,
+              logoUrlB: teamBData?.logoUrl || undefined,
             };
           } catch (error) {
-            console.error("Error fetching logos for match:", match.id, error);
+            console.error("Error fetching team data for match:", match.id, error);
             return match;
           }
         })
@@ -271,7 +269,7 @@ function BracketMatch({ match }: { match: Match }) {
               )}
             </div>
             <span className={`font-bold truncate text-sm ${winnerA ? "text-white" : "text-white/40"}`}>
-              {censorText(match.teamA) || "TBD"}
+              {match.teamAName || match.teamA || "TBD"}
             </span>
           </div>
           <span className={`font-mono font-black text-lg ${winnerA ? "text-primary" : "text-white/20"}`}>
@@ -294,7 +292,7 @@ function BracketMatch({ match }: { match: Match }) {
               )}
             </div>
             <span className={`font-bold truncate text-sm ${winnerB ? "text-white" : "text-white/40"}`}>
-              {censorText(match.teamB) || "TBD"}
+              {match.teamBName || match.teamB || "TBD"}
             </span>
           </div>
           <span className={`font-mono font-black text-lg ${winnerB ? "text-primary" : "text-white/20"}`}>
