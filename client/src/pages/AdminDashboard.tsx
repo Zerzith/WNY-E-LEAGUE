@@ -114,6 +114,7 @@ export default function AdminDashboard() {
               const userData = userDoc.data();
               regData.applicantDisplayName = userData.displayName || "N/A";
               regData.applicantEmail = userData.email || "N/A";
+              regData.members = regData.members;
             }
           }
           return regData;
@@ -536,11 +537,17 @@ export default function AdminDashboard() {
                         <CardContent>
                           <p><strong>ผู้สมัคร:</strong> {reg.applicantDisplayName} ({reg.applicantEmail})</p>
                           <p><strong>สมาชิก:</strong></p>
-                          <ul className="list-disc pl-5 text-muted-foreground">
-                            {reg.members.map((member: any, index: number) => (
-                              <li key={index}>{censorText(member.name)} - {censorText(member.id)}</li>
+                          <div className="mt-4 space-y-2">
+                            {reg.members && reg.members.map((member, index) => (
+                              <div key={index} className="text-xs p-2 rounded-md bg-background">
+                                <p><strong>ชื่อจริง:</strong> {member.name}</p>
+                                <p><strong>ชื่อในเกม:</strong> {member.gameName}</p>
+                                <p><strong>รหัสนักเรียน:</strong> {member.studentId}</p>
+                                <p><strong>แผนก:</strong> {member.department}</p>
+                                <p><strong>ปี:</strong> {member.grade}</p>
+                              </div>
                             ))}
-                          </ul>
+                          </div>
                           <div className="flex justify-end gap-2 mt-4">
                             {reg.status === 'pending' ? (
                               <>

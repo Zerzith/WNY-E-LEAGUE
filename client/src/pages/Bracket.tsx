@@ -59,8 +59,7 @@ export default function Bracket() {
 
     const q = query(
       collection(db, "matches"),
-      where("tournamentId", "==", selectedTournament.id),
-
+      where("eventId", "==", selectedTournament.id)
     );
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       let matchesData = snapshot.docs.map((doc) => ({
