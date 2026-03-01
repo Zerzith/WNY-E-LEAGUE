@@ -320,12 +320,16 @@ function BracketMatch({ match }: { match: Match }) {
           </div>
           <div className="flex items-center gap-2">
             {hasRoVData && isRoV ? (
-              <div className="flex items-center gap-1 text-xs">
-                <span className={`font-mono font-bold ${winnerA ? "text-green-400" : "text-white/20"}`}>{match.winsA || 0}</span>
-                <span className="text-white/30">-</span>
-                <span className={`font-mono font-bold ${winnerA ? "text-yellow-400" : "text-white/20"}`}>{match.drawsA || 0}</span>
-                <span className="text-white/30">-</span>
-                <span className={`font-mono font-bold ${winnerA ? "text-red-400" : "text-white/20"}`}>{match.lossesA || 0}</span>
+              <div className="flex items-center gap-2 text-xs font-bold">
+                {match.winsA === 1 && match.drawsA === 0 && match.lossesA === 0 ? (
+                  <span className="text-green-400 px-2 py-1 bg-green-400/10 rounded border border-green-400/30">ชนะ</span>
+                ) : match.drawsA === 1 && match.winsA === 0 && match.lossesA === 0 ? (
+                  <span className="text-yellow-400 px-2 py-1 bg-yellow-400/10 rounded border border-yellow-400/30">เสมอ</span>
+                ) : match.lossesA === 1 && match.winsA === 0 && match.drawsA === 0 ? (
+                  <span className="text-red-400 px-2 py-1 bg-red-400/10 rounded border border-red-400/30">แพ้</span>
+                ) : (
+                  <span className="text-white/40 px-2 py-1 bg-white/5 rounded border border-white/10">-</span>
+                )}
               </div>
             ) : (
               <span className={`font-mono font-black text-lg ${winnerA ? "text-primary" : "text-white/20"}`}>
@@ -358,12 +362,16 @@ function BracketMatch({ match }: { match: Match }) {
           </div>
           <div className="flex items-center gap-2">
             {hasRoVData && isRoV ? (
-              <div className="flex items-center gap-1 text-xs">
-                <span className={`font-mono font-bold ${winnerB ? "text-green-400" : "text-white/20"}`}>{match.winsB || 0}</span>
-                <span className="text-white/30">-</span>
-                <span className={`font-mono font-bold ${winnerB ? "text-yellow-400" : "text-white/20"}`}>{match.drawsB || 0}</span>
-                <span className="text-white/30">-</span>
-                <span className={`font-mono font-bold ${winnerB ? "text-red-400" : "text-white/20"}`}>{match.lossesB || 0}</span>
+              <div className="flex items-center gap-2 text-xs font-bold">
+                {match.winsB === 1 && match.drawsB === 0 && match.lossesB === 0 ? (
+                  <span className="text-green-400 px-2 py-1 bg-green-400/10 rounded border border-green-400/30">ชนะ</span>
+                ) : match.drawsB === 1 && match.winsB === 0 && match.lossesB === 0 ? (
+                  <span className="text-yellow-400 px-2 py-1 bg-yellow-400/10 rounded border border-yellow-400/30">เสมอ</span>
+                ) : match.lossesB === 1 && match.winsB === 0 && match.drawsB === 0 ? (
+                  <span className="text-red-400 px-2 py-1 bg-red-400/10 rounded border border-red-400/30">แพ้</span>
+                ) : (
+                  <span className="text-white/40 px-2 py-1 bg-white/5 rounded border border-white/10">-</span>
+                )}
               </div>
             ) : (
               <span className={`font-mono font-black text-lg ${winnerB ? "text-primary" : "text-white/20"}`}>
