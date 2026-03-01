@@ -277,12 +277,12 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteRegistration = async (id: string) => {
-    if (!confirm("ยืนยันการลบการสมัครนี้?")) return;
+    if (!confirm("ยืนยันการลบคำขอสมัคร?")) return;
     try {
       await deleteDoc(doc(db, "registrations", id));
-      toast({ title: "ลบการสมัครเรียบร้อย" });
+      toast({ title: "ลบคำขอสมัครเรียบร้อย" });
     } catch (error) {
-      toast({ title: "ผิดพลาดในการลบ", variant: "destructive" });
+      toast({ title: "ผิดพลาด", variant: "destructive" });
     }
   };
 
@@ -294,38 +294,34 @@ export default function AdminDashboard() {
         content: newsContent,
         createdAt: serverTimestamp()
       });
-      toast({ title: "สร้างข่าวสำเร็จ" });
+      toast({ title: "ประกาศข่าวเรียบร้อย" });
       setNewNewsTitle("");
       setNewNewsContent("");
     } catch (error) {
-      toast({ title: "เกิดข้อผิดพลาด", variant: "destructive" });
+      toast({ title: "ผิดพลาดในการประกาศข่าว", variant: "destructive" });
     }
   };
 
   const handleDeleteNews = async (id: string) => {
-    if (!confirm("ยืนยันการลบข่าวนี้?")) return;
     try {
       await deleteDoc(doc(db, "news", id));
       toast({ title: "ลบข่าวเรียบร้อย" });
     } catch (error) {
-      toast({ title: "ผิดพลาดในการลบ", variant: "destructive" });
+      toast({ title: "ผิดพลาดในการลบข่าว", variant: "destructive" });
     }
   };
 
   const handleCreateMatch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedEventId || !newMatchTeamA || !newMatchTeamB) {
-      toast({ title: "กรุณาเลือกการแข่งขันและทีมให้ครบถ้วน", variant: "destructive" });
+    if (!newMatchTeamA || !newMatchTeamB || newMatchTeamA === newMatchTeamB) {
+      toast({ title: "กรุณาเลือกทีมที่แตกต่างกัน", variant: "destructive" });
       return;
     }
-    if (newMatchTeamA === newMatchTeamB) {
-      toast({ title: "ทีม A และ ทีม B ต้องไม่ซ้ำกัน", variant: "destructive" });
-      return;
-    }
+
+    const event = events.find(e => e.id === selectedEventId);
+    const isRoV = event?.game?.toLowerCase().includes("rov");
+
     try {
-      const eventData = events.find(e => e.id === selectedEventId);
-      const isRoV = eventData?.game?.toLowerCase().includes('rov') || eventData?.game?.toLowerCase().includes('realm');
-      
       const matchData: any = {
         eventId: selectedEventId,
         round: parseInt(newMatchRound),
@@ -337,126 +333,123 @@ export default function AdminDashboard() {
         status: "pending",
         createdAt: serverTimestamp()
       };
-      
+
       if (isRoV) {
         matchData.winsA = 0;
-        matchData.winsB = 0;
         matchData.lossesA = 0;
-        matchData.lossesB = 0;
         matchData.drawsA = 0;
+        matchData.winsB = 0;
+        matchData.lossesB = 0;
         matchData.drawsB = 0;
       }
-      
+
       await addDoc(collection(db, "matches"), matchData);
-      toast({ title: "สร้างแมตช์สำเร็จ" });
-      setNewMatchRound("1");
-      setNewMatchGroup("A");
+      toast({ title: "สร้างแมตช์เรียบร้อย" });
       setNewMatchTeamA("");
       setNewMatchTeamB("");
     } catch (error) {
-      toast({ title: "เกิดข้อผิดพลาด", variant: "destructive" });
+      toast({ title: "ผิดพลาดในการสร้างแมตช์", variant: "destructive" });
     }
   };
 
-  const handleUpdateScore = async (matchId: string, team: 'A' | 'B', score: number) => {
+  const handleUpdateScore = async (id: string, team: 'A' | 'B', score: number) => {
     try {
-      const field = team === 'A' ? 'scoreA' : 'scoreB';
-      await updateDoc(doc(db, "matches", matchId), { [field]: score });
-      toast({ title: "อัปเดตคะแนนสำเร็จ" });
+      await updateDoc(doc(db, "matches", id), {
+        [`score${team}`]: score
+      });
     } catch (error) {
       toast({ title: "ผิดพลาดในการอัปเดตคะแนน", variant: "destructive" });
     }
   };
-  
-  const handleUpdateRoVScore = async (matchId: string, team: 'A' | 'B', type: 'wins' | 'losses' | 'draws', value: number) => {
 
-  const handleUpdateRoVScore = async (matchId: string, team: 'A' | 'B', type: string, value: any) => {
+  const handleUpdateRoVScore = async (matchId: string, team: 'A' | 'B', type: string, value: string) => {
     try {
-      const updateData: any = {};
-      
-      if (type === 'result') {
-        // Set result based on button click
-        if (value === 'win') {
-          updateData[`wins${team}`] = 1;
-          updateData[`draws${team}`] = 0;
-          updateData[`losses${team}`] = 0;
-        } else if (value === 'draw') {
-          updateData[`wins${team}`] = 0;
-          updateData[`draws${team}`] = 1;
-          updateData[`losses${team}`] = 0;
-        } else if (value === 'loss') {
-          updateData[`wins${team}`] = 0;
-          updateData[`draws${team}`] = 0;
-          updateData[`losses${team}`] = 1;
-        }
-      } else {
-        // Original number input handling
-        const field = team === 'A' ? `${type}A` : `${type}B`;
-        updateData[field] = value;
+      const matchRef = doc(db, "matches", matchId);
+      const matchSnap = await getDoc(matchRef);
+      if (!matchSnap.exists()) return;
+
+      const otherTeam = team === 'A' ? 'B' : 'A';
+
+      if (value === 'win') {
+        await updateDoc(matchRef, {
+          [`wins${team}`]: 1, [`draws${team}`]: 0, [`losses${team}`]: 0,
+          [`wins${otherTeam}`]: 0, [`draws${otherTeam}`]: 0, [`losses${otherTeam}`]: 1
+        });
+      } else if (value === 'draw') {
+        await updateDoc(matchRef, {
+          [`wins${team}`]: 0, [`draws${team}`]: 1, [`losses${team}`]: 0,
+          [`wins${otherTeam}`]: 0, [`draws${otherTeam}`]: 1, [`losses${otherTeam}`]: 0
+        });
+      } else if (value === 'loss') {
+        await updateDoc(matchRef, {
+          [`wins${team}`]: 0, [`draws${team}`]: 0, [`losses${team}`]: 1,
+          [`wins${otherTeam}`]: 1, [`draws${otherTeam}`]: 0, [`losses${otherTeam}`]: 0
+        });
       }
-      
-      await updateDoc(doc(db, "matches", matchId), updateData);
-      toast({ title: "อัปเดตคะแนน RoV สำเร็จ" });
     } catch (error) {
-      toast({ title: "ผิดพลาดในการอัปเดตคะแนน RoV", variant: "destructive" });
+      toast({ title: "ผิดพลาดในการอัปเดตสกอร์ RoV", variant: "destructive" });
     }
   };
-  const handleUpdateMatchStatus = async (matchId: string, status: string) => {
+
+  const handleUpdateMatchStatus = async (id: string, status: string) => {
     try {
-      const statusMap: { [key: string]: string } = {
-        "pending": "pending",
-        "ongoing": "ongoing",
-        "completed": "completed"
-      };
-      await updateDoc(doc(db, "matches", matchId), { status: statusMap[status] || status });
-      const statusText = status === "pending" ? "ยังไม่เริ่ม" : status === "ongoing" ? "กำลังดำเนินการ" : "จบการแข่งขัน";
-      toast({ title: `เปลี่ยนสถานะเป็น ${statusText}` });
+      await updateDoc(doc(db, "matches", id), { status });
+      toast({ title: "อัปเดตสถานะแมตช์เรียบร้อย" });
     } catch (error) {
       toast({ title: "ผิดพลาดในการอัปเดตสถานะ", variant: "destructive" });
     }
   };
 
   const handleDeleteMatch = async (id: string) => {
-    if (!confirm("ยืนยันการลบแมตช์นี้?")) return;
+    if (!confirm("ยืนยันการลบแมตช์?")) return;
     try {
       await deleteDoc(doc(db, "matches", id));
       toast({ title: "ลบแมตช์เรียบร้อย" });
     } catch (error) {
-      toast({ title: "ผิดพลาดในการลบ", variant: "destructive" });
+      toast({ title: "ผิดพลาดในการลบแมตช์", variant: "destructive" });
     }
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-4 sm:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6 text-primary">แผงควบคุมผู้ดูแลระบบ</h1>
-
-        <Tabs defaultValue="events" className="space-y-8">
-          <div className="overflow-x-auto pb-2 scrollbar-hide">
-            <TabsList className="flex w-max min-w-full bg-card/50 border border-white/10 p-1 h-auto gap-1">
-              <TabsTrigger value="events" className="px-6 py-2.5">การแข่งขัน</TabsTrigger>
-              <TabsTrigger value="news" className="px-6 py-2.5">ข่าวสาร</TabsTrigger>
-              <TabsTrigger value="registrations" className="px-6 py-2.5">คำขอสมัคร</TabsTrigger>
-              <TabsTrigger value="matches" className="px-6 py-2.5">สายแข่ง & คะแนน</TabsTrigger>
-            </TabsList>
+    <div className="min-h-screen bg-[#0a0e17] pt-24 pb-12 px-4">
+      <div className="max-w-6xl mx-auto space-y-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+              <ShieldAlert className="text-primary w-8 h-8" />
+              แผงควบคุมผู้ดูแลระบบ
+            </h1>
+            <p className="text-muted-foreground">จัดการการแข่งขัน ทีม และข่าวสาร</p>
           </div>
+        </div>
+
+        <Tabs defaultValue="events" className="w-full">
+          <TabsList className="bg-card/50 border border-white/10 w-full justify-start overflow-x-auto h-auto p-1 mb-8">
+            <TabsTrigger value="events" className="py-2.5 px-4"><Trophy className="mr-2 h-4 w-4" />การแข่งขัน</TabsTrigger>
+            <TabsTrigger value="registrations" className="py-2.5 px-4"><UserCheck className="mr-2 h-4 w-4" />คำขอสมัคร</TabsTrigger>
+            <TabsTrigger value="matches" className="py-2.5 px-4"><Swords className="mr-2 h-4 w-4" />จัดการแมตช์</TabsTrigger>
+            <TabsTrigger value="news" className="py-2.5 px-4"><Megaphone className="mr-2 h-4 w-4" />ข่าวสาร</TabsTrigger>
+          </TabsList>
 
           <TabsContent value="events" className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <Card className="bg-card/50 border-white/10 overflow-hidden">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-xl">จัดการการแข่งขัน</CardTitle>
+              <CardHeader>
+                <CardTitle className="text-xl">สร้างการแข่งขันใหม่</CardTitle>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleCreateEvent} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="newTitle">ชื่อการแข่งขัน</Label>
-                      <Input id="newTitle" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="เช่น Valorant Champions Tour" required />
+                      <Label htmlFor="title">หัวข้อการแข่งขัน</Label>
+                      <Input id="title" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="เช่น WNY VALORANT SEASON 1" required />
                     </div>
                     <div>
-                      <Label htmlFor="newGame">เกม</Label>
-                      <Select value={newGame} onValueChange={setNewGame}>
-                        <SelectTrigger className="w-full">
+                      <Label htmlFor="game">เกม</Label>
+                      <Select value={newGame} onValueChange={(val) => {
+                        setNewGame(val);
+                        setNewBannerUrl(gameBanners[val] || "");
+                      }}>
+                        <SelectTrigger>
                           <SelectValue placeholder="เลือกเกม" />
                         </SelectTrigger>
                         <SelectContent>
@@ -467,31 +460,33 @@ export default function AdminDashboard() {
                       </Select>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
-                      <Label htmlFor="newMaxTeams">จำนวนทีมสูงสุด</Label>
-                      <Input id="newMaxTeams" type="number" value={newMaxTeams} onChange={(e) => setNewMaxTeams(e.target.value)} required />
+                      <Label htmlFor="maxTeams">จำนวนทีมสูงสุด</Label>
+                      <Input id="maxTeams" type="number" value={newMaxTeams} onChange={(e) => setNewMaxTeams(e.target.value)} required />
                     </div>
                     <div>
-                      <Label htmlFor="newMembers">ผู้เล่นต่อทีม</Label>
-                      <Input id="newMembers" type="number" value={newMembers} onChange={(e) => setNewMembers(e.target.value)} required />
+                      <Label htmlFor="members">สมาชิกหลักต่อทีม</Label>
+                      <Input id="members" type="number" value={newMembers} onChange={(e) => setNewMembers(e.target.value)} required />
                     </div>
                     <div>
-                      <Label htmlFor="newSubs">ตัวสำรองสูงสุด</Label>
-                      <Input id="newSubs" type="number" value={newSubs} onChange={(e) => setNewSubs(e.target.value)} required />
+                      <Label htmlFor="subs">ตัวสำรองสูงสุด</Label>
+                      <Input id="subs" type="number" value={newSubs} onChange={(e) => setNewSubs(e.target.value)} required />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="date">วันที่แข่งขัน</Label>
+                      <Input id="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} placeholder="เช่น 25 มีนาคม 2567" required />
                     </div>
                     <div>
-                      <Label htmlFor="newDate">วันที่แข่งขัน</Label>
-                      <Input id="newDate" type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} required />
+                      <Label htmlFor="deadline">ปิดรับสมัคร</Label>
+                      <Input id="deadline" value={newRegDeadline} onChange={(e) => setNewRegDeadline(e.target.value)} placeholder="เช่น 20 มีนาคม 2567" required />
                     </div>
                   </div>
                   <div>
-                    <Label htmlFor="newRegDeadline">วันปิดรับสมัคร</Label>
-                    <Input id="newRegDeadline" type="date" value={newRegDeadline} onChange={(e) => setNewRegDeadline(e.target.value)} required />
-                  </div>
-                  <div>
-                    <Label htmlFor="newBannerUrl">URL แบนเนอร์</Label>
-                    <Input id="newBannerUrl" value={newBannerUrl} onChange={(e) => setNewBannerUrl(e.target.value)} placeholder="ใส่ URL รูปภาพแบนเนอร์" />
+                    <Label htmlFor="banner">URL รูปภาพแบนเนอร์</Label>
+                    <Input id="banner" value={newBannerUrl} onChange={(e) => setNewBannerUrl(e.target.value)} placeholder="https://..." />
                   </div>
                   <Button type="submit" className="w-full"><Plus className="mr-2 h-4 w-4" />สร้างการแข่งขัน</Button>
                 </form>
