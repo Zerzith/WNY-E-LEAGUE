@@ -852,8 +852,6 @@ export default function AdminDashboard() {
         </Dialog>
       </div>
     </div>
-  );
+   );
 }
 
-</text>
-</invoke>
