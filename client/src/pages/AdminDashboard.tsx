@@ -477,11 +477,11 @@ export default function AdminDashboard() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="date">วันที่แข่งขัน</Label>
-                      <Input id="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} placeholder="เช่น 25 มีนาคม 2567" required />
+                      <Input id="date" type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} required />
                     </div>
                     <div>
                       <Label htmlFor="deadline">ปิดรับสมัคร</Label>
-                      <Input id="deadline" value={newRegDeadline} onChange={(e) => setNewRegDeadline(e.target.value)} placeholder="เช่น 20 มีนาคม 2567" required />
+                      <Input id="deadline" type="date" value={newRegDeadline} onChange={(e) => setNewRegDeadline(e.target.value)} required />
                     </div>
                   </div>
                   <div>
