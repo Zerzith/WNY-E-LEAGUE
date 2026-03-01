@@ -799,10 +799,25 @@ export default function AdminDashboard() {
                               </div>
                             </div>
                           )}
+                          <div className="flex justify-between items-center mt-4">
+                            <Badge variant={match.status === "ongoing" ? "default" : match.status === "completed" ? "success" : "secondary"}>
+                              {match.status === "pending" && "ยังไม่เริ่ม"}
+                              {match.status === "ongoing" && "กำลังดำเนินการ"}
+                              {match.status === "completed" && "จบการแข่งขันแล้ว"}
+                            </Badge>
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="outline" onClick={() => handleUpdateMatchStatus(match.id, "pending")} disabled={match.status === "pending"}>
+                                <Calendar className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => handleUpdateMatchStatus(match.id, "ongoing")} disabled={match.status === "ongoing"}>
+                                <MonitorPlay className="h-4 w-4" />
+                              </Button>
                               <Button size="sm" variant="outline" onClick={() => handleUpdateMatchStatus(match.id, "completed")} disabled={match.status === "completed"}>
                                 <Trophy className="h-4 w-4" />
                               </Button>
-                              <Button variant="destructive" size="sm" onClick={() => handleDeleteMatch(match.id)}><Trash2 className="h-4 w-4" /></Button>
+                              <Button variant="destructive" size="sm" onClick={() => handleDeleteMatch(match.id)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
                           </div>
                         </CardContent>
