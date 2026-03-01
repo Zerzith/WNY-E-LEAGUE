@@ -115,9 +115,11 @@ export default function Scoreboard() {
       const standingsMap = new Map<string, TeamStanding>();
       
       matchesWithLogos.forEach(match => {
-        if (match.status === "completed" || match.status === "finished") {
-          const teamA = match.teamAName || match.teamA;
-          const teamB = match.teamBName || match.teamB;
+        // Include all matches regardless of status for standings
+        const teamA = match.teamAName || match.teamA;
+        const teamB = match.teamBName || match.teamB;
+        
+        if (match.scoreA !== undefined && match.scoreB !== undefined) {
           
           if (!standingsMap.has(teamA)) {
             standingsMap.set(teamA, {
