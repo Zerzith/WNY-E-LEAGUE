@@ -142,7 +142,7 @@ export default function RegisterTeam() {
 
   const validateMembers = () => {
     for (const member of members) {
-      if (!member.name || !member.gameName || !member.studentId || !member.phone) {
+      if (!member.name || !member.gameName || !member.studentId || !member.phone || !member.department || !member.grade) {
         return false;
       }
       if (member.email && !member.email.includes("@")) {
@@ -162,7 +162,7 @@ export default function RegisterTeam() {
       return;
     }
 
-    const validMembers = members.filter(m => m.name && m.gameName && m.studentId && m.phone);
+    const validMembers = members.filter(m => m.name && m.gameName && m.studentId && m.phone && m.department && m.grade);
     if (validMembers.length < currentGameRules.min) {
       toast({ title: `กรุณาเพิ่มสมาชิกอย่างน้อย ${currentGameRules.min} คน พร้อมข้อมูลที่ครบถ้วน`, variant: "destructive" });
       return;
@@ -364,7 +364,7 @@ export default function RegisterTeam() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-xs">แผนกวิชา</Label>
+                      <Label className="text-xs">แผนกวิชา <span className="text-red-500">*</span></Label>
                       <Input 
                         value={member.department} 
                         onChange={e => handleMemberChange(index, 'department', e.target.value)} 
@@ -375,7 +375,7 @@ export default function RegisterTeam() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-xs">ชั้นปี</Label>
+                    <Label className="text-xs">ชั้นปี <span className="text-red-500">*</span></Label>
                     <Input 
                       value={member.grade} 
                       onChange={e => handleMemberChange(index, 'grade', e.target.value)} 
