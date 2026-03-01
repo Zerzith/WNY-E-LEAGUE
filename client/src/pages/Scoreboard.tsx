@@ -265,7 +265,6 @@ export default function Scoreboard() {
                           <th className="text-center py-3 px-4 font-semibold text-white/80">ชนะ</th>
                           <th className="text-center py-3 px-4 font-semibold text-white/80">เสมอ</th>
                           <th className="text-center py-3 px-4 font-semibold text-white/80">แพ้</th>
-                          <th className="text-center py-3 px-4 font-semibold text-white/80">ประตู</th>
                           <th className="text-center py-3 px-4 font-semibold text-white/80">คะแนน</th>
                         </tr>
                       </thead>
@@ -278,7 +277,6 @@ export default function Scoreboard() {
                             <td className="text-center py-3 px-4 text-green-400 font-semibold">{standing.wins}</td>
                             <td className="text-center py-3 px-4 text-yellow-400 font-semibold">{standing.draws}</td>
                             <td className="text-center py-3 px-4 text-red-400 font-semibold">{standing.losses}</td>
-                            <td className="text-center py-3 px-4 text-white/80">{standing.goalsFor}-{standing.goalsAgainst}</td>
                             <td className="text-center py-3 px-4 text-primary font-bold text-lg">{standing.points}</td>
                           </tr>
                         ))}
