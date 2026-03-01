@@ -126,17 +126,20 @@ export default function Scoreboard() {
       setMatches(matchesWithLogos);
       
       // Calculate standings from matches
+      // Include ALL matches regardless of status: pending, ongoing, completed
       const standingsMap = new Map<string, TeamStanding>();
       const isRoVGame = matchesWithLogos.some(m => m.game?.toLowerCase().includes('rov') || m.game?.toLowerCase().includes('realm'));
       
       matchesWithLogos.forEach(match => {
         // Include all matches regardless of status for standings
+        // Show standings for: pending, ongoing, completed
         const teamA = match.teamAName || match.teamA;
         const teamB = match.teamBName || match.teamB;
         
         // For RoV, use wins/losses/draws format if available
         const hasRoVData = match.winsA !== undefined && match.winsB !== undefined;
         
+        // Include matches with any status (pending, ongoing, completed)
         if ((hasRoVData && isRoVGame) || (match.scoreA !== undefined && match.scoreB !== undefined)) {
           
           if (!standingsMap.has(teamA)) {
@@ -320,7 +323,8 @@ export default function Scoreboard() {
             </Card>
           ) : (
             <div className="text-center py-12 bg-card/20 rounded-3xl border border-dashed border-white/10">
-              <p className="text-muted-foreground">ยังไม่มีผลการแข่งขัน</p>
+              <Trophy className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
+              <p className="text-muted-foreground">ยังไม่มีการแข่งขัน</p>
             </div>
           )}
         </TabsContent>
@@ -334,6 +338,7 @@ export default function Scoreboard() {
             </div>
           ) : (
             <div className="text-center py-12 bg-card/20 rounded-3xl border border-dashed border-white/10">
+              <Trophy className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
               <p className="text-muted-foreground">ยังไม่มีการแข่งขัน</p>
             </div>
           )}
