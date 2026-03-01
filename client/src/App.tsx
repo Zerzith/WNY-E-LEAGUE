@@ -23,6 +23,7 @@ import About from "@/pages/About";
 import Contact from "@/pages/Contact";
 import Privacy from "@/pages/Privacy";
 import Rules from "@/pages/Rules";
+import EditRegistration from "@/pages/EditRegistration";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -44,6 +45,7 @@ function Router() {
       <Route path="/contact" component={Contact} />
       <Route path="/privacy" component={Privacy} />
       <Route path="/rules" component={Rules} />
+      <Route path="/edit-registration/:registrationId" component={EditRegistration} />
       <Route component={NotFound} />
     </Switch>
   );

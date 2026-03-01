@@ -7,8 +7,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AvatarCustom } from "@/components/ui/avatar-custom";
-import { Loader2, Upload, Edit2, Check, X } from "lucide-react";
+import { Loader2, Upload, Edit2, Check, X, Trash2 } from "lucide-react";
 import axios from "axios";
+import { deleteDoc } from "firebase/firestore";
 
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "djubsqri6";
 const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "wangnamyenesport";
@@ -128,6 +129,27 @@ export default function MyTeams() {
     } finally {
       setUploadingTeamId(null);
     }
+  };
+
+  const handleDeleteRegistration = async (teamId: string) => {
+    if (!window.confirm("คุณแน่ใจหรือว่าต้องการยกเลิกการสมัครนี้?")) {
+      return;
+    }
+
+    try {
+      await deleteDoc(doc(db, "registrations", teamId));
+      toast({ title: "ยกเลิกการสมัครสำเร็จ" });
+    } catch (error: any) {
+      console.error("Delete error:", error);
+      toast({ 
+        title: "เกิดข้อผิดพลาดในการยกเลิกการสมัคร", 
+        variant: "destructive" 
+      });
+    }
+  };
+
+  const handleEditRegistration = (teamId: string) => {
+    setLocation(`/edit-registration/${teamId}`);
   };
 
   if (loading) {
@@ -286,6 +308,28 @@ export default function MyTeams() {
                       </span>
                     </div>
                   </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="mt-6 flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleEditRegistration(team.id)}
+                    className="flex-1"
+                  >
+                    <Edit2 className="w-4 h-4 mr-2" />
+                    แก้ไขข้อมูล
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => handleDeleteRegistration(team.id)}
+                    className="flex-1"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    ยกเลิก
+                  </Button>
                 </div>
               </CardContent>
             </Card>
