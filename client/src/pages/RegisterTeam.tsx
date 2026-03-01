@@ -142,14 +142,12 @@ export default function RegisterTeam() {
 
   const validateMembers = () => {
     for (const member of members) {
-      if (!member.name || !member.gameName || !member.studentId || !member.phone || !member.email) {
+      if (!member.name || !member.gameName || !member.studentId || !member.phone) {
         return false;
       }
-      // Basic email validation
-      if (!member.email.includes("@")) {
+      if (member.email && !member.email.includes("@")) {
         return false;
       }
-      // Basic phone validation (Thai format)
       if (!/^[0-9]{10}$/.test(member.phone.replace(/[^0-9]/g, ""))) {
         return false;
       }
@@ -164,7 +162,7 @@ export default function RegisterTeam() {
       return;
     }
 
-    const validMembers = members.filter(m => m.name && m.gameName && m.studentId && m.phone && m.email);
+    const validMembers = members.filter(m => m.name && m.gameName && m.studentId && m.phone);
     if (validMembers.length < currentGameRules.min) {
       toast({ title: `กรุณาเพิ่มสมาชิกอย่างน้อย ${currentGameRules.min} คน พร้อมข้อมูลที่ครบถ้วน`, variant: "destructive" });
       return;
@@ -356,7 +354,7 @@ export default function RegisterTeam() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label className="text-xs">อีเมล <span className="text-red-500">*</span></Label>
+                      <Label className="text-xs">อีเมล</Label>
                       <Input 
                         value={member.email} 
                         onChange={e => handleMemberChange(index, 'email', e.target.value)} 
