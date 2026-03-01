@@ -143,8 +143,16 @@ export default function EditRegistration() {
       return;
     }
 
-    // Validate members
+    // Validate members - email is optional
     const validMembers = members.filter(m => m.name && m.gameName && m.studentId && m.phone && m.department && m.grade);
+
+    // Validate email format if provided
+    for (const member of validMembers) {
+      if (member.email && !member.email.includes("@")) {
+        toast({ title: "รูปแบบอีเมลไม่ถูกต้อง", variant: "destructive" });
+        return;
+      }
+    }
     if (validMembers.length === 0) {
       toast({ title: "กรุณากรอกข้อมูลสมาชิกอย่างน้อย 1 คน", variant: "destructive" });
       return;
