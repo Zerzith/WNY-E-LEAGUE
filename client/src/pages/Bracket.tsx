@@ -219,7 +219,7 @@ export default function Bracket() {
                             </div>
                             <div className="flex flex-col gap-8">
                               {matchesByRound[round].map((match) => (
-                                <BracketMatch key={match.id} match={match} />
+                                <BracketMatch key={match.id} match={match} tournamentGame={selectedTournament?.game} />
                               ))}
                             </div>
                           </div>
@@ -237,14 +237,25 @@ export default function Bracket() {
   );
 }
 
-function BracketMatch({ match }: { match: Match }) {
+interface BracketMatchProps {
+  match: Match;
+  tournamentGame?: string;
+}
+
+function BracketMatch({ match, tournamentGame }: BracketMatchProps) {
   const isCompleted = match.status === "completed";
   const isOngoing = match.status === "ongoing";
   const isPending = match.status === "pending";
   
-  // Check if this is a RoV match
-  const isRoV = match.game?.toLowerCase().includes('rov') || match.game?.toLowerCase().includes('realm');
+  // Check if this is a RoV match - use tournament game name as primary source
+  const gameNameToCheck = tournamentGame || match.game || '';
+  const isRoV = gameNameToCheck.toLowerCase().includes('rov') || gameNameToCheck.toLowerCase().includes('realm');
   const hasRoVData = match.winsA !== undefined && match.winsB !== undefined;
+  
+  // Debug logging
+  if (match.status === 'completed') {
+    console.log(`Match ${match.id}: game='${gameNameToCheck}', isRoV=${isRoV}, hasRoVData=${hasRoVData}, winsA=${match.winsA}, winsB=${match.winsB}`);
+  }
   
   // For RoV: determine winner based on wins
   const rovWinnerA = isCompleted && hasRoVData && (match.winsA || 0) > (match.winsB || 0);
