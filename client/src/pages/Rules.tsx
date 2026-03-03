@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { collection, onSnapshot, query, orderBy, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, FileText, AlertCircle, CheckCircle2, Trophy } from "lucide-react";
+import { Loader2, FileText, AlertCircle, CheckCircle2, Trophy, Shield, Users, Sword } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
 import { AvatarCustom } from "@/components/ui/avatar-custom";
@@ -25,18 +25,13 @@ interface Team {
   members?: any[];
 }
 
-interface RuleCategory {
-  name: string;
-  rules: Rule[];
-}
-
 export default function Rules() {
   const [rules, setRules] = useState<Rule[]>([]);
   const [approvedTeams, setApprovedTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Fetch rules
+    // Fetch rules from Firestore
     const rulesQuery = query(collection(db, "rules"), orderBy("order", "asc"));
     const rulesUnsubscribe = onSnapshot(rulesQuery, (snapshot) => {
       const rulesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Rule));
@@ -76,6 +71,34 @@ export default function Rules() {
     };
   }, []);
 
+  // Default rules if database is empty
+  const defaultRules = [
+    {
+      category: "คุณสมบัติผู้เข้าแข่งขัน",
+      items: [
+        { title: "สถานะนักเรียนนักศึกษา", content: "ต้องเป็นนักเรียนหรือนักศึกษาของวิทยาลัยเทคนิควังน้ำเย็นที่กำลังศึกษาอยู่เท่านั้น" },
+        { title: "การลงทะเบียน", content: "ผู้สมัครต้องลงทะเบียนผ่านระบบ WNY-E-LEAGUE ด้วยข้อมูลจริงและครบถ้วน" },
+        { title: "จำนวนสมาชิก", content: "แต่ละทีมต้องมีสมาชิกตัวจริง 5 คน และตัวสำรองได้ไม่เกิน 2 คน (ถ้ามี)" }
+      ]
+    },
+    {
+      category: "กฎกติกาการแข่งขัน (ทั่วไป)",
+      items: [
+        { title: "ความตรงต่อเวลา", content: "ทีมต้องมารายงานตัวก่อนเวลาแข่งขันอย่างน้อย 15 นาที หากมาช้าเกิน 10 นาทีจะถูกปรับแพ้บายทันที" },
+        { title: "มารยาทการแข่งขัน", content: "ห้ามใช้ถ้อยคำหยาบคาย ดูหมิ่น หรือแสดงพฤติกรรมที่ไม่เหมาะสมต่อคู่แข่งและทีมงาน" },
+        { title: "การโกงและโปรแกรมช่วยเล่น", content: "ห้ามใช้โปรแกรมช่วยเล่นหรือการกระทำใดๆ ที่เป็นการโกง หากตรวจพบจะถูกตัดสิทธิ์และลงโทษทางวินัย" }
+      ]
+    },
+    {
+      category: "กติกาเฉพาะเกม RoV",
+      items: [
+        { title: "โหมดการแข่ง", content: "ใช้โหมด 5v5 Tournament Mode (Calibrate) ในการแข่งขัน" },
+        { title: "การแบน/เลือกฮีโร่", content: "ใช้ระบบ Ban/Pick ตามมาตรฐานการแข่งขัน Global" },
+        { title: "การหลุดจากการเชื่อมต่อ", content: "หากมีผู้เล่นหลุดให้กดหยุดเกม (Pause) ทันที และแจ้งกรรมการ (อนุญาตให้หยุดได้ทีมละ 2 ครั้ง ครั้งละไม่เกิน 5 นาที)" }
+      ]
+    }
+  ];
+
   if (loading) {
     return (
       <div className="h-[50vh] flex items-center justify-center">
@@ -84,117 +107,138 @@ export default function Rules() {
     );
   }
 
-  // Group rules by category
-  const groupedRules = rules.reduce((acc, rule) => {
-    const category = rule.category || "ทั่วไป";
-    if (!acc[category]) {
-      acc[category] = [];
-    }
-    acc[category].push(rule);
-    return acc;
-  }, {} as Record<string, Rule[]>);
-
-  const categories = Object.keys(groupedRules).sort();
-
   return (
     <div className="container mx-auto px-4 py-12">
       <div className="mb-12">
         <div className="flex items-center gap-3 mb-6">
-          <FileText className="w-8 h-8 text-primary" />
-          <h1 className="text-4xl font-display font-bold text-white">ธรรมเนียบและกฎการแข่งขัน</h1>
+          <Shield className="w-8 h-8 text-primary" />
+          <h1 className="text-4xl font-display font-bold text-white uppercase tracking-tight">กฎกติกาการแข่งขัน</h1>
         </div>
-        <p className="text-muted-foreground max-w-2xl">
-          กรุณาอ่านและทำความเข้าใจกฎการแข่งขันทั้งหมด ก่อนเข้าร่วมการแข่งขัน WNY Esports Tournament
+        <p className="text-muted-foreground max-w-2xl text-lg">
+          กรุณาอ่านและทำความเข้าใจกฎการแข่งขันทั้งหมด เพื่อความเป็นธรรมและความเรียบร้อยในการแข่งขัน WNY Esports Tournament
         </p>
       </div>
 
       <Tabs defaultValue="rules" className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2 mb-8">
-          <TabsTrigger value="rules">กฎการแข่งขัน</TabsTrigger>
-          <TabsTrigger value="approved">ผ่านคัดเลือกทีม</TabsTrigger>
+        <TabsList className="grid w-full max-w-md grid-cols-2 mb-10 bg-white/5 p-1 rounded-xl border border-white/10">
+          <TabsTrigger value="rules" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-white transition-all">
+            <FileText className="w-4 h-4 mr-2" />
+            กฎการแข่งขัน
+          </TabsTrigger>
+          <TabsTrigger value="approved" className="rounded-lg data-[state=active]:bg-primary data-[state=active]:text-white transition-all">
+            <Users className="w-4 h-4 mr-2" />
+            ทีมที่ผ่านการคัดเลือก
+          </TabsTrigger>
         </TabsList>
 
         {/* Rules Tab */}
-        <TabsContent value="rules" className="space-y-6">
-          {rules.length === 0 ? (
-            <div className="text-center py-12 bg-card/20 rounded-3xl border border-dashed border-white/10">
-              <FileText className="w-16 h-16 mx-auto text-white/10 mb-4" />
-              <p className="text-muted-foreground">ยังไม่มีกฎการแข่งขัน</p>
-            </div>
-          ) : (
-            <div className="space-y-8">
-              {categories.map((category, categoryIndex) => (
+        <TabsContent value="rules" className="space-y-12">
+          {rules.length > 0 ? (
+            // Display rules from Database if available
+            <div className="grid grid-cols-1 gap-8">
+              {rules.map((rule, index) => (
                 <motion.div
-                  key={category}
+                  key={rule.id}
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
-                  transition={{ delay: categoryIndex * 0.1 }}
+                  transition={{ delay: index * 0.1 }}
                 >
-                  <div className="mb-4">
-                    <h2 className="text-2xl font-display font-bold text-white flex items-center gap-2">
-                      <div className="w-1 h-8 bg-primary rounded-full" />
-                      {category}
-                    </h2>
-                  </div>
-
-                  <div className="space-y-4 ml-4">
-                    {groupedRules[category].map((rule, ruleIndex) => (
+                  <Card className="bg-card/40 border-white/5 hover:border-primary/20 transition-all overflow-hidden group">
+                    <div className="p-6">
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 group-hover:bg-primary/20 transition-colors">
+                          <CheckCircle2 className="w-6 h-6 text-primary" />
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-bold text-white mb-2">{rule.title}</h3>
+                          <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">{rule.content}</p>
+                          {rule.category && (
+                            <span className="inline-block mt-4 px-3 py-1 rounded-full bg-white/5 text-[10px] font-bold text-primary uppercase tracking-wider border border-white/10">
+                              {rule.category}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            // Display Default Rules if Database is empty
+            <div className="space-y-12">
+              {defaultRules.map((cat, catIndex) => (
+                <div key={catIndex} className="space-y-6">
+                  <h2 className="text-2xl font-display font-bold text-white flex items-center gap-3">
+                    <div className="w-2 h-8 bg-primary rounded-full" />
+                    {cat.category}
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {cat.items.map((item, itemIndex) => (
                       <motion.div
-                        key={rule.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        whileInView={{ opacity: 1, x: 0 }}
+                        key={itemIndex}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        whileInView={{ opacity: 1, scale: 1 }}
                         viewport={{ once: true }}
-                        transition={{ delay: ruleIndex * 0.05 }}
+                        transition={{ delay: itemIndex * 0.05 }}
                       >
-                        <Card className="bg-card/50 border-white/10 hover:border-primary/30 transition-all">
-                          <CardHeader>
-                            <CardTitle className="text-lg flex items-center gap-2">
-                              <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" />
-                              {rule.title}
+                        <Card className="bg-card/30 border-white/5 hover:border-primary/30 transition-all h-full">
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-lg text-primary flex items-center gap-2">
+                              <Sword className="w-4 h-4" />
+                              {item.title}
                             </CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                              {rule.content}
+                            <p className="text-sm text-muted-foreground leading-relaxed">
+                              {item.content}
                             </p>
                           </CardContent>
                         </Card>
                       </motion.div>
                     ))}
                   </div>
-                </motion.div>
+                </div>
               ))}
             </div>
           )}
 
           {/* Important Notice */}
-          <div className="mt-12 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-6 flex gap-4">
-            <AlertCircle className="w-6 h-6 text-yellow-400 flex-shrink-0 mt-1" />
+          <div className="bg-gradient-to-br from-yellow-500/20 to-orange-500/10 border border-yellow-500/20 rounded-3xl p-8 flex flex-col md:flex-row gap-6 items-center md:items-start">
+            <div className="w-16 h-16 rounded-2xl bg-yellow-500/20 flex items-center justify-center flex-shrink-0">
+              <AlertCircle className="w-10 h-10 text-yellow-400" />
+            </div>
             <div>
-              <h3 className="font-bold text-yellow-300 mb-2">ข้อสำคัญ</h3>
-              <p className="text-yellow-200/80">
-                ผู้เข้าร่วมการแข่งขันทั้งหมดต้องยอมรับและปฏิบัติตามกฎการแข่งขันทั้งหมด 
-                หากมีการละเมิดกฎการแข่งขัน ผู้จัดการแข่งขันมีสิทธิในการตัดสินใจลงโทษหรือไล่ออกจากการแข่งขัน
+              <h3 className="text-2xl font-bold text-yellow-300 mb-3">ประกาศสำคัญจากคณะกรรมการ</h3>
+              <p className="text-yellow-100/70 leading-relaxed text-lg">
+                ผู้จัดการแข่งขันขอสงวนสิทธิ์ในการเปลี่ยนแปลงกฎกติกาตามความเหมาะสม โดยไม่ต้องแจ้งให้ทราบล่วงหน้า 
+                การตัดสินของคณะกรรมการถือเป็นที่สิ้นสุดในทุกกรณี หากมีการประท้วงต้องทำภายใน 15 นาทีหลังจบแมตช์นั้นๆ พร้อมหลักฐานที่ชัดเจน
               </p>
             </div>
           </div>
         </TabsContent>
 
         {/* Approved Teams Tab */}
-        <TabsContent value="approved" className="space-y-6">
-          <div className="mb-12">
-            <div className="flex items-center gap-3 mb-6">
-              <Trophy className="w-8 h-8 text-primary" />
-              <h2 className="text-3xl font-display font-bold text-white">ผ่านคัดเลือกทีม</h2>
+        <TabsContent value="approved" className="space-y-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <div>
+              <h2 className="text-3xl font-display font-bold text-white flex items-center gap-3">
+                <Trophy className="w-8 h-8 text-primary" />
+                ทีมที่ผ่านการคัดเลือก
+              </h2>
+              <p className="text-muted-foreground mt-2">รายชื่อทีมที่ได้รับการตรวจสอบเอกสารและมีสิทธิ์เข้าร่วมการแข่งขัน</p>
             </div>
-            <p className="text-muted-foreground">รายชื่อทีมที่ผ่านการคัดเลือกและเข้าร่วมการแข่งขัน</p>
+            <div className="px-4 py-2 bg-primary/10 border border-primary/20 rounded-xl">
+              <span className="text-primary font-bold">จำนวนทั้งหมด: {approvedTeams.length} ทีม</span>
+            </div>
           </div>
 
           {approvedTeams.length === 0 ? (
-            <div className="text-center py-12 bg-card/20 rounded-3xl border border-dashed border-white/10">
-              <Trophy className="w-16 h-16 mx-auto text-white/10 mb-4" />
-              <p className="text-muted-foreground">ยังไม่มีทีมที่ผ่านการคัดเลือก</p>
+            <div className="text-center py-24 bg-card/20 rounded-[3rem] border border-dashed border-white/10">
+              <Trophy className="w-20 h-20 mx-auto text-white/5 mb-6" />
+              <h3 className="text-xl font-bold text-white/40">ยังไม่มีทีมที่ผ่านการคัดเลือกในขณะนี้</h3>
+              <p className="text-muted-foreground mt-2">กรุณารอประกาศอย่างเป็นทางการจากผู้จัดการแข่งขัน</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -206,39 +250,49 @@ export default function Rules() {
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.1 }}
                 >
-                  <Card className="bg-card/50 border-white/10 hover:border-primary/30 transition-all overflow-hidden h-full">
-                    <CardHeader>
-                      <div className="flex items-center gap-4 mb-4">
-                        {team.logoUrl && (
+                  <Card className="bg-card/50 border-white/10 hover:border-primary/30 transition-all overflow-hidden h-full group">
+                    <CardHeader className="relative pb-0">
+                      <div className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/5 flex items-center justify-center font-black text-[10px] text-white/20 group-hover:text-primary transition-colors">
+                        #{index + 1}
+                      </div>
+                      <div className="flex items-center gap-4 mb-6">
+                        <div className="relative">
                           <AvatarCustom 
                             src={team.logoUrl} 
                             alt={team.name} 
-                            className="w-16 h-16"
+                            className="w-20 h-20 ring-4 ring-primary/10 group-hover:ring-primary/30 transition-all"
                           />
-                        )}
+                          <div className="absolute -bottom-2 -right-2 bg-green-500 w-6 h-6 rounded-full border-4 border-card flex items-center justify-center">
+                            <CheckCircle2 className="w-3 h-3 text-white" />
+                          </div>
+                        </div>
                         <div className="flex-1">
-                          <CardTitle className="text-lg">{team.name}</CardTitle>
-                          <p className="text-xs text-muted-foreground">ทีมที่ {index + 1}</p>
+                          <CardTitle className="text-xl font-black text-white group-hover:text-primary transition-colors">{team.name}</CardTitle>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className="text-[10px] px-2 py-0.5 rounded bg-primary/10 text-primary font-bold uppercase tracking-widest border border-primary/20">
+                              Verified Team
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
+                    <CardContent className="pt-6 border-t border-white/5">
+                      <div className="space-y-4">
                         <div>
-                          <p className="text-xs font-semibold text-white/60 mb-2">สมาชิก</p>
-                          <div className="space-y-2">
+                          <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] mb-3">สมาชิกทีม</p>
+                          <div className="grid grid-cols-1 gap-2">
                             {team.members && team.members.length > 0 ? (
                               team.members.map((member, memberIndex) => (
-                                <div key={memberIndex} className="text-xs p-2 rounded-md bg-background/50">
-                                  <p><strong>ชื่อจริง:</strong> {member.name}</p>
-                                  <p><strong>ชื่อเกม:</strong> {member.gameName}</p>
-                                  <p><strong>รหัสนักเรียน:</strong> {member.studentId}</p>
-                                  <p><strong>แผนก:</strong> {member.department}</p>
-                                  <p><strong>ปี:</strong> {member.grade}</p>
+                                <div key={memberIndex} className="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
+                                  <div className="flex flex-col">
+                                    <span className="text-xs font-bold text-white">{member.gameName || member.name}</span>
+                                    <span className="text-[9px] text-muted-foreground">{member.department} · {member.grade}</span>
+                                  </div>
+                                  <span className="text-[9px] font-bold text-primary/60">PLAYER</span>
                                 </div>
                               ))
                             ) : (
-                              <p className="text-muted-foreground">ไม่มีข้อมูลสมาชิก</p>
+                              <p className="text-muted-foreground text-xs italic">ไม่มีข้อมูลสมาชิก</p>
                             )}
                           </div>
                         </div>

@@ -12,7 +12,6 @@ import Home from "@/pages/Home";
 import Login from "@/pages/Login";
 import RegisterTeam from "@/pages/RegisterTeam";
 import MyTeams from "@/pages/MyTeams";
-import Scoreboard from "@/pages/Scoreboard";
 import Bracket from "@/pages/Bracket";
 import HallOfFame from "@/pages/HallOfFame";
 import Chat from "@/pages/Chat";
@@ -33,7 +32,6 @@ function Router() {
       <Route path="/login" component={Login} />
       <Route path="/register-team" component={RegisterTeam} />
       <Route path="/my-teams" component={MyTeams} />
-      <Route path="/scoreboard" component={Scoreboard} />
       <Route path="/bracket" component={Bracket} />
       <Route path="/hall-of-fame" component={HallOfFame} />
       <Route path="/chat" component={Chat} />
