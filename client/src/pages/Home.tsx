@@ -1,3 +1,4 @@
+
 import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -83,6 +84,7 @@ export default function Home() {
     }, [event.id]);
 
     const isFull = event.maxTeams ? registeredCount >= event.maxTeams : false;
+    const isOpen = event.status === 'open';
 
     return (
       <motion.div
@@ -91,7 +93,7 @@ export default function Home() {
         viewport={{ once: true }}
         transition={{ delay: index * 0.1 }}
         className={`group relative h-96 rounded-3xl overflow-hidden border bg-background transition-all ${
-          isFull ? "border-red-500/50 opacity-90 shadow-lg shadow-red-500/10" : "border-white/10 hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/20"
+          !isOpen || isFull ? "border-red-500/50 opacity-90 shadow-lg shadow-red-500/10" : "border-white/10 hover:border-primary/50 hover:shadow-2xl hover:shadow-primary/20"
         }`}
       >
         <Link href={`/event/${event.id}`}>
@@ -107,7 +109,12 @@ export default function Home() {
         
         {/* Status Badge */}
         <div className="absolute top-4 right-4 z-10 flex gap-2">
-          {isFull ? (
+          {!isOpen ? (
+            <div className="px-3 py-1.5 rounded-full bg-red-500/80 text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-lg">
+              <AlertCircle className="w-3 h-3" />
+              ปิดรับสมัคร
+            </div>
+          ) : isFull ? (
             <div className="px-3 py-1.5 rounded-full bg-red-500 text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-lg">
               <AlertCircle className="w-3 h-3" />
               เต็มแล้ว
@@ -141,10 +148,17 @@ export default function Home() {
                 {registeredCount}/{event.maxTeams || 16} ทีม
               </span>
             </div>
-            {!isFull && (
+            {isOpen && !isFull && (
               <Link href={user ? `/event/${event.id}` : "/login"}>
                 <Button size="sm" className="rounded-xl bg-primary hover:bg-primary/80 text-white font-bold px-4 pointer-events-auto shadow-lg shadow-primary/20">
                   สมัครเลย
+                </Button>
+              </Link>
+            )}
+            {(!isOpen || isFull) && (
+              <Link href={`/event/${event.id}`}>
+                <Button size="sm" variant="outline" className="rounded-xl border-white/20 hover:bg-white/5 text-white/60 font-bold px-4 pointer-events-auto">
+                  ดูรายละเอียด
                 </Button>
               </Link>
             )}
@@ -219,8 +233,8 @@ export default function Home() {
                 <div className="w-8 h-[2px] bg-primary" />
                 <span className="text-primary font-bold uppercase tracking-widest text-xs">Tournaments</span>
               </div>
-              <h2 className="text-4xl md:text-5xl font-display font-bold text-white">การแข่งขันที่เปิดรับสมัคร</h2>
-              <p className="text-muted-foreground mt-3 text-lg">รายการแข่งขันทั้งหมดที่คุณสามารถเข้าร่วมได้ในขณะนี้</p>
+              <h2 className="text-4xl md:text-5xl font-display font-bold text-white">การแข่งขันอีสปอร์ต</h2>
+              <p className="text-muted-foreground mt-3 text-lg">รายการแข่งขันทั้งหมดของวิทยาลัยเทคนิควังน้ำเย็น</p>
             </div>
           </div>
 
@@ -266,11 +280,13 @@ export default function Home() {
                       {item.createdAt?.toDate?.().toLocaleDateString('th-TH') || "ประกาศใหม่"}
                     </p>
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-4 group-hover:text-primary transition-colors">{item.title}</h3>
+                  <h3 className="text-xl font-bold text-white mb-4 group-hover:text-primary transition-colors line-clamp-2">{item.title}</h3>
                   <p className="text-muted-foreground text-sm leading-relaxed line-clamp-3 mb-6">{item.content}</p>
-                  <div className="pt-6 border-t border-white/5 flex items-center justify-between">
-                    <p className="text-xs text-white/40 font-medium">โดย {item.author}</p>
-                    <ArrowRight className="w-4 h-4 text-primary opacity-0 group-hover:opacity-100 transition-all -translate-x-2 group-hover:translate-x-0" />
+                  <div className="flex items-center gap-2 pt-4 border-t border-white/5">
+                    <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-[10px] text-primary font-bold">
+                      {item.author?.charAt(0) || "A"}
+                    </div>
+                    <span className="text-xs text-white/40 font-medium">โพสต์โดย {item.author || "Admin"}</span>
                   </div>
                 </div>
               ))}
@@ -279,28 +295,13 @@ export default function Home() {
         </section>
       )}
 
-      {/* CTA Section */}
-      <section className="py-32">
+      {/* Footer */}
+      <footer className="py-12 border-t border-white/5">
         <div className="container mx-auto px-4 text-center">
-          <div className="max-w-5xl mx-auto bg-gradient-to-br from-primary/20 via-card to-background p-12 md:p-20 rounded-[4rem] relative overflow-hidden border border-white/10 shadow-2xl shadow-primary/5">
-            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2" />
-            
-            <h2 className="text-4xl md:text-6xl font-display font-bold text-white mb-8 tracking-tight">
-              พร้อมที่จะเป็น <span className="text-primary text-glow">ตำนาน</span> หรือยัง?
-            </h2>
-            <p className="text-xl text-muted-foreground mb-12 max-w-2xl mx-auto leading-relaxed">
-              สร้างทีมของคุณ รวบรวมสมาชิก และลงทะเบียนเพื่อชิงรางวัลและการยอมรับในระดับวิทยาลัย
-            </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-              <Link href={user ? "/register-team" : "/login"}>
-                <Button size="lg" className="bg-primary hover:bg-primary/90 text-white font-bold px-12 h-16 text-xl rounded-2xl shadow-2xl shadow-primary/40 transition-all hover:scale-105">
-                  ลงทะเบียนทีมแข่ง
-                </Button>
-              </Link>
-            </div>
-          </div>
+          <p className="text-primary font-bold tracking-tighter text-xl mb-2">WANG NAM YEN <span className="text-white/40">TECHNICAL COLLEGE</span></p>
+          <p className="text-muted-foreground text-sm">ระบบจัดการการแข่งขันกีฬาอีสปอร์ตวิทยาลัยเทคนิควังน้ำเย็น</p>
         </div>
-      </section>
+      </footer>
     </div>
   );
 }
