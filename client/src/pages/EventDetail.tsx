@@ -2,12 +2,12 @@
 import { useState, useEffect } from "react";
 import { useRoute, useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { doc, getDoc, collection, addDoc, query, where, onSnapshot, serverTimestamp, updateDoc, getDocs, limit, orderBy } from "firebase/firestore";
+import { doc, getDoc, collection, addDoc, query, where, onSnapshot, serverTimestamp, updateDoc, getDocs, limit, orderBy, deleteDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Loader2, ArrowLeft, Users, Calendar, Trophy, Check, X, Gamepad2, Clock, AlertCircle } from "lucide-react";
+import { Loader2, ArrowLeft, Users, Calendar, Trophy, Check, X, Gamepad2, Clock, AlertCircle, Edit2, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface Event {
@@ -52,6 +52,7 @@ const EventListItem = ({ item, index }: { item: Event, index: number }) => {
   }, [item.id]);
 
   const isFull = item.maxTeams ? registeredCount >= item.maxTeams : false;
+  const isOpen = item.status === 'open';
 
   return (
     <motion.div
@@ -60,7 +61,7 @@ const EventListItem = ({ item, index }: { item: Event, index: number }) => {
       transition={{ delay: index * 0.1 }}
     >
       <Link href={`/event/${item.id}`}>
-        <Card className={`group bg-card/50 border-white/10 hover:border-primary/30 transition-all cursor-pointer overflow-hidden h-full ${isFull ? 'opacity-90' : ''}`}>
+        <Card className={`group bg-card/50 border-white/10 hover:border-primary/30 transition-all cursor-pointer overflow-hidden h-full ${!isOpen || isFull ? 'opacity-90' : ''}`}>
           <div className="relative h-48 overflow-hidden">
             <img
               src={item.bannerUrl || "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2070&auto=format&fit=crop"}
@@ -73,13 +74,21 @@ const EventListItem = ({ item, index }: { item: Event, index: number }) => {
                 {item.game}
               </span>
             </div>
-            {isFull && (
-              <div className="absolute top-4 right-4">
+            <div className="absolute top-4 right-4 flex gap-2">
+              {!isOpen ? (
+                <span className="px-3 py-1 rounded-full bg-red-500/80 text-[10px] font-bold text-white uppercase tracking-wider">
+                  ปิดรับสมัคร
+                </span>
+              ) : isFull ? (
                 <span className="px-3 py-1 rounded-full bg-red-500 text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" /> เต็มแล้ว
                 </span>
-              </div>
-            )}
+              ) : (
+                <span className="px-3 py-1 rounded-full bg-green-500 text-[10px] font-bold text-white uppercase tracking-wider">
+                  เปิดรับสมัคร
+                </span>
+              )}
+            </div>
           </div>
           <div className="p-6">
             <h3 className="text-xl font-bold text-white mb-2 group-hover:text-primary transition-colors">{item.title}</h3>
@@ -115,6 +124,7 @@ export default function EventDetail() {
   const [userRegistration, setUserRegistration] = useState<Registration | null>(null);
   const [isRegistering, setIsRegistering] = useState(false);
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     teamName: "",
     members: ["", "", ""],
@@ -216,25 +226,58 @@ export default function EventDetail() {
 
     setIsRegistering(true);
     try {
-      await addDoc(collection(db, "registrations"), {
-        eventId: eventId,
-        userId: user.uid,
-        teamName: formData.teamName,
-        members: formData.members.filter((m) => m.trim()),
-        status: "pending",
-        createdAt: serverTimestamp(),
-      });
-
-      setMessage({ type: "success", text: "ลงสมัครเรียบร้อยแล้ว! รอการอนุมัติจากแอดมิน" });
+      if (isEditing && userRegistration) {
+        await updateDoc(doc(db, "registrations", userRegistration.id), {
+          teamName: formData.teamName,
+          members: formData.members.filter((m) => m.trim()),
+          updatedAt: serverTimestamp(),
+        });
+        setMessage({ type: "success", text: "แก้ไขข้อมูลทีมเรียบร้อยแล้ว!" });
+      } else {
+        await addDoc(collection(db, "registrations"), {
+          eventId: eventId,
+          userId: user.uid,
+          teamName: formData.teamName,
+          members: formData.members.filter((m) => m.trim()),
+          status: "pending",
+          createdAt: serverTimestamp(),
+        });
+        setMessage({ type: "success", text: "ลงสมัครเรียบร้อยแล้ว! รอการอนุมัติจากแอดมิน" });
+      }
+      
       setShowRegistrationForm(false);
+      setIsEditing(false);
       setFormData({ teamName: "", members: ["", "", ""] });
       setTimeout(() => setMessage(null), 3000);
     } catch (error) {
-      console.error("Error registering:", error);
-      setMessage({ type: "error", text: "ไม่สามารถลงสมัครได้" });
+      console.error("Error registering/updating:", error);
+      setMessage({ type: "error", text: "ไม่สามารถดำเนินการได้" });
     } finally {
       setIsRegistering(false);
     }
+  };
+
+  const handleCancelRegistration = async () => {
+    if (!userRegistration || !window.confirm("คุณแน่ใจหรือไม่ว่าต้องการยกเลิกการสมัครแข่งขัน?")) return;
+
+    try {
+      await deleteDoc(doc(db, "registrations", userRegistration.id));
+      setMessage({ type: "success", text: "ยกเลิกการสมัครเรียบร้อยแล้ว" });
+      setTimeout(() => setMessage(null), 3000);
+    } catch (error) {
+      console.error("Error canceling registration:", error);
+      setMessage({ type: "error", text: "ไม่สามารถยกเลิกการสมัครได้" });
+    }
+  };
+
+  const handleEditRegistration = () => {
+    if (!userRegistration) return;
+    setFormData({
+      teamName: userRegistration.teamName,
+      members: userRegistration.members.length >= 3 ? userRegistration.members : [...userRegistration.members, "", "", ""].slice(0, 3),
+    });
+    setIsEditing(true);
+    setShowRegistrationForm(true);
   };
 
   const handleApproveRegistration = async (registrationId: string) => {
@@ -327,6 +370,8 @@ export default function EventDetail() {
 
   const approvedCount = registrations.filter((r) => r.status === "approved").length;
   const pendingCount = registrations.filter((r) => r.status === "pending").length;
+  const isFull = event.maxTeams ? approvedCount >= event.maxTeams : false;
+  const isOpen = event.status === 'open';
 
   return (
     <div className="container mx-auto px-4 py-12">
@@ -342,13 +387,14 @@ export default function EventDetail() {
 
       {message && (
         <div
-          className={`mb-6 p-4 rounded-lg ${
+          className={`mb-6 p-4 rounded-lg flex items-center justify-between ${
             message.type === "success"
               ? "bg-green-500/20 border border-green-500/50 text-green-300"
               : "bg-red-500/20 border border-red-500/50 text-red-300"
           }`}
         >
-          {message.text}
+          <span>{message.text}</span>
+          <button onClick={() => setMessage(null)}><X className="w-4 h-4" /></button>
         </div>
       )}
 
@@ -366,9 +412,9 @@ export default function EventDetail() {
               {event.game}
             </span>
             <span className={`px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest shadow-lg ${
-              event.status === 'open' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
+              isOpen ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
             }`}>
-              {event.status === 'open' ? 'เปิดรับสมัคร' : 'ปิดรับสมัคร'}
+              {isOpen ? 'เปิดรับสมัคร' : 'ปิดรับสมัคร'}
             </span>
           </div>
           <h1 className="text-4xl md:text-6xl font-display font-bold text-white mb-4 text-glow">{event.title}</h1>
@@ -409,19 +455,69 @@ export default function EventDetail() {
             )}
           </Card>
 
-          {/* Registration Form */}
-          {user && !userRegistration && event.status === 'open' && !showRegistrationForm && (
-            <Button
-              onClick={() => setShowRegistrationForm(true)}
-              className="w-full bg-primary hover:bg-primary/80 py-8 text-xl font-bold rounded-2xl shadow-lg shadow-primary/20 transition-all hover:scale-[1.02]"
-            >
-              ลงสมัครเข้าแข่งขันตอนนี้
-            </Button>
+          {/* Registration Section */}
+          {!userRegistration ? (
+            isOpen && !isFull && !showRegistrationForm ? (
+              <Button
+                onClick={() => setShowRegistrationForm(true)}
+                className="w-full bg-primary hover:bg-primary/80 py-8 text-xl font-bold rounded-2xl shadow-lg shadow-primary/20 transition-all hover:scale-[1.02]"
+              >
+                ลงสมัครเข้าแข่งขันตอนนี้
+              </Button>
+            ) : !isOpen ? (
+              <Card className="bg-red-500/10 border-red-500/20 p-8 rounded-3xl text-center backdrop-blur-md">
+                <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                <h2 className="text-2xl font-bold text-white mb-2">ปิดรับสมัครแล้ว</h2>
+                <p className="text-muted-foreground">รายการแข่งขันนี้ไม่ได้เปิดรับสมัครในขณะนี้</p>
+              </Card>
+            ) : isFull ? (
+              <Card className="bg-yellow-500/10 border-yellow-500/20 p-8 rounded-3xl text-center backdrop-blur-md">
+                <Users className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
+                <h2 className="text-2xl font-bold text-white mb-2">ทีมสมัครเต็มแล้ว</h2>
+                <p className="text-muted-foreground">ขออภัย รายการแข่งขันนี้มีผู้สมัครครบจำนวนแล้ว</p>
+              </Card>
+            ) : null
+          ) : !showRegistrationForm && (
+            <Card className="bg-card/50 border-white/10 p-8 rounded-3xl border-primary/20 bg-primary/5 backdrop-blur-md">
+              <div className="flex flex-col md:flex-row items-center gap-6">
+                <div className="w-20 h-20 bg-primary/20 rounded-2xl flex items-center justify-center shrink-0">
+                  <Check className="w-10 h-10 text-primary" />
+                </div>
+                <div className="flex-grow text-center md:text-left">
+                  <h2 className="text-2xl font-bold text-white mb-1">คุณได้ลงสมัครแล้ว</h2>
+                  <p className="text-muted-foreground mb-3">ทีมของคุณ: <span className="text-white font-bold">{userRegistration.teamName}</span></p>
+                  <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-white/5 border border-white/10">
+                    <span className="text-xs text-muted-foreground mr-2">สถานะ:</span>
+                    <span className={`text-xs font-black uppercase tracking-widest ${
+                      userRegistration.status === 'approved' ? 'text-green-400' :
+                      userRegistration.status === 'pending' ? 'text-yellow-400' :
+                      'text-red-400'
+                    }`}>{userRegistration.status === 'approved' ? 'อนุมัติแล้ว' : userRegistration.status === 'pending' ? 'รอการตรวจสอบ' : 'ไม่ผ่านการคัดเลือก'}</span>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2 shrink-0 w-full md:w-auto">
+                  <Button 
+                    variant="outline" 
+                    className="border-white/10 hover:bg-white/5 text-white gap-2 rounded-xl h-11"
+                    onClick={handleEditRegistration}
+                  >
+                    <Edit2 className="w-4 h-4" /> แก้ไขข้อมูล
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    className="text-red-400 hover:bg-red-500/10 hover:text-red-300 gap-2 rounded-xl h-11"
+                    onClick={handleCancelRegistration}
+                  >
+                    <Trash2 className="w-4 h-4" /> ยกเลิกการสมัคร
+                  </Button>
+                </div>
+              </div>
+            </Card>
           )}
 
           {showRegistrationForm && (
             <Card className="bg-card/50 border-white/10 p-8 rounded-3xl backdrop-blur-md">
-              <h2 className="text-2xl font-bold text-white mb-6">ฟอร์มลงสมัคร</h2>
+              <h2 className="text-2xl font-bold text-white mb-6">{isEditing ? 'แก้ไขข้อมูลทีม' : 'ฟอร์มลงสมัคร'}</h2>
               <form onSubmit={handleRegister} className="space-y-6">
                 <div>
                   <label className="block text-sm font-bold text-white/60 uppercase tracking-wider mb-2">ชื่อทีม</label>
@@ -467,35 +563,20 @@ export default function EventDetail() {
                   <Button
                     type="button"
                     variant="ghost"
-                    onClick={() => setShowRegistrationForm(false)}
+                    onClick={() => {
+                      setShowRegistrationForm(false);
+                      setIsEditing(false);
+                    }}
                     className="h-12 px-6 rounded-xl"
                   >
                     ยกเลิก
                   </Button>
                   <Button type="submit" disabled={isRegistering} className="bg-primary hover:bg-primary/80 h-12 px-8 rounded-xl font-bold shadow-lg shadow-primary/20">
                     {isRegistering && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    ยืนยันการลงสมัคร
+                    {isEditing ? 'บันทึกการแก้ไข' : 'ยืนยันการลงสมัคร'}
                   </Button>
                 </div>
               </form>
-            </Card>
-          )}
-
-          {userRegistration && (
-            <Card className="bg-card/50 border-white/10 p-8 rounded-3xl text-center border-primary/20 bg-primary/5 backdrop-blur-md">
-              <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Check className="w-8 h-8 text-primary" />
-              </div>
-              <h2 className="text-2xl font-bold text-white mb-2">คุณได้ลงสมัครการแข่งขันนี้แล้ว</h2>
-              <p className="text-muted-foreground mb-4">ทีมของคุณ: <span className="text-white font-bold">{userRegistration.teamName}</span></p>
-              <div className="inline-flex items-center px-4 py-2 rounded-full bg-white/5 border border-white/10">
-                <span className="text-sm text-muted-foreground mr-2">สถานะ:</span>
-                <span className={`text-sm font-black uppercase tracking-widest ${
-                  userRegistration.status === 'approved' ? 'text-green-400' :
-                  userRegistration.status === 'pending' ? 'text-yellow-400' :
-                  'text-red-400'
-                }`}>{userRegistration.status === 'approved' ? 'อนุมัติแล้ว' : userRegistration.status === 'pending' ? 'รอการตรวจสอบ' : 'ไม่ผ่านการคัดเลือก'}</span>
-              </div>
             </Card>
           )}
         </div>
