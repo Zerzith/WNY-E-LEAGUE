@@ -272,9 +272,16 @@ export default function EventDetail() {
 
   const handleEditRegistration = () => {
     if (!userRegistration) return;
+    
+    // Ensure we have at least 3 members fields, and preserve existing ones
+    const currentMembers = [...userRegistration.members];
+    while (currentMembers.length < 3) {
+      currentMembers.push("");
+    }
+    
     setFormData({
       teamName: userRegistration.teamName,
-      members: userRegistration.members.length >= 3 ? userRegistration.members : [...userRegistration.members, "", "", ""].slice(0, 3),
+      members: currentMembers,
     });
     setIsEditing(true);
     setShowRegistrationForm(true);
@@ -516,64 +523,83 @@ export default function EventDetail() {
           )}
 
           {showRegistrationForm && (
-            <Card className="bg-card/50 border-white/10 p-8 rounded-3xl backdrop-blur-md">
-              <h2 className="text-2xl font-bold text-white mb-6">{isEditing ? 'แก้ไขข้อมูลทีม' : 'ฟอร์มลงสมัคร'}</h2>
+            <Card className="bg-card/50 border-white/10 p-8 rounded-3xl backdrop-blur-md shadow-2xl ring-1 ring-primary/20">
+              <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                {isEditing ? (
+                  <><Edit2 className="w-6 h-6 text-primary" /> แก้ไขรายละเอียดทีม</>
+                ) : (
+                  <><Trophy className="w-6 h-6 text-primary" /> ฟอร์มลงสมัครเข้าแข่งขัน</>
+                )}
+              </h2>
               <form onSubmit={handleRegister} className="space-y-6">
-                <div>
-                  <label className="block text-sm font-bold text-white/60 uppercase tracking-wider mb-2">ชื่อทีม</label>
-                  <Input
-                    value={formData.teamName}
-                    onChange={(e) => setFormData({ ...formData, teamName: e.target.value })}
-                    placeholder="ระบุชื่อทีมของคุณ"
-                    className="bg-white/5 border-white/10 h-12 rounded-xl focus:ring-primary"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-bold text-white/60 uppercase tracking-wider mb-2">รายชื่อสมาชิกทีม (ขั้นต่ำ 3 คน)</label>
-                  <div className="space-y-3">
-                    {formData.members.map((member, index) => (
-                      <Input
-                        key={index}
-                        value={member}
-                        onChange={(e) => {
-                          const newMembers = [...formData.members];
-                          newMembers[index] = e.target.value;
-                          setFormData({ ...formData, members: newMembers });
-                        }}
-                        placeholder={`ชื่อสมาชิกคนที่ ${index + 1}`}
-                        className="bg-white/5 border-white/10 h-12 rounded-xl focus:ring-primary"
-                        required={index < 3}
-                      />
-                    ))}
+                <div className="grid grid-cols-1 gap-6">
+                  <div>
+                    <label className="block text-sm font-bold text-white/60 uppercase tracking-wider mb-2">ชื่อทีม (Team Name)</label>
+                    <Input
+                      value={formData.teamName}
+                      onChange={(e) => setFormData({ ...formData, teamName: e.target.value })}
+                      placeholder="ระบุชื่อทีมของคุณ"
+                      className="bg-white/5 border-white/10 h-14 rounded-2xl focus:ring-primary text-lg"
+                      required
+                    />
                   </div>
-                  <Button 
-                    type="button" 
-                    variant="ghost" 
-                    size="sm" 
-                    className="mt-3 text-xs text-primary hover:text-primary/80"
-                    onClick={() => setFormData({ ...formData, members: [...formData.members, ""] })}
-                  >
-                    + เพิ่มสมาชิกสำรอง
-                  </Button>
+
+                  <div>
+                    <label className="block text-sm font-bold text-white/60 uppercase tracking-wider mb-4 flex items-center gap-2">
+                      <Users className="w-4 h-4 text-primary" /> รายชื่อสมาชิกทีม (ขั้นต่ำ 3 คน)
+                    </label>
+                    <div className="space-y-4">
+                      {formData.members.map((member, index) => (
+                        <div key={index} className="relative group">
+                          <div className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/5 flex items-center justify-center text-[10px] font-bold text-white/40 group-focus-within:bg-primary/20 group-focus-within:text-primary transition-colors">
+                            {index + 1}
+                          </div>
+                          <Input
+                            value={member}
+                            onChange={(e) => {
+                              const newMembers = [...formData.members];
+                              newMembers[index] = e.target.value;
+                              setFormData({ ...formData, members: newMembers });
+                            }}
+                            placeholder={index < 3 ? `ชื่อสมาชิกคนที่ ${index + 1} (จำเป็น)` : `ชื่อสมาชิกสำรองคนที่ ${index - 2}`}
+                            className="bg-white/5 border-white/10 h-14 pl-14 rounded-2xl focus:ring-primary"
+                            required={index < 3}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="sm" 
+                      className="mt-4 text-xs text-primary hover:text-primary/80 hover:bg-primary/5 rounded-xl"
+                      onClick={() => setFormData({ ...formData, members: [...formData.members, ""] })}
+                    >
+                      + เพิ่มสมาชิกสำรอง
+                    </Button>
+                  </div>
                 </div>
 
-                <div className="flex justify-end gap-4 pt-4">
+                <div className="flex flex-col sm:flex-row justify-end gap-4 pt-6 border-t border-white/5">
                   <Button
                     type="button"
                     variant="ghost"
                     onClick={() => {
                       setShowRegistrationForm(false);
                       setIsEditing(false);
+                      setFormData({ teamName: "", members: ["", "", ""] });
                     }}
-                    className="h-12 px-6 rounded-xl"
+                    className="h-14 px-8 rounded-2xl text-muted-foreground hover:text-white"
                   >
                     ยกเลิก
                   </Button>
-                  <Button type="submit" disabled={isRegistering} className="bg-primary hover:bg-primary/80 h-12 px-8 rounded-xl font-bold shadow-lg shadow-primary/20">
-                    {isRegistering && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    {isEditing ? 'บันทึกการแก้ไข' : 'ยืนยันการลงสมัคร'}
+                  <Button 
+                    type="submit" 
+                    disabled={isRegistering} 
+                    className="bg-primary hover:bg-primary/80 h-14 px-10 rounded-2xl font-bold shadow-lg shadow-primary/20 text-lg"
+                  >
+                    {isRegistering && <Loader2 className="w-5 h-5 mr-2 animate-spin" />}
+                    {isEditing ? 'บันทึกการแก้ไขข้อมูล' : 'ยืนยันการลงสมัครแข่งขัน'}
                   </Button>
                 </div>
               </form>
