@@ -1,13 +1,14 @@
 
 import { useState, useEffect } from "react";
-import { useRoute, useLocation } from "wouter";
+import { useRoute, useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { doc, getDoc, collection, addDoc, query, where, onSnapshot, serverTimestamp, updateDoc, getDocs, limit } from "firebase/firestore";
+import { doc, getDoc, collection, addDoc, query, where, onSnapshot, serverTimestamp, updateDoc, getDocs, limit, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Loader2, ArrowLeft, Users, Calendar, Trophy, Check, X } from "lucide-react";
+import { Loader2, ArrowLeft, Users, Calendar, Trophy, Check, X, Gamepad2 } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface Event {
   id: string;
@@ -54,26 +55,27 @@ export default function EventDetail() {
   // Load event data
   useEffect(() => {
     const loadData = async () => {
+      setLoading(true);
       if (eventId) {
         try {
           const eventDoc = await getDoc(doc(db, "events", eventId));
           if (eventDoc.exists()) {
             setEvent({ id: eventDoc.id, ...eventDoc.data() } as Event);
           }
-          setLoading(false);
         } catch (error) {
           console.error("Error loading event:", error);
+        } finally {
           setLoading(false);
         }
       } else {
         try {
-          const eventsQuery = query(collection(db, "events"));
+          const eventsQuery = query(collection(db, "events"), orderBy("createdAt", "desc"));
           const eventsSnapshot = await getDocs(eventsQuery);
           const events = eventsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Event));
           setAllEvents(events);
-          setLoading(false);
         } catch (error) {
           console.error("Error loading events:", error);
+        } finally {
           setLoading(false);
         }
       }
@@ -130,7 +132,6 @@ export default function EventDetail() {
       // Check if current user has registered
       const userReg = regs.find((reg) => reg.userId === user?.uid);
       setUserRegistration(userReg || null);
-      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -191,23 +192,99 @@ export default function EventDetail() {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-12">
+      <div className="container mx-auto px-4 py-24">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
-          <p className="text-muted-foreground mt-4">กำลังโหลดข้อมูล...</p>
+          <Loader2 className="w-12 h-12 animate-spin mx-auto text-primary mb-4" />
+          <p className="text-muted-foreground text-lg">กำลังโหลดข้อมูลการแข่งขัน...</p>
         </div>
       </div>
     );
   }
 
+  // List View (When no eventId is provided)
+  if (!eventId) {
+    return (
+      <div className="container mx-auto px-4 py-12">
+        <div className="mb-12">
+          <Button
+            onClick={() => setLocation("/")}
+            variant="ghost"
+            className="mb-6 text-muted-foreground hover:text-white"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            กลับไปหน้าแรก
+          </Button>
+          <h1 className="text-4xl font-display font-bold text-white mb-4">รายการแข่งขันทั้งหมด</h1>
+          <p className="text-muted-foreground">รวมรายการแข่งขันอีสปอร์ตทั้งหมดของวิทยาลัยเทคนิควังน้ำเย็น</p>
+        </div>
+
+        {allEvents.length === 0 ? (
+          <div className="text-center py-24 bg-card/20 rounded-[3rem] border border-dashed border-white/10">
+            <Gamepad2 className="w-20 h-20 mx-auto text-white/5 mb-6" />
+            <h3 className="text-xl font-bold text-white/40">ไม่พบรายการแข่งขันในขณะนี้</h3>
+            <Button onClick={() => setLocation("/")} variant="outline" className="mt-6">
+              กลับไปหน้าแรก
+            </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {allEvents.map((item, index) => (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+              >
+                <Link href={`/event/${item.id}`}>
+                  <Card className="group bg-card/50 border-white/10 hover:border-primary/30 transition-all cursor-pointer overflow-hidden h-full">
+                    <div className="relative h-48 overflow-hidden">
+                      <img
+                        src={item.bannerUrl || "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2070&auto=format&fit=crop"}
+                        alt={item.title}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                      <div className="absolute top-4 left-4">
+                        <span className="px-3 py-1 rounded-full bg-primary text-[10px] font-bold text-white uppercase tracking-wider">
+                          {item.game}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="p-6">
+                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-primary transition-colors">{item.title}</h3>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-4 h-4" />
+                          <span>{item.date}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Users className="w-4 h-4" />
+                          <span>{item.registeredTeams || 0} / {item.maxTeams || 16} ทีม</span>
+                        </div>
+                      </div>
+                      <Button className="w-full bg-white/5 hover:bg-primary hover:text-white transition-all border-white/10">
+                        ดูรายละเอียด
+                      </Button>
+                    </div>
+                  </Card>
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Detail View (When eventId is provided)
   if (!event) {
     return (
       <div className="container mx-auto px-4 py-12">
         <div className="text-center">
-          <p className="text-muted-foreground text-lg mb-4">ไม่พบการแข่งขัน</p>
-          <Button onClick={() => setLocation("/")} variant="outline">
+          <p className="text-muted-foreground text-lg mb-4">ไม่พบข้อมูลการแข่งขันที่คุณต้องการ</p>
+          <Button onClick={() => setLocation("/events")} variant="outline">
             <ArrowLeft className="w-4 h-4 mr-2" />
-            กลับไปหน้าแรก
+            ดูรายการแข่งทั้งหมด
           </Button>
         </div>
       </div>
@@ -221,12 +298,12 @@ export default function EventDetail() {
     <div className="container mx-auto px-4 py-12">
       {/* Header */}
       <Button
-        onClick={() => setLocation("/")}
+        onClick={() => setLocation("/events")}
         variant="ghost"
         className="mb-6 text-muted-foreground hover:text-white"
       >
         <ArrowLeft className="w-4 h-4 mr-2" />
-        กลับไป
+        กลับไปหน้ารายการ
       </Button>
 
       {message && (
@@ -242,16 +319,25 @@ export default function EventDetail() {
       )}
 
       {/* Event Banner */}
-      <div className="relative h-64 rounded-lg overflow-hidden mb-8">
+      <div className="relative h-80 rounded-3xl overflow-hidden mb-8 border border-white/10">
         <img
           src={event.bannerUrl || "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2070&auto=format&fit=crop"}
           alt={event.title}
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-black/50" />
-        <div className="absolute inset-0 flex flex-col justify-end p-8">
-          <h1 className="text-4xl font-display font-bold text-white mb-2">{event.title}</h1>
-          <p className="text-lg text-white/80">{event.game}</p>
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+        <div className="absolute inset-0 flex flex-col justify-end p-8 md:p-12">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="px-4 py-1 rounded-full bg-primary text-xs font-bold text-white uppercase tracking-widest">
+              {event.game}
+            </span>
+            <span className={`px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest ${
+              event.status === 'open' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'
+            }`}>
+              {event.status === 'open' ? 'เปิดรับสมัคร' : 'ปิดรับสมัคร'}
+            </span>
+          </div>
+          <h1 className="text-4xl md:text-6xl font-display font-bold text-white mb-4">{event.title}</h1>
         </div>
       </div>
 
@@ -259,68 +345,64 @@ export default function EventDetail() {
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-8">
           {/* Event Details */}
-          <Card className="bg-card/50 border-white/10 p-6">
-            <h2 className="text-2xl font-bold text-white mb-4">รายละเอียดการแข่งขัน</h2>
-            <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <Calendar className="w-5 h-5 text-accent" />
+          <Card className="bg-card/50 border-white/10 p-8 rounded-3xl">
+            <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+              <div className="w-1 h-6 bg-primary rounded-full" />
+              รายละเอียดการแข่งขัน
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5">
+                <Calendar className="w-6 h-6 text-primary" />
                 <div>
-                  <p className="text-sm text-muted-foreground">วันที่</p>
+                  <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">วันที่แข่งขัน</p>
                   <p className="text-white font-medium">{event.date}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
-                <Users className="w-5 h-5 text-accent" />
+              <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5">
+                <Users className="w-6 h-6 text-primary" />
                 <div>
-                  <p className="text-sm text-muted-foreground">ทีมที่ลงสมัคร</p>
+                  <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">ทีมที่ลงสมัคร</p>
                   <p className="text-white font-medium">
-                    {approvedCount} / {event.maxTeams || "ไม่จำกัด"} ทีม
+                    {approvedCount} / {event.maxTeams || 16} ทีม
                   </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <Trophy className="w-5 h-5 text-accent" />
-                <div>
-                  <p className="text-sm text-muted-foreground">สถานะ</p>
-                  <p className="text-white font-medium capitalize">{event.status}</p>
                 </div>
               </div>
             </div>
             {event.description && (
-              <div className="mt-6 pt-6 border-t border-white/10">
-                <p className="text-muted-foreground">{event.description}</p>
+              <div className="pt-6 border-t border-white/10">
+                <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{event.description}</p>
               </div>
             )}
           </Card>
 
           {/* Registration Form */}
-          {user && !userRegistration && !showRegistrationForm && (
+          {user && !userRegistration && event.status === 'open' && !showRegistrationForm && (
             <Button
               onClick={() => setShowRegistrationForm(true)}
-              className="w-full bg-primary hover:bg-primary/80 py-6 text-lg"
+              className="w-full bg-primary hover:bg-primary/80 py-8 text-xl font-bold rounded-2xl shadow-lg shadow-primary/20"
             >
-              ลงสมัครเข้าแข่งขัน
+              ลงสมัครเข้าแข่งขันตอนนี้
             </Button>
           )}
 
           {showRegistrationForm && (
-            <Card className="bg-card/50 border-white/10 p-6">
-              <h2 className="text-2xl font-bold text-white mb-4">ฟอร์มลงสมัคร</h2>
-              <form onSubmit={handleRegister} className="space-y-4">
+            <Card className="bg-card/50 border-white/10 p-8 rounded-3xl">
+              <h2 className="text-2xl font-bold text-white mb-6">ฟอร์มลงสมัคร</h2>
+              <form onSubmit={handleRegister} className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-white mb-2">ชื่อทีม</label>
+                  <label className="block text-sm font-bold text-white/60 uppercase tracking-wider mb-2">ชื่อทีม</label>
                   <Input
                     value={formData.teamName}
                     onChange={(e) => setFormData({ ...formData, teamName: e.target.value })}
-                    placeholder="ชื่อทีมของคุณ"
-                    className="bg-white/5 border-white/10"
+                    placeholder="ระบุชื่อทีมของคุณ"
+                    className="bg-white/5 border-white/10 h-12 rounded-xl focus:ring-primary"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-white mb-2">สมาชิกทีม</label>
-                  <div className="space-y-2">
+                  <label className="block text-sm font-bold text-white/60 uppercase tracking-wider mb-2">รายชื่อสมาชิกทีม (ขั้นต่ำ 3 คน)</label>
+                  <div className="space-y-3">
                     {formData.members.map((member, index) => (
                       <Input
                         key={index}
@@ -330,11 +412,21 @@ export default function EventDetail() {
                           newMembers[index] = e.target.value;
                           setFormData({ ...formData, members: newMembers });
                         }}
-                        placeholder={`สมาชิกที่ ${index + 1}`}
-                        className="bg-white/5 border-white/10"
+                        placeholder={`ชื่อสมาชิกคนที่ ${index + 1}`}
+                        className="bg-white/5 border-white/10 h-12 rounded-xl focus:ring-primary"
+                        required={index < 3}
                       />
                     ))}
                   </div>
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    className="mt-3 text-xs text-primary hover:text-primary/80"
+                    onClick={() => setFormData({ ...formData, members: [...formData.members, ""] })}
+                  >
+                    + เพิ่มสมาชิกสำรอง
+                  </Button>
                 </div>
 
                 <div className="flex justify-end gap-4 pt-4">
@@ -342,12 +434,13 @@ export default function EventDetail() {
                     type="button"
                     variant="ghost"
                     onClick={() => setShowRegistrationForm(false)}
+                    className="h-12 px-6 rounded-xl"
                   >
                     ยกเลิก
                   </Button>
-                  <Button type="submit" disabled={isRegistering} className="bg-primary hover:bg-primary/80">
+                  <Button type="submit" disabled={isRegistering} className="bg-primary hover:bg-primary/80 h-12 px-8 rounded-xl font-bold">
                     {isRegistering && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    ยืนยันการสมัคร
+                    ยืนยันการลงสมัคร
                   </Button>
                 </div>
               </form>
@@ -355,15 +448,20 @@ export default function EventDetail() {
           )}
 
           {userRegistration && (
-            <Card className="bg-card/50 border-white/10 p-6 text-center">
-              <h2 className="text-xl font-bold text-white mb-2">คุณได้ลงสมัครแล้ว</h2>
-              <p className="text-muted-foreground">
-                สถานะ: <span className={`font-bold ${
+            <Card className="bg-card/50 border-white/10 p-8 rounded-3xl text-center border-primary/20 bg-primary/5">
+              <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Check className="w-8 h-8 text-primary" />
+              </div>
+              <h2 className="text-2xl font-bold text-white mb-2">คุณได้ลงสมัครการแข่งขันนี้แล้ว</h2>
+              <p className="text-muted-foreground mb-4">ทีมของคุณ: <span className="text-white font-bold">{userRegistration.teamName}</span></p>
+              <div className="inline-flex items-center px-4 py-2 rounded-full bg-white/5 border border-white/10">
+                <span className="text-sm text-muted-foreground mr-2">สถานะ:</span>
+                <span className={`text-sm font-black uppercase tracking-widest ${
                   userRegistration.status === 'approved' ? 'text-green-400' :
                   userRegistration.status === 'pending' ? 'text-yellow-400' :
                   'text-red-400'
-                }`}>{userRegistration.status}</span>
-              </p>
+                }`}>{userRegistration.status === 'approved' ? 'อนุมัติแล้ว' : userRegistration.status === 'pending' ? 'รอการตรวจสอบ' : 'ไม่ผ่านการคัดเลือก'}</span>
+              </div>
             </Card>
           )}
         </div>
@@ -371,48 +469,63 @@ export default function EventDetail() {
         {/* Sidebar */}
         <div className="space-y-8">
           {/* Approved Teams */}
-          <Card className="bg-card/50 border-white/10 p-6">
-            <h3 className="text-xl font-bold text-white mb-4">ทีมที่เข้าร่วม ({approvedCount})</h3>
-            <div className="space-y-4">
+          <Card className="bg-card/50 border-white/10 p-6 rounded-3xl">
+            <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-yellow-500" />
+              ทีมที่เข้าร่วม ({approvedCount})
+            </h3>
+            <div className="space-y-3">
               {registrations.filter(r => r.status === 'approved').map((reg, index) => (
-                <div key={index} className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-white font-bold overflow-hidden">
+                <div key={index} className="flex items-center gap-3 p-3 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors group">
+                  <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center text-white font-bold overflow-hidden ring-2 ring-transparent group-hover:ring-primary/50 transition-all">
                     {reg.logoUrl ? (
                       <img src={reg.logoUrl} alt={reg.teamName} className="w-full h-full object-cover" />
                     ) : (
                       reg.teamName.charAt(0)
                     )}
                   </div>
-                  <p className="text-white font-medium">{reg.teamName}</p>
+                  <div>
+                    <p className="text-white font-bold">{reg.teamName}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Verified Team</p>
+                  </div>
                 </div>
               ))}
-              {approvedCount === 0 && <p className="text-muted-foreground text-sm">ยังไม่มีทีมที่ได้รับการอนุมัติ</p>}
+              {approvedCount === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground text-sm italic">ยังไม่มีทีมที่ได้รับการอนุมัติ</p>
+                </div>
+              )}
             </div>
           </Card>
 
           {/* Pending Teams (Admin only) */}
           {isAdmin && pendingCount > 0 && (
-            <Card className="bg-card/50 border-white/10 p-6">
-              <h3 className="text-xl font-bold text-white mb-4">ทีมที่รออนุมัติ ({pendingCount})</h3>
+            <Card className="bg-card/50 border-white/10 p-6 rounded-3xl border-yellow-500/20">
+              <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                รออนุมัติ ({pendingCount})
+              </h3>
               <div className="space-y-4">
                 {registrations.filter(r => r.status === 'pending').map((reg, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center text-white font-bold overflow-hidden">
-                        {reg.logoUrl ? (
-                          <img src={reg.logoUrl} alt={reg.teamName} className="w-full h-full object-cover" />
-                        ) : (
-                          reg.teamName.charAt(0)
-                        )}
+                  <div key={index} className="p-4 rounded-2xl bg-yellow-500/5 border border-yellow-500/10">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-yellow-500/20 flex items-center justify-center text-white font-bold overflow-hidden">
+                          {reg.logoUrl ? (
+                            <img src={reg.logoUrl} alt={reg.teamName} className="w-full h-full object-cover" />
+                          ) : (
+                            reg.teamName.charAt(0)
+                          )}
+                        </div>
+                        <p className="text-white font-bold">{reg.teamName}</p>
                       </div>
-                      <p className="text-white font-medium">{reg.teamName}</p>
                     </div>
                     <div className="flex gap-2">
-                      <Button size="icon" variant="ghost" className="text-green-400 hover:bg-green-500/20 hover:text-green-300" onClick={() => handleApproveRegistration(reg.id)}>
-                        <Check className="w-4 h-4" />
+                      <Button size="sm" className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs h-9" onClick={() => handleApproveRegistration(reg.id)}>
+                        <Check className="w-3 h-3 mr-1" /> อนุมัติ
                       </Button>
-                      <Button size="icon" variant="ghost" className="text-red-400 hover:bg-red-500/20 hover:text-red-300" onClick={() => handleRejectRegistration(reg.id)}>
-                        <X className="w-4 h-4" />
+                      <Button size="sm" variant="outline" className="flex-1 border-red-500/50 text-red-400 hover:bg-red-500/10 text-xs h-9" onClick={() => handleRejectRegistration(reg.id)}>
+                        <X className="w-3 h-3 mr-1" /> ปฏิเสธ
                       </Button>
                     </div>
                   </div>
