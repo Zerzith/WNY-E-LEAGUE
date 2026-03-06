@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRoute, useLocation, Link } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { doc, getDoc, collection, addDoc, query, where, onSnapshot, serverTimestamp, updateDoc, getDocs, limit, orderBy, deleteDoc } from "firebase/firestore";
@@ -7,7 +7,7 @@ import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Loader2, ArrowLeft, Users, Calendar, Trophy, Check, X, Gamepad2, Clock, AlertCircle, Edit2, Trash2 } from "lucide-react";
+import { Loader2, ArrowLeft, Users, Calendar, Trophy, Check, X, Gamepad2, Clock, AlertCircle, Edit2, Trash2, Upload, ImageIcon } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface Event {
@@ -128,10 +128,14 @@ export default function EventDetail() {
   const [formData, setFormData] = useState({
     teamName: "",
     members: ["", "", ""],
+    logoUrl: "",
   });
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
 
   const eventId = params?.id;
 
@@ -220,16 +224,46 @@ export default function EventDetail() {
     return () => unsubscribe();
   }, [eventId, user]);
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setMessage({ type: "error", text: "กรุณาอัปโหลดไฟล์รูปภาพเท่านั้น" });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      // In a real app, upload to Firebase Storage
+      // For this demo/setup, we'll use a data URL or a mock upload
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({ ...prev, logoUrl: reader.result as string }));
+        setUploading(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      setMessage({ type: "error", text: "เกิดข้อผิดพลาดในการอัปโหลด" });
+      setUploading(false);
+    }
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !eventId || !formData.teamName.trim()) return;
 
     setIsRegistering(true);
     try {
+      const filteredMembers = formData.members.filter((m) => m.trim());
+      
       if (isEditing && userRegistration) {
         await updateDoc(doc(db, "registrations", userRegistration.id), {
           teamName: formData.teamName,
-          members: formData.members.filter((m) => m.trim()),
+          members: filteredMembers,
+          logoUrl: formData.logoUrl,
           updatedAt: serverTimestamp(),
         });
         setMessage({ type: "success", text: "แก้ไขข้อมูลทีมเรียบร้อยแล้ว!" });
@@ -238,7 +272,8 @@ export default function EventDetail() {
           eventId: eventId,
           userId: user.uid,
           teamName: formData.teamName,
-          members: formData.members.filter((m) => m.trim()),
+          members: filteredMembers,
+          logoUrl: formData.logoUrl,
           status: "pending",
           createdAt: serverTimestamp(),
         });
@@ -247,7 +282,7 @@ export default function EventDetail() {
       
       setShowRegistrationForm(false);
       setIsEditing(false);
-      setFormData({ teamName: "", members: ["", "", ""] });
+      setFormData({ teamName: "", members: ["", "", ""], logoUrl: "" });
       setTimeout(() => setMessage(null), 3000);
     } catch (error) {
       console.error("Error registering/updating:", error);
@@ -282,6 +317,7 @@ export default function EventDetail() {
     setFormData({
       teamName: userRegistration.teamName,
       members: currentMembers,
+      logoUrl: userRegistration.logoUrl || "",
     });
     setIsEditing(true);
     setShowRegistrationForm(true);
@@ -487,8 +523,12 @@ export default function EventDetail() {
           ) : !showRegistrationForm && (
             <Card className="bg-card/50 border-white/10 p-8 rounded-3xl border-primary/20 bg-primary/5 backdrop-blur-md">
               <div className="flex flex-col md:flex-row items-center gap-6">
-                <div className="w-20 h-20 bg-primary/20 rounded-2xl flex items-center justify-center shrink-0">
-                  <Check className="w-10 h-10 text-primary" />
+                <div className="w-20 h-20 bg-primary/20 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden ring-2 ring-primary/30">
+                  {userRegistration.logoUrl ? (
+                    <img src={userRegistration.logoUrl} alt={userRegistration.teamName} className="w-full h-full object-cover" />
+                  ) : (
+                    <Check className="w-10 h-10 text-primary" />
+                  )}
                 </div>
                 <div className="flex-grow text-center md:text-left">
                   <h2 className="text-2xl font-bold text-white mb-1">คุณได้ลงสมัครแล้ว</h2>
@@ -531,7 +571,48 @@ export default function EventDetail() {
                   <><Trophy className="w-6 h-6 text-primary" /> ฟอร์มลงสมัครเข้าแข่งขัน</>
                 )}
               </h2>
-              <form onSubmit={handleRegister} className="space-y-6">
+              <form onSubmit={handleRegister} className="space-y-8">
+                {/* Logo Upload Section */}
+                <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-white/10 rounded-[2rem] bg-white/5 hover:bg-white/10 transition-all group relative overflow-hidden">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    accept="image/*"
+                    className="hidden"
+                  />
+                  
+                  {formData.logoUrl ? (
+                    <div className="relative w-32 h-32 mb-4 group/logo">
+                      <img src={formData.logoUrl} alt="Team Logo Preview" className="w-full h-full object-cover rounded-3xl ring-4 ring-primary/20" />
+                      <div 
+                        onClick={() => fileInputRef.current?.click()}
+                        className="absolute inset-0 bg-black/60 rounded-3xl flex items-center justify-center opacity-0 group-hover/logo:opacity-100 transition-opacity cursor-pointer"
+                      >
+                        <Upload className="w-8 h-8 text-white" />
+                      </div>
+                      <button 
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, logoUrl: "" }))}
+                        className="absolute -top-2 -right-2 p-1.5 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div 
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex flex-col items-center cursor-pointer"
+                    >
+                      <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        {uploading ? <Loader2 className="w-10 h-10 text-primary animate-spin" /> : <ImageIcon className="w-10 h-10 text-primary" />}
+                      </div>
+                      <p className="text-white font-bold">อัปโหลดโลโก้ทีม</p>
+                      <p className="text-xs text-muted-foreground mt-1">แนะนำขนาด 512x512px (PNG/JPG)</p>
+                    </div>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-1 gap-6">
                   <div>
                     <label className="block text-sm font-bold text-white/60 uppercase tracking-wider mb-2">ชื่อทีม (Team Name)</label>
@@ -587,7 +668,7 @@ export default function EventDetail() {
                     onClick={() => {
                       setShowRegistrationForm(false);
                       setIsEditing(false);
-                      setFormData({ teamName: "", members: ["", "", ""] });
+                      setFormData({ teamName: "", members: ["", "", ""], logoUrl: "" });
                     }}
                     className="h-14 px-8 rounded-2xl text-muted-foreground hover:text-white"
                   >
@@ -595,7 +676,7 @@ export default function EventDetail() {
                   </Button>
                   <Button 
                     type="submit" 
-                    disabled={isRegistering} 
+                    disabled={isRegistering || uploading} 
                     className="bg-primary hover:bg-primary/80 h-14 px-10 rounded-2xl font-bold shadow-lg shadow-primary/20 text-lg"
                   >
                     {isRegistering && <Loader2 className="w-5 h-5 mr-2 animate-spin" />}
