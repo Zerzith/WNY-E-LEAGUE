@@ -22,11 +22,16 @@ interface Event {
   status?: string;
 }
 
+interface TeamMember {
+  name: string;
+  role: string;
+}
+
 interface Registration {
   id: string;
   userId: string;
   teamName: string;
-  members: string[];
+  members: (string | TeamMember)[];
   logoUrl?: string;
   status: "pending" | "approved" | "rejected";
   createdAt: any;
@@ -127,7 +132,11 @@ export default function EventDetail() {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     teamName: "",
-    members: ["", "", ""],
+    members: [
+      { name: "", role: "Main" },
+      { name: "", role: "Main" },
+      { name: "", role: "Main" }
+    ],
     logoUrl: "",
   });
   const [loading, setLoading] = useState(true);
@@ -236,8 +245,6 @@ export default function EventDetail() {
 
     setUploading(true);
     try {
-      // In a real app, upload to Firebase Storage
-      // For this demo/setup, we'll use a data URL or a mock upload
       const reader = new FileReader();
       reader.onloadend = () => {
         setFormData(prev => ({ ...prev, logoUrl: reader.result as string }));
@@ -257,7 +264,7 @@ export default function EventDetail() {
 
     setIsRegistering(true);
     try {
-      const filteredMembers = formData.members.filter((m) => m.trim());
+      const filteredMembers = formData.members.filter((m) => m.name.trim());
       
       if (isEditing && userRegistration) {
         await updateDoc(doc(db, "registrations", userRegistration.id), {
@@ -282,7 +289,15 @@ export default function EventDetail() {
       
       setShowRegistrationForm(false);
       setIsEditing(false);
-      setFormData({ teamName: "", members: ["", "", ""], logoUrl: "" });
+      setFormData({ 
+        teamName: "", 
+        members: [
+          { name: "", role: "Main" },
+          { name: "", role: "Main" },
+          { name: "", role: "Main" }
+        ], 
+        logoUrl: "" 
+      });
       setTimeout(() => setMessage(null), 3000);
     } catch (error) {
       console.error("Error registering/updating:", error);
@@ -308,10 +323,17 @@ export default function EventDetail() {
   const handleEditRegistration = () => {
     if (!userRegistration) return;
     
-    // Ensure we have at least 3 members fields, and preserve existing ones
-    const currentMembers = [...userRegistration.members];
+    // Map existing members to the correct format {name, role}
+    const currentMembers = userRegistration.members.map(m => {
+      if (typeof m === 'string') {
+        return { name: m, role: "Main" };
+      }
+      return m;
+    });
+
+    // Ensure we have at least 3 members fields
     while (currentMembers.length < 3) {
-      currentMembers.push("");
+      currentMembers.push({ name: "", role: "Main" });
     }
     
     setFormData({
@@ -631,21 +653,49 @@ export default function EventDetail() {
                     </label>
                     <div className="space-y-4">
                       {formData.members.map((member, index) => (
-                        <div key={index} className="relative group">
-                          <div className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/5 flex items-center justify-center text-[10px] font-bold text-white/40 group-focus-within:bg-primary/20 group-focus-within:text-primary transition-colors">
+                        <div key={index} className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 relative group">
+                          <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-primary flex items-center justify-center text-xs font-bold text-white shadow-lg ring-4 ring-background">
                             {index + 1}
                           </div>
-                          <Input
-                            value={member}
-                            onChange={(e) => {
-                              const newMembers = [...formData.members];
-                              newMembers[index] = e.target.value;
-                              setFormData({ ...formData, members: newMembers });
-                            }}
-                            placeholder={index < 3 ? `ชื่อสมาชิกคนที่ ${index + 1} (จำเป็น)` : `ชื่อสมาชิกสำรองคนที่ ${index - 2}`}
-                            className="bg-white/5 border-white/10 h-14 pl-14 rounded-2xl focus:ring-primary"
-                            required={index < 3}
-                          />
+                          <div>
+                            <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1">ชื่อ-นามสกุล</label>
+                            <Input
+                              value={member.name}
+                              onChange={(e) => {
+                                const newMembers = [...formData.members];
+                                newMembers[index] = { ...newMembers[index], name: e.target.value };
+                                setFormData({ ...formData, members: newMembers });
+                              }}
+                              placeholder="ระบุชื่อ-นามสกุล"
+                              className="bg-white/5 border-white/10 h-11 rounded-xl focus:ring-primary"
+                              required={index < 3}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1">ตำแหน่ง / หน้าที่</label>
+                            <Input
+                              value={member.role}
+                              onChange={(e) => {
+                                const newMembers = [...formData.members];
+                                newMembers[index] = { ...newMembers[index], role: e.target.value };
+                                setFormData({ ...formData, members: newMembers });
+                              }}
+                              placeholder="เช่น กัปตันทีม, Support"
+                              className="bg-white/5 border-white/10 h-11 rounded-xl focus:ring-primary"
+                            />
+                          </div>
+                          {index >= 3 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newMembers = formData.members.filter((_, i) => i !== index);
+                                setFormData({ ...formData, members: newMembers });
+                              }}
+                              className="absolute -right-2 -top-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -654,7 +704,7 @@ export default function EventDetail() {
                       variant="ghost" 
                       size="sm" 
                       className="mt-4 text-xs text-primary hover:text-primary/80 hover:bg-primary/5 rounded-xl"
-                      onClick={() => setFormData({ ...formData, members: [...formData.members, ""] })}
+                      onClick={() => setFormData({ ...formData, members: [...formData.members, { name: "", role: "Substitute" }] })}
                     >
                       + เพิ่มสมาชิกสำรอง
                     </Button>
@@ -668,7 +718,15 @@ export default function EventDetail() {
                     onClick={() => {
                       setShowRegistrationForm(false);
                       setIsEditing(false);
-                      setFormData({ teamName: "", members: ["", "", ""], logoUrl: "" });
+                      setFormData({ 
+                        teamName: "", 
+                        members: [
+                          { name: "", role: "Main" },
+                          { name: "", role: "Main" },
+                          { name: "", role: "Main" }
+                        ], 
+                        logoUrl: "" 
+                      });
                     }}
                     className="h-14 px-8 rounded-2xl text-muted-foreground hover:text-white"
                   >
