@@ -7,7 +7,7 @@ import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Loader2, ArrowLeft, Users, Calendar, Trophy, Check, X, Gamepad2 } from "lucide-react";
+import { Loader2, ArrowLeft, Users, Calendar, Trophy, Check, X, Gamepad2, Clock, AlertCircle } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface Event {
@@ -31,6 +31,79 @@ interface Registration {
   status: "pending" | "approved" | "rejected";
   createdAt: any;
 }
+
+// Sub-component for individual event card in list view to handle real-time registration count
+const EventListItem = ({ item, index }: { item: Event, index: number }) => {
+  const [registeredCount, setRegisteredCount] = useState(item.registeredTeams || 0);
+
+  useEffect(() => {
+    // Listen to approved registrations for this specific event
+    const qRegs = query(
+      collection(db, "registrations"),
+      where("eventId", "==", item.id),
+      where("status", "==", "approved")
+    );
+    
+    const unsubRegs = onSnapshot(qRegs, (snapshot) => {
+      setRegisteredCount(snapshot.docs.length);
+    });
+
+    return () => unsubRegs();
+  }, [item.id]);
+
+  const isFull = item.maxTeams ? registeredCount >= item.maxTeams : false;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.1 }}
+    >
+      <Link href={`/event/${item.id}`}>
+        <Card className={`group bg-card/50 border-white/10 hover:border-primary/30 transition-all cursor-pointer overflow-hidden h-full ${isFull ? 'opacity-90' : ''}`}>
+          <div className="relative h-48 overflow-hidden">
+            <img
+              src={item.bannerUrl || "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2070&auto=format&fit=crop"}
+              alt={item.title}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+            <div className="absolute top-4 left-4">
+              <span className="px-3 py-1 rounded-full bg-primary text-[10px] font-bold text-white uppercase tracking-wider">
+                {item.game}
+              </span>
+            </div>
+            {isFull && (
+              <div className="absolute top-4 right-4">
+                <span className="px-3 py-1 rounded-full bg-red-500 text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" /> เต็มแล้ว
+                </span>
+              </div>
+            )}
+          </div>
+          <div className="p-6">
+            <h3 className="text-xl font-bold text-white mb-2 group-hover:text-primary transition-colors">{item.title}</h3>
+            <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
+              <div className="flex items-center gap-1">
+                <Calendar className="w-4 h-4 text-primary" />
+                <span>{item.date}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Users className="w-4 h-4 text-primary" />
+                <span className={isFull ? "text-red-400 font-bold" : ""}>
+                  {registeredCount} / {item.maxTeams || 16} ทีม
+                </span>
+              </div>
+            </div>
+            <Button className="w-full bg-white/5 hover:bg-primary hover:text-white transition-all border-white/10">
+              ดูรายละเอียด
+            </Button>
+          </div>
+        </Card>
+      </Link>
+    </motion.div>
+  );
+};
 
 export default function EventDetail() {
   const [, setLocation] = useLocation();
@@ -99,7 +172,7 @@ export default function EventDetail() {
     }
   }, [user]);
 
-  // Load registrations
+  // Load registrations for single event view
   useEffect(() => {
     if (!eventId) return;
 
@@ -229,46 +302,7 @@ export default function EventDetail() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {allEvents.map((item, index) => (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <Link href={`/event/${item.id}`}>
-                  <Card className="group bg-card/50 border-white/10 hover:border-primary/30 transition-all cursor-pointer overflow-hidden h-full">
-                    <div className="relative h-48 overflow-hidden">
-                      <img
-                        src={item.bannerUrl || "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2070&auto=format&fit=crop"}
-                        alt={item.title}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                      <div className="absolute top-4 left-4">
-                        <span className="px-3 py-1 rounded-full bg-primary text-[10px] font-bold text-white uppercase tracking-wider">
-                          {item.game}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="p-6">
-                      <h3 className="text-xl font-bold text-white mb-2 group-hover:text-primary transition-colors">{item.title}</h3>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-4 h-4" />
-                          <span>{item.date}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Users className="w-4 h-4" />
-                          <span>{item.registeredTeams || 0} / {item.maxTeams || 16} ทีม</span>
-                        </div>
-                      </div>
-                      <Button className="w-full bg-white/5 hover:bg-primary hover:text-white transition-all border-white/10">
-                        ดูรายละเอียด
-                      </Button>
-                    </div>
-                  </Card>
-                </Link>
-              </motion.div>
+              <EventListItem key={item.id} item={item} index={index} />
             ))}
           </div>
         )}
@@ -319,7 +353,7 @@ export default function EventDetail() {
       )}
 
       {/* Event Banner */}
-      <div className="relative h-80 rounded-3xl overflow-hidden mb-8 border border-white/10">
+      <div className="relative h-80 rounded-3xl overflow-hidden mb-8 border border-white/10 shadow-2xl">
         <img
           src={event.bannerUrl || "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2070&auto=format&fit=crop"}
           alt={event.title}
@@ -328,16 +362,16 @@ export default function EventDetail() {
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
         <div className="absolute inset-0 flex flex-col justify-end p-8 md:p-12">
           <div className="flex items-center gap-3 mb-4">
-            <span className="px-4 py-1 rounded-full bg-primary text-xs font-bold text-white uppercase tracking-widest">
+            <span className="px-4 py-1 rounded-full bg-primary text-xs font-bold text-white uppercase tracking-widest shadow-lg">
               {event.game}
             </span>
-            <span className={`px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest ${
-              event.status === 'open' ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'
+            <span className={`px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest shadow-lg ${
+              event.status === 'open' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'
             }`}>
               {event.status === 'open' ? 'เปิดรับสมัคร' : 'ปิดรับสมัคร'}
             </span>
           </div>
-          <h1 className="text-4xl md:text-6xl font-display font-bold text-white mb-4">{event.title}</h1>
+          <h1 className="text-4xl md:text-6xl font-display font-bold text-white mb-4 text-glow">{event.title}</h1>
         </div>
       </div>
 
@@ -345,7 +379,7 @@ export default function EventDetail() {
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-8">
           {/* Event Details */}
-          <Card className="bg-card/50 border-white/10 p-8 rounded-3xl">
+          <Card className="bg-card/50 border-white/10 p-8 rounded-3xl backdrop-blur-md">
             <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
               <div className="w-1 h-6 bg-primary rounded-full" />
               รายละเอียดการแข่งขัน
@@ -379,14 +413,14 @@ export default function EventDetail() {
           {user && !userRegistration && event.status === 'open' && !showRegistrationForm && (
             <Button
               onClick={() => setShowRegistrationForm(true)}
-              className="w-full bg-primary hover:bg-primary/80 py-8 text-xl font-bold rounded-2xl shadow-lg shadow-primary/20"
+              className="w-full bg-primary hover:bg-primary/80 py-8 text-xl font-bold rounded-2xl shadow-lg shadow-primary/20 transition-all hover:scale-[1.02]"
             >
               ลงสมัครเข้าแข่งขันตอนนี้
             </Button>
           )}
 
           {showRegistrationForm && (
-            <Card className="bg-card/50 border-white/10 p-8 rounded-3xl">
+            <Card className="bg-card/50 border-white/10 p-8 rounded-3xl backdrop-blur-md">
               <h2 className="text-2xl font-bold text-white mb-6">ฟอร์มลงสมัคร</h2>
               <form onSubmit={handleRegister} className="space-y-6">
                 <div>
@@ -438,7 +472,7 @@ export default function EventDetail() {
                   >
                     ยกเลิก
                   </Button>
-                  <Button type="submit" disabled={isRegistering} className="bg-primary hover:bg-primary/80 h-12 px-8 rounded-xl font-bold">
+                  <Button type="submit" disabled={isRegistering} className="bg-primary hover:bg-primary/80 h-12 px-8 rounded-xl font-bold shadow-lg shadow-primary/20">
                     {isRegistering && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                     ยืนยันการลงสมัคร
                   </Button>
@@ -448,7 +482,7 @@ export default function EventDetail() {
           )}
 
           {userRegistration && (
-            <Card className="bg-card/50 border-white/10 p-8 rounded-3xl text-center border-primary/20 bg-primary/5">
+            <Card className="bg-card/50 border-white/10 p-8 rounded-3xl text-center border-primary/20 bg-primary/5 backdrop-blur-md">
               <div className="w-16 h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Check className="w-8 h-8 text-primary" />
               </div>
@@ -469,7 +503,7 @@ export default function EventDetail() {
         {/* Sidebar */}
         <div className="space-y-8">
           {/* Approved Teams */}
-          <Card className="bg-card/50 border-white/10 p-6 rounded-3xl">
+          <Card className="bg-card/50 border-white/10 p-6 rounded-3xl backdrop-blur-md">
             <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
               <Trophy className="w-5 h-5 text-yellow-500" />
               ทีมที่เข้าร่วม ({approvedCount})
@@ -500,7 +534,7 @@ export default function EventDetail() {
 
           {/* Pending Teams (Admin only) */}
           {isAdmin && pendingCount > 0 && (
-            <Card className="bg-card/50 border-white/10 p-6 rounded-3xl border-yellow-500/20">
+            <Card className="bg-card/50 border-white/10 p-6 rounded-3xl border-yellow-500/20 backdrop-blur-md">
               <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
                 รออนุมัติ ({pendingCount})
