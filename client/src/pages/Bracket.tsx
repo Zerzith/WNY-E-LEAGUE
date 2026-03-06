@@ -280,15 +280,15 @@ function BracketMatch({ match, tournamentGame }: BracketMatchProps) {
     if (isCompleted) {
       return {
         text: "จบการแข่งขันแล้ว",
-        bgColor: "bg-green-600/20",
-        textColor: "text-green-400",
+        bgColor: "bg-green-600",
+        textColor: "text-white",
         animate: ""
       };
     }
     return {
       text: "ยังไม่เริ่ม",
-      bgColor: "bg-gray-600/20",
-      textColor: "text-gray-400",
+      bgColor: "bg-gray-600",
+      textColor: "text-white",
       animate: ""
     };
   };
@@ -302,13 +302,15 @@ function BracketMatch({ match, tournamentGame }: BracketMatchProps) {
       className="relative"
     >
       <Card
-        className={`w-64 md:w-72 bg-card/80 backdrop-blur-md border-white/10 overflow-hidden transition-all duration-500 hover:border-primary/50 group ${
+        className={`w-64 md:w-72 bg-card/80 backdrop-blur-md border-white/10 transition-all duration-500 hover:border-primary/50 group ${
           isOngoing ? "ring-2 ring-red-500/50 border-red-500/50" : ""
         } ${isCompleted ? "shadow-2xl shadow-black/50" : ""}`}
       >
-        {/* Match Status Badge */}
-        <div className={`absolute top-0 right-0 px-3 py-1 ${statusBadge.bgColor} text-[10px] font-bold text-white uppercase tracking-tighter ${statusBadge.animate} rounded-bl-lg border-l border-b border-white/10`}>
-          {statusBadge.text}
+        {/* Match Status Badge - Positioned to not overlap scores */}
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+          <div className={`px-3 py-1 rounded-full ${statusBadge.bgColor} ${statusBadge.textColor} text-[9px] font-black uppercase tracking-[0.1em] border border-white/10 shadow-lg backdrop-blur-md ${statusBadge.animate}`}>
+            {statusBadge.text}
+          </div>
         </div>
 
         {/* Team A */}
