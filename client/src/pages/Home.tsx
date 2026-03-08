@@ -298,27 +298,6 @@ export default function Home() {
         </section>
       )}
 
-      {/* Stats Section */}
-      <section className="py-24 relative overflow-hidden">
-        <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {[
-              { label: "การแข่งขัน", value: events.length, icon: Trophy },
-              { label: "ผู้เล่นทั้งหมด", value: "200+", icon: Users },
-              { label: "ทีมที่เข้าร่วม", value: "40+", icon: ArrowRight },
-              { label: "เงินรางวัลรวม", value: "5,000+", icon: ArrowRight },
-            ].map((stat, i) => (
-              <div key={i} className="text-center p-8 rounded-[2.5rem] bg-white/5 border border-white/5 backdrop-blur-sm">
-                <div className="w-12 h-12 bg-primary/20 rounded-2xl flex items-center justify-center text-primary mx-auto mb-4">
-                  <stat.icon className="w-6 h-6" />
-                </div>
-                <div className="text-4xl font-display font-bold text-white mb-1">{stat.value}</div>
-                <div className="text-sm text-muted-foreground font-medium uppercase tracking-widest">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* Footer */}
       <footer className="py-12 border-t border-white/5 bg-background">
