@@ -299,24 +299,6 @@ export default function Home() {
       )}
 
 
-      {/* Footer */}
-      <footer className="py-12 border-t border-white/5 bg-background">
-        <div className="container mx-auto px-4 text-center">
-          <div className="flex items-center justify-center gap-2 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white font-black text-xl">E</div>
-            <span className="text-xl font-display font-bold text-white tracking-tighter">WNY <span className="text-primary">ESPORTS</span></span>
-          </div>
-          <p className="text-muted-foreground text-sm max-w-md mx-auto mb-8">
-            ระบบจัดการการแข่งขันกีฬาอีสปอร์ตวิทยาลัยเทคนิควังน้ำเย็น
-          </p>
-          <div className="flex justify-center gap-8 mb-8">
-            <a href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">เกี่ยวกับเรา</a>
-            <a href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">ติดต่อ</a>
-            <a href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">นโยบายความเป็นส่วนตัว</a>
-          </div>
-          <p className="text-xs text-white/20 font-medium">© 2026 Wang Nam Yen Technical College. All rights reserved.</p>
-        </div>
-      </footer>
     </div>
   );
 }
