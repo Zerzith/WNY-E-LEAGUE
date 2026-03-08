@@ -7,7 +7,7 @@ import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Loader2, ArrowLeft, Users, Calendar, Trophy, Check, X, Gamepad2, Clock, AlertCircle, Edit2, Trash2, Upload, ImageIcon } from "lucide-react";
+import { Loader2, ArrowLeft, Users, Calendar, Trophy, Check, X, Gamepad2, Clock, AlertCircle, Edit2, Trash2, Upload, ImageIcon, User, GraduationCap, BookOpen, Fingerprint } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface Event {
@@ -25,6 +25,10 @@ interface Event {
 
 interface TeamMember {
   name: string;
+  ign: string;
+  studentId: string;
+  department: string;
+  year: string;
   role: string;
 }
 
@@ -32,7 +36,7 @@ interface Registration {
   id: string;
   userId: string;
   teamName: string;
-  members: (string | TeamMember)[];
+  members: TeamMember[];
   logoUrl?: string;
   status: "pending" | "approved" | "rejected";
   createdAt: any;
@@ -134,12 +138,15 @@ export default function EventDetail() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  
+  const initialMember = { name: "", ign: "", studentId: "", department: "", year: "", role: "Main" };
+  
   const [formData, setFormData] = useState({
     teamName: "",
     members: [
-      { name: "", role: "Main" },
-      { name: "", role: "Main" },
-      { name: "", role: "Main" }
+      { ...initialMember },
+      { ...initialMember },
+      { ...initialMember }
     ],
     logoUrl: "",
   });
@@ -317,17 +324,17 @@ export default function EventDetail() {
   const handleEditRegistration = () => {
     if (!userRegistration) return;
     
-    // Map existing members to the correct format {name, role}
+    // Map existing members to the correct format with all fields
     const currentMembers = userRegistration.members.map(m => {
       if (typeof m === 'string') {
-        return { name: m, role: "Main" };
+        return { ...initialMember, name: m };
       }
-      return m;
+      return { ...initialMember, ...m };
     });
 
     // Ensure we have at least 3 members fields
     while (currentMembers.length < 3) {
-      currentMembers.push({ name: "", role: "Main" });
+      currentMembers.push({ ...initialMember });
     }
     
     setFormData({
@@ -449,7 +456,7 @@ export default function EventDetail() {
 
       {message && (
         <div
-          className={`mb-6 p-4 rounded-lg flex items-center justify-between ${
+          className={`mb-6 p-4 rounded-lg flex items-center justify-between z-50 relative ${
             message.type === "success"
               ? "bg-green-500/20 border border-green-500/50 text-green-300"
               : "bg-red-500/20 border border-red-500/50 text-red-300"
@@ -646,30 +653,103 @@ export default function EventDetail() {
 
                   <div>
                     <label className="block text-sm font-bold text-white/60 uppercase tracking-wider mb-4 flex items-center gap-2">
-                      <Users className="w-4 h-4 text-primary" /> รายชื่อสมาชิกทีม (ขั้นต่ำ 3 คน)
+                      <Users className="w-4 h-4 text-primary" /> รายชื่อสมาชิกทีม
                     </label>
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                       {formData.members.map((member, index) => (
-                        <div key={index} className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 relative group">
-                          <div className="absolute -left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-primary flex items-center justify-center text-xs font-bold text-white shadow-lg ring-4 ring-background">
+                        <div key={index} className="p-6 rounded-2xl bg-white/5 border border-white/5 relative group space-y-4">
+                          <div className="absolute -left-3 top-6 w-8 h-8 rounded-full bg-primary flex items-center justify-center text-xs font-bold text-white shadow-lg ring-4 ring-background">
                             {index + 1}
                           </div>
-                          <div>
-                            <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1">ชื่อ-นามสกุล</label>
-                            <Input
-                              value={member.name}
-                              onChange={(e) => {
-                                const newMembers = [...formData.members];
-                                newMembers[index] = { ...newMembers[index], name: e.target.value };
-                                setFormData({ ...formData, members: newMembers });
-                              }}
-                              placeholder="ระบุชื่อ-นามสกุล"
-                              className="bg-white/5 border-white/10 h-11 rounded-xl focus:ring-primary"
-                              required={index < 3}
-                            />
+                          
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1 flex items-center gap-1">
+                                <User className="w-3 h-3" /> ชื่อจริง-นามสกุล
+                              </label>
+                              <Input
+                                value={member.name}
+                                onChange={(e) => {
+                                  const newMembers = [...formData.members];
+                                  newMembers[index] = { ...newMembers[index], name: e.target.value };
+                                  setFormData({ ...formData, members: newMembers });
+                                }}
+                                placeholder="ระบุชื่อ-นามสกุลจริง"
+                                className="bg-white/5 border-white/10 h-11 rounded-xl focus:ring-primary"
+                                required={index < 3}
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1 flex items-center gap-1">
+                                <Gamepad2 className="w-3 h-3" /> ชื่อในเกม (IGN)
+                              </label>
+                              <Input
+                                value={member.ign}
+                                onChange={(e) => {
+                                  const newMembers = [...formData.members];
+                                  newMembers[index] = { ...newMembers[index], ign: e.target.value };
+                                  setFormData({ ...formData, members: newMembers });
+                                }}
+                                placeholder="ระบุชื่อที่ใช้ในเกม"
+                                className="bg-white/5 border-white/10 h-11 rounded-xl focus:ring-primary"
+                                required={index < 3}
+                              />
+                            </div>
                           </div>
-                          <div>
-                            <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1">ตำแหน่ง / หน้าที่</label>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                              <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1 flex items-center gap-1">
+                                <Fingerprint className="w-3 h-3" /> รหัสนักเรียน
+                              </label>
+                              <Input
+                                value={member.studentId}
+                                onChange={(e) => {
+                                  const newMembers = [...formData.members];
+                                  newMembers[index] = { ...newMembers[index], studentId: e.target.value };
+                                  setFormData({ ...formData, members: newMembers });
+                                }}
+                                placeholder="รหัส 10 หลัก"
+                                className="bg-white/5 border-white/10 h-11 rounded-xl focus:ring-primary"
+                                required={index < 3}
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1 flex items-center gap-1">
+                                <BookOpen className="w-3 h-3" /> แผนกวิชา
+                              </label>
+                              <Input
+                                value={member.department}
+                                onChange={(e) => {
+                                  const newMembers = [...formData.members];
+                                  newMembers[index] = { ...newMembers[index], department: e.target.value };
+                                  setFormData({ ...formData, members: newMembers });
+                                }}
+                                placeholder="เช่น คอมพิวเตอร์"
+                                className="bg-white/5 border-white/10 h-11 rounded-xl focus:ring-primary"
+                                required={index < 3}
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1 flex items-center gap-1">
+                                <GraduationCap className="w-3 h-3" /> ชั้นปี
+                              </label>
+                              <Input
+                                value={member.year}
+                                onChange={(e) => {
+                                  const newMembers = [...formData.members];
+                                  newMembers[index] = { ...newMembers[index], year: e.target.value };
+                                  setFormData({ ...formData, members: newMembers });
+                                }}
+                                placeholder="เช่น ปวช. 1"
+                                className="bg-white/5 border-white/10 h-11 rounded-xl focus:ring-primary"
+                                required={index < 3}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="pt-2">
+                            <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1">ตำแหน่งในทีม</label>
                             <Input
                               value={member.role}
                               onChange={(e) => {
@@ -681,6 +761,7 @@ export default function EventDetail() {
                               className="bg-white/5 border-white/10 h-11 rounded-xl focus:ring-primary"
                             />
                           </div>
+
                           {index >= 3 && (
                             <button
                               type="button"
@@ -688,9 +769,9 @@ export default function EventDetail() {
                                 const newMembers = formData.members.filter((_, i) => i !== index);
                                 setFormData({ ...formData, members: newMembers });
                               }}
-                              className="absolute -right-2 -top-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="absolute -right-2 -top-2 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
                             >
-                              <X className="w-3 h-3" />
+                              <X className="w-4 h-4" />
                             </button>
                           )}
                         </div>
@@ -700,10 +781,10 @@ export default function EventDetail() {
                       type="button" 
                       variant="ghost" 
                       size="sm" 
-                      className="mt-4 text-xs text-primary hover:text-primary/80 hover:bg-primary/5 rounded-xl"
-                      onClick={() => setFormData({ ...formData, members: [...formData.members, { name: "", role: "Substitute" }] })}
+                      className="mt-6 text-xs text-primary hover:text-primary/80 hover:bg-primary/5 rounded-xl border border-dashed border-primary/30 w-full py-6"
+                      onClick={() => setFormData({ ...formData, members: [...formData.members, { ...initialMember, role: "Substitute" }] })}
                     >
-                      + เพิ่มสมาชิกสำรอง
+                      + เพิ่มสมาชิกสำรอง (Substitute)
                     </Button>
                   </div>
                 </div>
@@ -718,9 +799,9 @@ export default function EventDetail() {
                       setFormData({ 
                         teamName: "", 
                         members: [
-                          { name: "", role: "Main" },
-                          { name: "", role: "Main" },
-                          { name: "", role: "Main" }
+                          { ...initialMember },
+                          { ...initialMember },
+                          { ...initialMember }
                         ], 
                         logoUrl: "" 
                       });
