@@ -84,7 +84,10 @@ export default function Home() {
     }, [event.id]);
 
     const isFull = event.maxTeams ? registeredCount >= event.maxTeams : false;
-    const isOpen = event.status === 'open';
+    
+    // Improved logic: Only consider expired if status is not explicitly 'open'
+    const isExpired = event.registrationDeadline ? new Date(event.registrationDeadline).setHours(23, 59, 59, 999) < Date.now() : false;
+    const isOpen = event.status === 'open' || (event.status !== 'closed' && !isExpired);
 
     return (
       <motion.div
@@ -268,38 +271,70 @@ export default function Home() {
                 <div className="p-3 rounded-2xl bg-primary/20 text-primary">
                   <Megaphone className="w-6 h-6" />
                 </div>
-                <h2 className="text-3xl font-bold text-white">ข่าวสารล่าสุด</h2>
+                <h2 className="text-3xl font-display font-bold text-white">ข่าวสารล่าสุด</h2>
               </div>
             </div>
-            <div className="grid md:grid-cols-3 gap-8">
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {news.map((item) => (
-                <div key={item.id} className="group bg-card/40 border border-white/5 p-8 rounded-[2rem] hover:border-primary/30 transition-all hover:bg-card/60">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Clock className="w-4 h-4 text-primary" />
-                    <p className="text-xs text-muted-foreground font-bold uppercase tracking-wider">
-                      {item.createdAt?.toDate?.().toLocaleDateString('th-TH') || "ประกาศใหม่"}
-                    </p>
+                <Card key={item.id} className="bg-card/40 border-white/10 p-6 rounded-3xl hover:border-primary/30 transition-all group">
+                  <div className="flex items-center gap-2 text-primary text-xs font-bold uppercase tracking-widest mb-4">
+                    <Clock className="w-3 h-3" />
+                    {item.createdAt?.toDate ? formatDate(item.createdAt.toDate().toISOString()) : "เมื่อเร็วๆ นี้"}
                   </div>
-                  <h3 className="text-xl font-bold text-white mb-4 group-hover:text-primary transition-colors line-clamp-2">{item.title}</h3>
-                  <p className="text-muted-foreground text-sm leading-relaxed line-clamp-3 mb-6">{item.content}</p>
-                  <div className="flex items-center gap-2 pt-4 border-t border-white/5">
-                    <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-[10px] text-primary font-bold">
-                      {item.author?.charAt(0) || "A"}
-                    </div>
-                    <span className="text-xs text-white/40 font-medium">โพสต์โดย {item.author || "Admin"}</span>
+                  <h3 className="text-xl font-bold text-white mb-3 group-hover:text-primary transition-colors line-clamp-2">{item.title}</h3>
+                  <p className="text-muted-foreground text-sm line-clamp-3 mb-6">{item.content}</p>
+                  <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                    <span className="text-xs text-white/40">โดย {item.author || "Admin"}</span>
+                    <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80 hover:bg-primary/10 p-0 h-auto font-bold">
+                      อ่านต่อ <ArrowRight className="w-4 h-4 ml-1" />
+                    </Button>
                   </div>
-                </div>
+                </Card>
               ))}
             </div>
           </div>
         </section>
       )}
 
+      {/* Stats Section */}
+      <section className="py-24 relative overflow-hidden">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            {[
+              { label: "การแข่งขัน", value: events.length, icon: Trophy },
+              { label: "ผู้เล่นทั้งหมด", value: "200+", icon: Users },
+              { label: "ทีมที่เข้าร่วม", value: "40+", icon: ArrowRight },
+              { label: "เงินรางวัลรวม", value: "5,000+", icon: ArrowRight },
+            ].map((stat, i) => (
+              <div key={i} className="text-center p-8 rounded-[2.5rem] bg-white/5 border border-white/5 backdrop-blur-sm">
+                <div className="w-12 h-12 bg-primary/20 rounded-2xl flex items-center justify-center text-primary mx-auto mb-4">
+                  <stat.icon className="w-6 h-6" />
+                </div>
+                <div className="text-4xl font-display font-bold text-white mb-1">{stat.value}</div>
+                <div className="text-sm text-muted-foreground font-medium uppercase tracking-widest">{stat.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
-      <footer className="py-12 border-t border-white/5">
+      <footer className="py-12 border-t border-white/5 bg-background">
         <div className="container mx-auto px-4 text-center">
-          <p className="text-primary font-bold tracking-tighter text-xl mb-2">WANG NAM YEN <span className="text-white/40">TECHNICAL COLLEGE</span></p>
-          <p className="text-muted-foreground text-sm">ระบบจัดการการแข่งขันกีฬาอีสปอร์ตวิทยาลัยเทคนิควังน้ำเย็น</p>
+          <div className="flex items-center justify-center gap-2 mb-6">
+            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white font-black text-xl">E</div>
+            <span className="text-xl font-display font-bold text-white tracking-tighter">WNY <span className="text-primary">ESPORTS</span></span>
+          </div>
+          <p className="text-muted-foreground text-sm max-w-md mx-auto mb-8">
+            ระบบจัดการการแข่งขันกีฬาอีสปอร์ตวิทยาลัยเทคนิควังน้ำเย็น
+          </p>
+          <div className="flex justify-center gap-8 mb-8">
+            <a href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">เกี่ยวกับเรา</a>
+            <a href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">ติดต่อ</a>
+            <a href="#" className="text-sm text-muted-foreground hover:text-primary transition-colors">นโยบายความเป็นส่วนตัว</a>
+          </div>
+          <p className="text-xs text-white/20 font-medium">© 2026 Wang Nam Yen Technical College. All rights reserved.</p>
         </div>
       </footer>
     </div>

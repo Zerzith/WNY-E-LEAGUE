@@ -20,6 +20,7 @@ interface Event {
   registeredTeams?: number;
   bannerUrl?: string;
   status?: string;
+  registrationDeadline?: string;
 }
 
 interface TeamMember {
@@ -57,7 +58,10 @@ const EventListItem = ({ item, index }: { item: Event, index: number }) => {
   }, [item.id]);
 
   const isFull = item.maxTeams ? registeredCount >= item.maxTeams : false;
-  const isOpen = item.status === 'open';
+  
+  // Improved logic: Only consider expired if status is not explicitly 'open'
+  const isExpired = item.registrationDeadline ? new Date(item.registrationDeadline).setHours(23, 59, 59, 999) < Date.now() : false;
+  const isOpen = item.status === 'open' || (item.status !== 'closed' && !isExpired);
 
   return (
     <motion.div
@@ -284,20 +288,10 @@ export default function EventDetail() {
           status: "pending",
           createdAt: serverTimestamp(),
         });
-        setMessage({ type: "success", text: "ลงสมัครเรียบร้อยแล้ว! รอการอนุมัติจากแอดมิน" });
+        setMessage({ type: "success", text: "ลงสมัครเข้าแข่งขันเรียบร้อยแล้ว!" });
       }
-      
       setShowRegistrationForm(false);
       setIsEditing(false);
-      setFormData({ 
-        teamName: "", 
-        members: [
-          { name: "", role: "Main" },
-          { name: "", role: "Main" },
-          { name: "", role: "Main" }
-        ], 
-        logoUrl: "" 
-      });
       setTimeout(() => setMessage(null), 3000);
     } catch (error) {
       console.error("Error registering/updating:", error);
@@ -436,7 +430,10 @@ export default function EventDetail() {
   const approvedCount = registrations.filter((r) => r.status === "approved").length;
   const pendingCount = registrations.filter((r) => r.status === "pending").length;
   const isFull = event.maxTeams ? approvedCount >= event.maxTeams : false;
-  const isOpen = event.status === 'open';
+  
+  // Improved logic: Only consider expired if status is not explicitly 'open'
+  const isExpired = event.registrationDeadline ? new Date(event.registrationDeadline).setHours(23, 59, 59, 999) < Date.now() : false;
+  const isOpen = event.status === 'open' || (event.status !== 'closed' && !isExpired);
 
   return (
     <div className="container mx-auto px-4 py-12">
