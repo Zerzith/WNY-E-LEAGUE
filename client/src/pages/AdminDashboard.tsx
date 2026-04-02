@@ -18,8 +18,9 @@ import {
   UserCheck, UserX, Eye, EyeOff, LayoutGrid, MonitorPlay
 } from "lucide-react";
 import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query, orderBy, where, serverTimestamp, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db, storage } from "@/lib/firebase";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 export default function AdminDashboard() {
   const { user, loading: authLoading } = useAuth();
@@ -49,6 +50,20 @@ export default function AdminDashboard() {
   const [newDate, setNewDate] = useState("");
   const [newRegDeadline, setNewRegDeadline] = useState("");
   const [newBannerUrl, setNewBannerUrl] = useState("");
+  const [newBannerFile, setNewBannerFile] = useState<File | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+
+  const handleBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setNewBannerFile(file);
+      setBannerPreview(URL.createObjectURL(file));
+      setNewBannerUrl(""); // Clear URL input if a file is chosen
+    } else {
+      setNewBannerFile(null);
+      setBannerPreview(null);
+    }
+  };
 
   const gameBanners: { [key: string]: string } = {
     "RoV": "https://files.manuscdn.com/user_upload_by_module/session_file/310519663358539715/NASojnuaGInFLzYF.png",
@@ -194,6 +209,16 @@ export default function AdminDashboard() {
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      let bannerUrlToSave = newBannerUrl;
+
+      if (newBannerFile) {
+        const bannerRef = ref(storage, `event-banners/${newBannerFile.name}-${Date.now()}`);
+        const snapshot = await uploadBytes(bannerRef, newBannerFile);
+        bannerUrlToSave = await getDownloadURL(snapshot.ref);
+      } else if (!bannerUrlToSave) {
+        bannerUrlToSave = gameBanners[newGame] || "";
+      }
+
       await addDoc(collection(db, "events"), {
         title: newTitle,
         game: newGame,
@@ -202,7 +227,7 @@ export default function AdminDashboard() {
         maxSubstitutes: parseInt(newSubs),
         date: newDate,
         registrationDeadline: newRegDeadline,
-        bannerUrl: newBannerUrl,
+        bannerUrl: bannerUrlToSave,
         status: "upcoming",
         createdAt: serverTimestamp()
       });
@@ -211,6 +236,8 @@ export default function AdminDashboard() {
       setNewDate("");
       setNewRegDeadline("");
       setNewBannerUrl("");
+      setNewBannerFile(null);
+      setBannerPreview(null);
     } catch (error) {
       toast({ title: "เกิดข้อผิดพลาด", variant: "destructive" });
     }
@@ -484,10 +511,38 @@ export default function AdminDashboard() {
                       <Input id="deadline" type="date" value={newRegDeadline} onChange={(e) => setNewRegDeadline(e.target.value)} required />
                     </div>
                   </div>
-                  <div>
-                    <Label htmlFor="banner">URL รูปภาพแบนเนอร์</Label>
-                    <Input id="banner" value={newBannerUrl} onChange={(e) => setNewBannerUrl(e.target.value)} placeholder="https://..." />
-                  </div>
+                    <div>
+                      <Label htmlFor="newBannerUrl">URL รูปภาพแบนเนอร์ (เลือกอย่างใดอย่างหนึ่ง)</Label>
+                      <Input
+                        id="newBannerUrl"
+                        type="url"
+                        placeholder="https://example.com/banner.jpg"
+                        value={newBannerUrl}
+                        onChange={(e) => {
+                          setNewBannerUrl(e.target.value);
+                          if (e.target.value) {
+                            setNewBannerFile(null);
+                            setBannerPreview(null);
+                          }
+                        }}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="newBannerFile">หรืออัปโหลดไฟล์แบนเนอร์</Label>
+                      <Input
+                        id="newBannerFile"
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          handleBannerUpload(e);
+                        }}
+                      />
+                      {bannerPreview && (
+                        <div className="mt-2">
+                          <img src={bannerPreview} alt="Banner Preview" className="w-full h-32 object-cover rounded-md" />
+                        </div>
+                      )}
+                    </div>
                   <Button type="submit" className="w-full"><Plus className="mr-2 h-4 w-4" />สร้างการแข่งขัน</Button>
                 </form>
 
