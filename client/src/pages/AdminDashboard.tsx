@@ -735,7 +735,7 @@ export default function AdminDashboard() {
                         </SelectTrigger>
                         <SelectContent>
                           {approvedTeams.length === 0 ? (
-                            <SelectItem value="" disabled>
+                            <SelectItem value="no-teams-found" disabled>
                               ไม่มีทีมที่ได้รับการอนุมัติ
                             </SelectItem>
                           ) : (
@@ -759,7 +759,7 @@ export default function AdminDashboard() {
                         </SelectTrigger>
                         <SelectContent>
                           {approvedTeams.length === 0 ? (
-                            <SelectItem value="" disabled>
+                            <SelectItem value="no-teams-found" disabled>
                               ไม่มีทีมที่ได้รับการอนุมัติ
                             </SelectItem>
                           ) : (
