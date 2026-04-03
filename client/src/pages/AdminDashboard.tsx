@@ -52,7 +52,6 @@ export default function AdminDashboard() {
   const [newBannerUrl, setNewBannerUrl] = useState("");
   const [newBannerFile, setNewBannerFile] = useState<File | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
-  const [isCreatingEvent, setIsCreatingEvent] = useState(false);
 
   const handleBannerUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -209,11 +208,6 @@ export default function AdminDashboard() {
 
   const handleCreateEvent = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle || !newDate || !newRegDeadline) {
-      toast({ title: "ข้อมูลไม่ครบถ้วน", description: "กรุณากรอก ชื่องาน, วันที่เริ่ม, และวันปิดรับสมัคร", variant: "destructive" });
-      return;
-    }
-    setIsCreatingEvent(true);
     try {
       let bannerUrlToSave = newBannerUrl;
 
@@ -245,9 +239,7 @@ export default function AdminDashboard() {
       setNewBannerFile(null);
       setBannerPreview(null);
     } catch (error) {
-      toast({ title: "เกิดข้อผิดพลาด", description: (error as Error).message, variant: "destructive" });
-    } finally {
-      setIsCreatingEvent(false);
+      toast({ title: "เกิดข้อผิดพลาด", variant: "destructive" });
     }
   };
 
@@ -551,7 +543,7 @@ export default function AdminDashboard() {
                         </div>
                       )}
                     </div>
-                  <Button type="submit" className="w-full" disabled={isCreatingEvent}>{isCreatingEvent ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}สร้างการแข่งขัน</Button>
+                  <Button type="submit" className="w-full"><Plus className="mr-2 h-4 w-4" />สร้างการแข่งขัน</Button>
                 </form>
 
                 <h3 className="text-lg font-semibold mt-8 mb-4">การแข่งขันที่มีอยู่</h3>
@@ -594,7 +586,7 @@ export default function AdminDashboard() {
                     <Label htmlFor="newsContent">เนื้อหา</Label>
                     <Input id="newsContent" value={newsContent} onChange={(e) => setNewNewsContent(e.target.value)} placeholder="เนื้อหาข่าว" required />
                   </div>
-                  <Button type="submit" className="w-full" disabled={isCreatingEvent}><Megaphone className="mr-2 h-4 w-4" />ประกาศข่าว</Button>
+                  <Button type="submit" className="w-full"><Megaphone className="mr-2 h-4 w-4" />ประกาศข่าว</Button>
                 </form>
 
                 <h3 className="text-lg font-semibold mt-8 mb-4">ข่าวที่มีอยู่</h3>
@@ -712,7 +704,7 @@ export default function AdminDashboard() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label htmlFor="newMatchTeamA">ทีม A</Label>
-                      <Select value={newMatchTeamA} onValueChange={setNewMatchTeamA} disabled={!selectedEventId || approvedTeams.length === 0}>
+                      <Select value={newMatchTeamA} onValueChange={setNewMatchTeamA}>
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="เลือกทีม A" />
                         </SelectTrigger>
@@ -730,7 +722,7 @@ export default function AdminDashboard() {
                     </div>
                     <div>
                       <Label htmlFor="newMatchTeamB">ทีม B</Label>
-                      <Select value={newMatchTeamB} onValueChange={setNewMatchTeamB} disabled={!selectedEventId || approvedTeams.length === 0}>
+                      <Select value={newMatchTeamB} onValueChange={setNewMatchTeamB}>
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="เลือกทีม B" />
                         </SelectTrigger>
@@ -747,7 +739,7 @@ export default function AdminDashboard() {
                       </Select>
                     </div>
                   </div>
-                  <Button type="submit" className="w-full" disabled={isCreatingEvent}><Swords className="mr-2 h-4 w-4" />สร้างแมตช์</Button>
+                  <Button type="submit" className="w-full"><Swords className="mr-2 h-4 w-4" />สร้างแมตช์</Button>
                 </form>
 
                 <h3 className="text-lg font-semibold mt-8 mb-4">แมตช์ที่มีอยู่</h3>
