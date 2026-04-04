@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { collection, query, where, onSnapshot, orderBy, getDocs, getDoc, doc } from "firebase/firestore";
+import { TeamMembersModal } from "@/components/TeamMembersModal";
 import { db } from "@/lib/firebase";
 import { Card } from "@/components/ui/card";
 import { Loader2, Trophy, Swords, LayoutGrid } from "lucide-react";
@@ -43,6 +44,30 @@ export default function Bracket() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [groups, setGroups] = useState<string[]>(["All"]);
+  const [selectedTeam, setSelectedTeam] = useState<any>(null);
+  const [showTeamModal, setShowTeamModal] = useState(false);
+  const [registrations, setRegistrations] = useState<any[]>([]);
+
+  // Fetch registrations
+  useEffect(() => {
+    if (!selectedTournament) return;
+    
+    const q = query(
+      collection(db, "registrations"),
+      where("eventId", "==", selectedTournament.id),
+      where("status", "==", "approved")
+    );
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const regs = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      } as any));
+      setRegistrations(regs);
+    });
+    
+    return () => unsubscribe();
+  }, [selectedTournament]);
 
   // Fetch tournaments
   useEffect(() => {
@@ -79,20 +104,32 @@ export default function Bracket() {
       // Sort matches client-side by round
       matchesData.sort((a, b) => a.round - b.round);
       
-      // Fetch team names and logos from teams collection
+      // Fetch team names and logos from registrations collection
       const matchesWithLogos = await Promise.all(
         matchesData.map(async (match) => {
           try {
-            const teamADoc = await getDoc(doc(db, "teams", match.teamA));
-            const teamBDoc = await getDoc(doc(db, "teams", match.teamB));
+            // ดึงข้อมูลทีม A จาก registrations
+            const teamAQuery = query(
+              collection(db, "registrations"),
+              where("id", "==", match.teamA),
+              where("status", "==", "approved")
+            );
+            const teamASnapshot = await getDocs(teamAQuery);
+            const teamAData = teamASnapshot.empty ? null : teamASnapshot.docs[0].data();
             
-            const teamAData = teamADoc.exists() ? teamADoc.data() : null;
-            const teamBData = teamBDoc.exists() ? teamBDoc.data() : null;
+            // ดึงข้อมูลทีม B จาก registrations
+            const teamBQuery = query(
+              collection(db, "registrations"),
+              where("id", "==", match.teamB),
+              where("status", "==", "approved")
+            );
+            const teamBSnapshot = await getDocs(teamBQuery);
+            const teamBData = teamBSnapshot.empty ? null : teamBSnapshot.docs[0].data();
             
             return {
               ...match,
-              teamAName: teamAData?.name || match.teamA,
-              teamBName: teamBData?.name || match.teamB,
+              teamAName: teamAData?.teamName || match.teamA,
+              teamBName: teamBData?.teamName || match.teamB,
               logoUrlA: teamAData?.logoUrl || undefined,
               logoUrlB: teamBData?.logoUrl || undefined,
             };
@@ -219,7 +256,16 @@ export default function Bracket() {
                             </div>
                             <div className="flex flex-col gap-8">
                               {matchesByRound[round].map((match) => (
-                                <BracketMatch key={match.id} match={match} tournamentGame={selectedTournament?.game} />
+                                <BracketMatch 
+                                  key={match.id} 
+                                  match={match} 
+                                  tournamentGame={selectedTournament?.game}
+                                  registrations={registrations}
+                                  onTeamClick={(team) => {
+                                    setSelectedTeam(team);
+                                    setShowTeamModal(true);
+                                  }}
+                                />
                               ))}
                             </div>
                           </div>
@@ -233,6 +279,17 @@ export default function Bracket() {
           </Tabs>
         )}
       </div>
+
+      {/* Team Members Modal */}
+      {selectedTeam && (
+        <TeamMembersModal
+          isOpen={showTeamModal}
+          onClose={() => setShowTeamModal(false)}
+          teamName={selectedTeam.teamName}
+          teamLogo={selectedTeam.logoUrl}
+          members={selectedTeam.members}
+        />
+      )}
     </div>
   );
 }
@@ -240,9 +297,11 @@ export default function Bracket() {
 interface BracketMatchProps {
   match: Match;
   tournamentGame?: string;
+  registrations?: any[];
+  onTeamClick?: (team: any) => void;
 }
 
-function BracketMatch({ match, tournamentGame }: BracketMatchProps) {
+function BracketMatch({ match, tournamentGame, registrations = [], onTeamClick }: BracketMatchProps) {
   const isCompleted = match.status === "completed";
   const isOngoing = match.status === "ongoing";
   const isPending = match.status === "pending";
@@ -319,7 +378,13 @@ function BracketMatch({ match, tournamentGame }: BracketMatchProps) {
             winnerA ? "bg-primary/20 border-b-primary/50" : ""
           } ${winnerA ? "ring-1 ring-primary/30" : ""}`}
         >
-          <div className="flex items-center gap-3 overflow-hidden">
+          <button
+            onClick={() => {
+              const teamA = registrations.find(r => r.id === match.teamA);
+              if (teamA) onTeamClick?.(teamA);
+            }}
+            className="flex items-center gap-3 overflow-hidden hover:opacity-80 transition-opacity cursor-pointer"
+          >
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs overflow-hidden ${winnerA ? 'bg-primary text-white' : 'bg-white/5 text-white/40'}`}>
               {match.logoUrlA ? (
                 <img src={match.logoUrlA} alt={match.teamA} className="w-full h-full object-cover" />
@@ -330,7 +395,7 @@ function BracketMatch({ match, tournamentGame }: BracketMatchProps) {
             <span className={`font-bold truncate text-sm ${winnerA ? "text-primary font-black" : "text-white/40"}`}>
               {match.teamAName || match.teamA || "TBD"}
             </span>
-          </div>
+          </button>
           <div className="flex items-center gap-2">
             {isRoV ? (
               <div className="flex items-center gap-2 text-xs font-bold">
@@ -361,7 +426,13 @@ function BracketMatch({ match, tournamentGame }: BracketMatchProps) {
             winnerB ? "bg-primary/20 border-t-primary/50" : ""
           } ${winnerB ? "ring-1 ring-primary/30" : ""}`}
         >
-          <div className="flex items-center gap-3 overflow-hidden">
+          <button
+            onClick={() => {
+              const teamB = registrations.find(r => r.id === match.teamB);
+              if (teamB) onTeamClick?.(teamB);
+            }}
+            className="flex items-center gap-3 overflow-hidden hover:opacity-80 transition-opacity cursor-pointer"
+          >
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs overflow-hidden ${winnerB ? 'bg-primary text-white' : 'bg-white/5 text-white/40'}`}>
               {match.logoUrlB ? (
                 <img src={match.logoUrlB} alt={match.teamB} className="w-full h-full object-cover" />
@@ -372,7 +443,7 @@ function BracketMatch({ match, tournamentGame }: BracketMatchProps) {
             <span className={`font-bold truncate text-sm ${winnerB ? "text-primary font-black" : "text-white/40"}`}>
               {match.teamBName || match.teamB || "TBD"}
             </span>
-          </div>
+          </button>
           <div className="flex items-center gap-2">
             {isRoV ? (
               <div className="flex items-center gap-2 text-xs font-bold">
