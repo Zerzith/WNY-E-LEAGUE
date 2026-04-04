@@ -479,6 +479,7 @@ export default function AdminDashboard() {
           <TabsList className="bg-card/50 border border-white/10 w-full justify-start overflow-x-auto h-auto p-1 mb-8">
             <TabsTrigger value="events" className="py-2.5 px-4"><Trophy className="mr-2 h-4 w-4" />การแข่งขัน</TabsTrigger>
             <TabsTrigger value="registrations" className="py-2.5 px-4"><UserCheck className="mr-2 h-4 w-4" />คำขอสมัคร</TabsTrigger>
+            <TabsTrigger value="teams" className="py-2.5 px-4"><Users className="mr-2 h-4 w-4" />ทีมที่อนุมัติ</TabsTrigger>
             <TabsTrigger value="matches" className="py-2.5 px-4"><Swords className="mr-2 h-4 w-4" />จัดการแมตช์</TabsTrigger>
             <TabsTrigger value="news" className="py-2.5 px-4"><Megaphone className="mr-2 h-4 w-4" />ข่าวสาร</TabsTrigger>
           </TabsList>
@@ -672,7 +673,10 @@ export default function AdminDashboard() {
                                 <p><strong>ชื่อในเกม:</strong> {member.gameName}</p>
                                 <p><strong>รหัสนักเรียน:</strong> {member.studentId}</p>
                                 <p><strong>แผนก:</strong> {member.department}</p>
-                                <p><strong>ปี:</strong> {member.grade}</p>
+                                <p><strong>ชั้นปี:</strong> {member.grade}</p>
+                                {member.phone && <p><strong>เบอร์โทร:</strong> {member.phone}</p>}
+                                {member.email && <p><strong>อีเมล:</strong> {member.email}</p>}
+                                {member.isSubstitute && <p><strong>สถานะ:</strong> <span className="text-yellow-500">สตรีมเมอร์</span></p>}
                               </div>
                             ))}
                           </div>
@@ -686,6 +690,51 @@ export default function AdminDashboard() {
                               <Badge variant={reg.status === 'approved' ? 'success' : 'destructive'}>{reg.status}</Badge>
                             )}
                             <Button size="sm" variant="ghost" onClick={() => handleDeleteRegistration(reg.id)}><Trash2 className="h-4 w-4" /></Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="teams" className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <Card className="bg-card/50 border-white/10 overflow-hidden">
+              <CardHeader>
+                <CardTitle className="text-xl">ทีมที่ได้รับการอนุมัติ</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {filteredTeams.length === 0 ? (
+                    <p className="text-muted-foreground">ไม่มีทีมที่ได้รับการอนุมัติ</p>
+                  ) : (
+                    filteredTeams.map((team) => (
+                      <Card key={team.id} className="bg-card/70 border-white/10">
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-3">
+                            {team.logoUrl && <AvatarCustom src={team.logoUrl} alt={team.name} className="w-10 h-10" />}
+                            {team.name}
+                          </CardTitle>
+                          <CardDescription>เกม: {team.game} | สถานะ: {team.status}</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <p><strong>โหมดเกม:</strong> {team.gameMode || 'N/A'}</p>
+                          <p><strong>สมาชิก:</strong></p>
+                          <div className="mt-4 space-y-2">
+                            {team.members && team.members.map((member, index) => (
+                              <div key={index} className="text-xs p-2 rounded-md bg-background">
+                                <p><strong>ชื่อจริง:</strong> {member.name}</p>
+                                <p><strong>ชื่อในเกม:</strong> {member.gameName}</p>
+                                <p><strong>รหัสนักเรียน:</strong> {member.studentId}</p>
+                                <p><strong>แผนก:</strong> {member.department}</p>
+                                <p><strong>ชั้นปี:</strong> {member.grade}</p>
+                                {member.phone && <p><strong>เบอร์โทร:</strong> {member.phone}</p>}
+                                {member.email && <p><strong>อีเมล:</strong> {member.email}</p>}
+                                {member.isSubstitute && <p><strong>สถานะ:</strong> <span className="text-yellow-500">สตรีมเมอร์</span></p>}
+                              </div>
+                            ))}
                           </div>
                         </CardContent>
                       </Card>

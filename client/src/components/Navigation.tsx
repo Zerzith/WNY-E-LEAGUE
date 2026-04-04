@@ -13,7 +13,8 @@ import {
   X,
   Edit2,
   Trash2,
-  List
+  List,
+  Swords
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState } from "react";
@@ -35,6 +36,7 @@ export function Navigation() {
 
   const userMenuItems = [
     { href: "/my-teams", label: "ทีมของฉัน", icon: Users },
+    { href: "/match-management", label: "จัดการแมตช์", icon: Swords },
     { href: "/register-team", label: "ลงทะเบียนทีม", icon: Edit2 },
   ];
 

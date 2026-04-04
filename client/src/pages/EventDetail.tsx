@@ -25,11 +25,12 @@ interface Event {
 
 interface TeamMember {
   name: string;
-  ign: string;
-  studentId: string;
+  gameName: string;
+  grade: string;
   department: string;
-  year: string;
-  role: string;
+  studentId: string;
+  phone: string;
+  email: string;
 }
 
 interface Registration {
@@ -139,7 +140,7 @@ export default function EventDetail() {
   const [showRegistrationForm, setShowRegistrationForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   
-  const initialMember = { name: "", ign: "", studentId: "", department: "", year: "", role: "Main" };
+  const initialMember = { name: "", gameName: "", grade: "", department: "", studentId: "", phone: "", email: "" };
   
   const [formData, setFormData] = useState({
     teamName: "",
@@ -684,10 +685,10 @@ export default function EventDetail() {
                                 <Gamepad2 className="w-3 h-3" /> ชื่อในเกม (IGN)
                               </label>
                               <Input
-                                value={member.ign}
-                                onChange={(e) => {
+                                value={member.gameName}
+                                onChange={e => {
                                   const newMembers = [...formData.members];
-                                  newMembers[index] = { ...newMembers[index], ign: e.target.value };
+                                  newMembers[index] = { ...newMembers[index], gameName: e.target.value };
                                   setFormData({ ...formData, members: newMembers });
                                 }}
                                 placeholder="ระบุชื่อที่ใช้ในเกม"
@@ -720,7 +721,7 @@ export default function EventDetail() {
                               </label>
                               <Input
                                 value={member.department}
-                                onChange={(e) => {
+                                onChange={e => {
                                   const newMembers = [...formData.members];
                                   newMembers[index] = { ...newMembers[index], department: e.target.value };
                                   setFormData({ ...formData, members: newMembers });
@@ -735,10 +736,10 @@ export default function EventDetail() {
                                 <GraduationCap className="w-3 h-3" /> ชั้นปี
                               </label>
                               <Input
-                                value={member.year}
-                                onChange={(e) => {
+                                value={member.grade}
+                                onChange={e => {
                                   const newMembers = [...formData.members];
-                                  newMembers[index] = { ...newMembers[index], year: e.target.value };
+                                  newMembers[index] = { ...newMembers[index], grade: e.target.value };
                                   setFormData({ ...formData, members: newMembers });
                                 }}
                                 placeholder="เช่น ปวช. 1"
@@ -748,18 +749,34 @@ export default function EventDetail() {
                             </div>
                           </div>
 
-                          <div className="pt-2">
-                            <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1">ตำแหน่งในทีม</label>
-                            <Input
-                              value={member.role}
-                              onChange={(e) => {
-                                const newMembers = [...formData.members];
-                                newMembers[index] = { ...newMembers[index], role: e.target.value };
-                                setFormData({ ...formData, members: newMembers });
-                              }}
-                              placeholder="เช่น กัปตันทีม, Support"
-                              className="bg-white/5 border-white/10 h-11 rounded-xl focus:ring-primary"
-                            />
+                          <div className="grid grid-cols-2 gap-3 pt-2">
+                            <div>
+                              <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1">เบอร์โทร</label>
+                              <Input
+                                value={member.phone}
+                                onChange={(e) => {
+                                  const newMembers = [...formData.members];
+                                  newMembers[index] = { ...newMembers[index], phone: e.target.value };
+                                  setFormData({ ...formData, members: newMembers });
+                                }}
+                                placeholder="เช่น 0812345678"
+                                className="bg-white/5 border-white/10 h-11 rounded-xl focus:ring-primary"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1">อีเมล</label>
+                              <Input
+                                value={member.email}
+                                onChange={(e) => {
+                                  const newMembers = [...formData.members];
+                                  newMembers[index] = { ...newMembers[index], email: e.target.value };
+                                  setFormData({ ...formData, members: newMembers });
+                                }}
+                                placeholder="เช่น user@example.com"
+                                type="email"
+                                className="bg-white/5 border-white/10 h-11 rounded-xl focus:ring-primary"
+                              />
+                            </div>
                           </div>
 
                           {index >= 3 && (
@@ -782,7 +799,7 @@ export default function EventDetail() {
                       variant="ghost" 
                       size="sm" 
                       className="mt-6 text-xs text-primary hover:text-primary/80 hover:bg-primary/5 rounded-xl border border-dashed border-primary/30 w-full py-6"
-                      onClick={() => setFormData({ ...formData, members: [...formData.members, { ...initialMember, role: "Substitute" }] })}
+                      onClick={() => setFormData({ ...formData, members: [...formData.members, { ...initialMember }] })}
                     >
                       + เพิ่มสมาชิกสำรอง (Substitute)
                     </Button>
