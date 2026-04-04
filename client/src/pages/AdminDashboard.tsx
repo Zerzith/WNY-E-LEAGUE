@@ -175,14 +175,30 @@ export default function AdminDashboard() {
       return;
     }
 
+    // ดึงทีมจาก collection "registrations" ที่มี status "approved" สำหรับการแข่งขันนี้
     const qApprovedTeams = query(
-      collection(db, "teams"),
+      collection(db, "registrations"),
       where("eventId", "==", selectedEventId),
       where("status", "==", "approved")
     );
 
     const unsubApprovedTeams = onSnapshot(qApprovedTeams, (snap) => {
-      setApprovedTeams(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      const teamsData = snap.docs.map(d => {
+        const data = d.data() as any;
+        return {
+          id: d.id,
+          name: data.teamName || data.name,
+          teamName: data.teamName || data.name,
+          logoUrl: data.logoUrl,
+          game: data.game,
+          gameMode: data.gameMode,
+          members: data.members,
+          eventId: data.eventId,
+          userId: data.userId,
+          status: data.status,
+        };
+      });
+      setApprovedTeams(teamsData);
     });
 
     return () => unsubApprovedTeams();
