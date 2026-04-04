@@ -17,7 +17,7 @@ import {
   Check, X, Swords, Megaphone, ShieldAlert,
   UserCheck, UserX, Eye, EyeOff, LayoutGrid, MonitorPlay
 } from "lucide-react";
-import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query, orderBy, where, serverTimestamp, getDoc } from "firebase/firestore";
+import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query, orderBy, where, serverTimestamp, getDoc, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Cloudinary as CloudinaryCore } from "@cloudinary/url-gen";
 
@@ -350,6 +350,38 @@ export default function AdminDashboard() {
       await deleteDoc(doc(db, "registrations", id));
       toast({ title: "ลบคำขอสมัครเรียบร้อย" });
     } catch (error) {
+      toast({ title: "ผิดพลาด", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteTeam = async (teamId: string) => {
+    if (!confirm("ยืนยันการลบทีมนี้? การกระทำนี้ไม่สามารถยกเลิกได้")) return;
+    try {
+      // ลบทีมจาก registrations
+      await deleteDoc(doc(db, "registrations", teamId));
+      
+      // ลบแมตช์ที่เกี่ยวข้องของทีมนี้
+      const matchesQuery = query(
+        collection(db, "matches"),
+        where("teamA", "==", teamId)
+      );
+      const matchesSnapshot = await getDocs(matchesQuery);
+      for (const matchDoc of matchesSnapshot.docs) {
+        await deleteDoc(doc(db, "matches", matchDoc.id));
+      }
+
+      const matchesQuery2 = query(
+        collection(db, "matches"),
+        where("teamB", "==", teamId)
+      );
+      const matchesSnapshot2 = await getDocs(matchesQuery2);
+      for (const matchDoc of matchesSnapshot2.docs) {
+        await deleteDoc(doc(db, "matches", matchDoc.id));
+      }
+
+      toast({ title: "ลบทีมเรียบร้อย" });
+    } catch (error) {
+      console.error("ผิดพลาดในการลบทีม:", error);
       toast({ title: "ผิดพลาด", variant: "destructive" });
     }
   };
@@ -690,8 +722,7 @@ export default function AdminDashboard() {
                                 <p><strong>รหัสนักเรียน:</strong> {member.studentId}</p>
                                 <p><strong>แผนก:</strong> {member.department}</p>
                                 <p><strong>ชั้นปี:</strong> {member.grade}</p>
-                                {member.phone && <p><strong>เบอร์โทร:</strong> {member.phone}</p>}
-                                {member.email && <p><strong>อีเมล:</strong> {member.email}</p>}
+
                                 {member.isSubstitute && <p><strong>สถานะ:</strong> <span className="text-yellow-500">สตรีมเมอร์</span></p>}
                               </div>
                             ))}
@@ -729,10 +760,21 @@ export default function AdminDashboard() {
                     filteredTeams.map((team) => (
                       <Card key={team.id} className="bg-card/70 border-white/10">
                         <CardHeader>
-                          <CardTitle className="flex items-center gap-3">
-                            {team.logoUrl && <AvatarCustom src={team.logoUrl} alt={team.name} className="w-10 h-10" />}
-                            {team.name}
-                          </CardTitle>
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="flex items-center gap-3">
+                              {team.logoUrl && <AvatarCustom src={team.logoUrl} alt={team.name} className="w-10 h-10" />}
+                              {team.name}
+                            </CardTitle>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleDeleteTeam(team.id)}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              ลบทีม
+                            </Button>
+                          </div>
                           <CardDescription>เกม: {team.game} | สถานะ: {team.status}</CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -746,8 +788,7 @@ export default function AdminDashboard() {
                                 <p><strong>รหัสนักเรียน:</strong> {member.studentId}</p>
                                 <p><strong>แผนก:</strong> {member.department}</p>
                                 <p><strong>ชั้นปี:</strong> {member.grade}</p>
-                                {member.phone && <p><strong>เบอร์โทร:</strong> {member.phone}</p>}
-                                {member.email && <p><strong>อีเมล:</strong> {member.email}</p>}
+
                                 {member.isSubstitute && <p><strong>สถานะ:</strong> <span className="text-yellow-500">สตรีมเมอร์</span></p>}
                               </div>
                             ))}

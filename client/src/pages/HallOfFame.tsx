@@ -194,14 +194,7 @@ export default function HallOfFame() {
                               <p className="text-xs text-muted-foreground">แผนกวิชา</p>
                               <p className="text-white">{member.department || "-"}</p>
                             </div>
-                            <div>
-                              <p className="text-xs text-muted-foreground">เบอร์โทร</p>
-                              <p className="text-white">{member.phone}</p>
-                            </div>
-                            <div className="col-span-2">
-                              <p className="text-xs text-muted-foreground">อีเมล</p>
-                              <p className="text-white break-all">{member.email}</p>
-                            </div>
+
                           </div>
                         </div>
                       ))}

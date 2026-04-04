@@ -749,35 +749,7 @@ export default function EventDetail() {
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-3 pt-2">
-                            <div>
-                              <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1">เบอร์โทร</label>
-                              <Input
-                                value={member.phone}
-                                onChange={(e) => {
-                                  const newMembers = [...formData.members];
-                                  newMembers[index] = { ...newMembers[index], phone: e.target.value };
-                                  setFormData({ ...formData, members: newMembers });
-                                }}
-                                placeholder="เช่น 0812345678"
-                                className="bg-white/5 border-white/10 h-11 rounded-xl focus:ring-primary"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1">อีเมล</label>
-                              <Input
-                                value={member.email}
-                                onChange={(e) => {
-                                  const newMembers = [...formData.members];
-                                  newMembers[index] = { ...newMembers[index], email: e.target.value };
-                                  setFormData({ ...formData, members: newMembers });
-                                }}
-                                placeholder="เช่น user@example.com"
-                                type="email"
-                                className="bg-white/5 border-white/10 h-11 rounded-xl focus:ring-primary"
-                              />
-                            </div>
-                          </div>
+
 
                           {index >= 3 && (
                             <button

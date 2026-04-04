@@ -34,3 +34,8 @@
 ## Bug Fixes
 - [x] แก้ไขการดึงทีมที่อนุมัติใน Admin Dashboard - dropdown ทีม A, B ไม่แสดงทีมให้เลือก
 - [x] ให้ dropdown แสดงทีมทั้งหมดที่ได้รับการอนุมัติสำหรับการแข่งขันนี้น ๆ
+
+## New Requests
+- [x] ลบเบอร์โทรและอีเมลออกจากการแสดงข้อมูลสมาชิกทีม
+- [x] เพิ่มปุ่มลบทีมใน Admin Dashboard
+- [x] ลบทีมออกจากทุก collection เมื่อกดลบ (registrations, teams, matches)
