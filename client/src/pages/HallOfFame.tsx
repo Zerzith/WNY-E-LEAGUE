@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Trophy, Users, Gamepad2, Award } from "lucide-react";
 import { motion } from "framer-motion";
 import { AvatarCustom } from "@/components/ui/avatar-custom";
+import { TeamMembersModal } from "@/components/TeamMembersModal";
+import { useState, useEffect } from "react";
 
 interface TeamMember {
   name: string;
@@ -31,6 +33,8 @@ export default function HallOfFame() {
   const [teams, setTeams] = useState<ApprovedTeam[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedGame, setSelectedGame] = useState<string>("All");
+  const [selectedTeam, setSelectedTeam] = useState<ApprovedTeam | null>(null);
+  const [showTeamModal, setShowTeamModal] = useState(false);
   const games = ["All", "Valorant", "RoV", "Free Fire"];
 
   useEffect(() => {
@@ -141,12 +145,20 @@ export default function HallOfFame() {
                 <CardHeader className="pb-4">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-4 flex-1">
-                      <AvatarCustom
-                        src={team.logoUrl}
-                        name={team.teamName}
-                        size="lg"
-                        className="ring-2 ring-primary/20 group-hover:ring-primary/50 transition-all"
-                      />
+                      <button
+                        onClick={() => {
+                          setSelectedTeam(team);
+                          setShowTeamModal(true);
+                        }}
+                        className="cursor-pointer hover:opacity-80 transition-opacity"
+                      >
+                        <AvatarCustom
+                          src={team.logoUrl}
+                          name={team.teamName}
+                          size="lg"
+                          className="ring-2 ring-primary/20 group-hover:ring-primary/50 transition-all"
+                        />
+                      </button>
                       <div>
                         <CardTitle className="text-xl text-white">{team.teamName}</CardTitle>
                         <div className="flex items-center gap-2 mt-2">
@@ -211,6 +223,17 @@ export default function HallOfFame() {
             </motion.div>
           ))}
         </div>
+      )}
+
+      {/* Team Members Modal */}
+      {selectedTeam && (
+        <TeamMembersModal
+          isOpen={showTeamModal}
+          onClose={() => setShowTeamModal(false)}
+          teamName={selectedTeam.teamName}
+          teamLogo={selectedTeam.logoUrl}
+          members={selectedTeam.members}
+        />
       )}
     </div>
   );

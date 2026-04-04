@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Loader2, ArrowLeft, Users, Calendar, Trophy, Check, X, Gamepad2, Clock, AlertCircle, Edit2, Trash2, Upload, ImageIcon, User, GraduationCap, BookOpen, Fingerprint } from "lucide-react";
 import { motion } from "framer-motion";
+import { TeamMembersModal } from "@/components/TeamMembersModal";
 
 interface Event {
   id: string;
@@ -157,6 +158,8 @@ export default function EventDetail() {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
+  const [selectedTeam, setSelectedTeam] = useState<Registration | null>(null);
+  const [showTeamModal, setShowTeamModal] = useState(false);
 
   const eventId = params?.id;
 
@@ -823,19 +826,26 @@ export default function EventDetail() {
             </h3>
             <div className="space-y-3">
               {registrations.filter(r => r.status === 'approved').map((reg, index) => (
-                <div key={index} className="flex items-center gap-3 p-3 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors group">
-                  <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center text-white font-bold overflow-hidden ring-2 ring-transparent group-hover:ring-primary/50 transition-all">
+                <button
+                  key={index}
+                  onClick={() => {
+                    setSelectedTeam(reg);
+                    setShowTeamModal(true);
+                  }}
+                  className="w-full flex items-center gap-3 p-3 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors group cursor-pointer text-left"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center text-white font-bold overflow-hidden ring-2 ring-transparent group-hover:ring-primary/50 transition-all flex-shrink-0">
                     {reg.logoUrl ? (
                       <img src={reg.logoUrl} alt={reg.teamName} className="w-full h-full object-cover" />
                     ) : (
                       reg.teamName.charAt(0)
                     )}
                   </div>
-                  <div>
-                    <p className="text-white font-bold">{reg.teamName}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-bold truncate">{reg.teamName}</p>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Verified Team</p>
                   </div>
-                </div>
+                </button>
               ))}
               {approvedCount === 0 && (
                 <div className="text-center py-8">
@@ -882,6 +892,17 @@ export default function EventDetail() {
           )}
         </div>
       </div>
+
+      {/* Team Members Modal */}
+      {selectedTeam && (
+        <TeamMembersModal
+          isOpen={showTeamModal}
+          onClose={() => setShowTeamModal(false)}
+          teamName={selectedTeam.teamName}
+          teamLogo={selectedTeam.logoUrl}
+          members={selectedTeam.members}
+        />
+      )}
     </div>
   );
 }

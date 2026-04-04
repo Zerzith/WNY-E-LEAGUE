@@ -25,6 +25,7 @@ import { Cloudinary as CloudinaryCore } from "@cloudinary/url-gen";
 const CLOUDINARY_CLOUD_NAME = "djubsqri6"; // Replace with your Cloudinary Cloud Name
 const CLOUDINARY_UPLOAD_PRESET = "wangnamyenesport"; // Replace with your Cloudinary Upload Preset
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { TeamMembersModal } from "@/components/TeamMembersModal";
 
 
 export default function AdminDashboard() {
@@ -40,6 +41,8 @@ export default function AdminDashboard() {
   const [matches, setMatches] = useState<any[]>([]);
   const [news, setNews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedTeam, setSelectedTeam] = useState<any | null>(null);
+  const [showTeamModal, setShowTeamModal] = useState(false);
 
 
   // News state
@@ -779,7 +782,15 @@ export default function AdminDashboard() {
                         <CardHeader>
                           <div className="flex items-center justify-between">
                             <CardTitle className="flex items-center gap-3">
-                              {team.logoUrl && <AvatarCustom src={team.logoUrl} alt={team.name} className="w-10 h-10" />}
+                              <button
+                                onClick={() => {
+                                  setSelectedTeam(team);
+                                  setShowTeamModal(true);
+                                }}
+                                className="cursor-pointer hover:opacity-80 transition-opacity"
+                              >
+                                {team.logoUrl && <AvatarCustom src={team.logoUrl} alt={team.name} className="w-10 h-10" />}
+                              </button>
                               {team.name}
                             </CardTitle>
                             <Button
@@ -1060,6 +1071,17 @@ export default function AdminDashboard() {
             </form>
           </DialogContent>
         </Dialog>
+
+        {/* Team Members Modal */}
+        {selectedTeam && (
+          <TeamMembersModal
+            isOpen={showTeamModal}
+            onClose={() => setShowTeamModal(false)}
+            teamName={selectedTeam.teamName || selectedTeam.name}
+            teamLogo={selectedTeam.logoUrl}
+            members={selectedTeam.members}
+          />
+        )}
       </div>
     </div>
   );

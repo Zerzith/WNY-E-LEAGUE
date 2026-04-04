@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Swords, Calendar, Trophy, Users, Check, X, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
+import { TeamMembersModal } from "@/components/TeamMembersModal";
+import { useState, useEffect } from "react";
 
 interface Match {
   id: string;
@@ -48,6 +50,8 @@ export default function MatchManagement() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMatches, setLoadingMatches] = useState(false);
+  const [selectedTeam, setSelectedTeam] = useState<any | null>(null);
+  const [showTeamModal, setShowTeamModal] = useState(false);
 
   // Fetch approved teams for current user
   useEffect(() => {
@@ -384,6 +388,17 @@ export default function MatchManagement() {
               </motion.div>
             ))}
           </div>
+        )}
+
+        {/* Team Members Modal */}
+        {selectedTeam && (
+          <TeamMembersModal
+            isOpen={showTeamModal}
+            onClose={() => setShowTeamModal(false)}
+            teamName={selectedTeam.teamName}
+            teamLogo={selectedTeam.logoUrl}
+            members={selectedTeam.members}
+          />
         )}
       </div>
     </div>
