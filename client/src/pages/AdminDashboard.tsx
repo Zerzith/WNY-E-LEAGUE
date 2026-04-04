@@ -119,9 +119,26 @@ export default function AdminDashboard() {
       setEvents(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     });
 
-    const qTeams = query(collection(db, "teams"), orderBy("createdAt", "desc"));
+    // ดึงทีมจาก registrations ที่มี status approved เพื่อให้ได้ข้อมูลที่ถูกต้อง
+    const qTeams = query(collection(db, "registrations"), where("status", "==", "approved"), orderBy("createdAt", "desc"));
     const unsubTeams = onSnapshot(qTeams, (snap) => {
-      setTeams(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      const teamsData = snap.docs.map(d => {
+        const data = d.data() as any;
+        return {
+          id: d.id,
+          name: data.teamName || data.name,
+          teamName: data.teamName || data.name,
+          logoUrl: data.logoUrl,
+          game: data.game,
+          gameMode: data.gameMode,
+          members: data.members,
+          eventId: data.eventId,
+          userId: data.userId,
+          status: data.status,
+          ...d.data()
+        };
+      });
+      setTeams(teamsData);
     });
 
     const qRegs = query(collection(db, "registrations"), orderBy("createdAt", "desc"));
