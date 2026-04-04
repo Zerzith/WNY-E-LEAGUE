@@ -108,23 +108,13 @@ export default function Bracket() {
       const matchesWithLogos = await Promise.all(
         matchesData.map(async (match) => {
           try {
-            // ดึงข้อมูลทีม A จาก registrations
-            const teamAQuery = query(
-              collection(db, "registrations"),
-              where("id", "==", match.teamA),
-              where("status", "==", "approved")
-            );
-            const teamASnapshot = await getDocs(teamAQuery);
-            const teamAData = teamASnapshot.empty ? null : teamASnapshot.docs[0].data();
+            // ดึงข้อมูลทีม A จาก registrations โดยใช้ registration document ID
+            const teamADoc = await getDoc(doc(db, "registrations", match.teamA));
+            const teamAData = teamADoc.exists() ? teamADoc.data() : null;
             
-            // ดึงข้อมูลทีม B จาก registrations
-            const teamBQuery = query(
-              collection(db, "registrations"),
-              where("id", "==", match.teamB),
-              where("status", "==", "approved")
-            );
-            const teamBSnapshot = await getDocs(teamBQuery);
-            const teamBData = teamBSnapshot.empty ? null : teamBSnapshot.docs[0].data();
+            // ดึงข้อมูลทีม B จาก registrations โดยใช้ registration document ID
+            const teamBDoc = await getDoc(doc(db, "registrations", match.teamB));
+            const teamBData = teamBDoc.exists() ? teamBDoc.data() : null;
             
             return {
               ...match,
