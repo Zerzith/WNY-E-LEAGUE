@@ -194,6 +194,12 @@ export default function HallOfFame() {
                               <p className="text-xs text-muted-foreground">แผนกวิชา</p>
                               <p className="text-white">{member.department || "-"}</p>
                             </div>
+                            {member.isSubstitute && (
+                              <div>
+                                <p className="text-xs text-muted-foreground">สถานะ</p>
+                                <p className="text-yellow-500 font-semibold">แฟน</p>
+                              </div>
+                            )}
 
                           </div>
                         </div>
