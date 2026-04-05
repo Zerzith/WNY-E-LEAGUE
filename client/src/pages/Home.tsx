@@ -2,8 +2,8 @@ import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowRight, Trophy, Users, Calendar, Loader2, AlertCircle } from "lucide-react";
-import { useAuth } from "@/hooks/use-auth";
+import { ArrowRight, Trophy, Users, Calendar, Loader2, Megaphone, Clock, AlertCircle } from "lucide-react";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { collection, onSnapshot, query, where, orderBy, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -30,35 +30,6 @@ interface News {
   createdAt: any;
   author: string;
 }
-
-// Component สำหรับแสดงแถบข่าวสารวิ่ง
-const NewsMarquee = ({ news }: { news: News[] }) => {
-  if (news.length === 0) return null;
-
-  const marqueeText = news.map(item => item.title).join(" \u2022 ");
-
-  return (
-    <div className="w-full bg-primary/10 py-3 overflow-hidden relative border-y border-primary/20">
-      <div className="flex whitespace-nowrap">
-        <motion.div 
-          initial={{ x: "100%" }}
-          animate={{ x: "-100%" }}
-          transition={{ 
-            repeat: Infinity, 
-            duration: 20, 
-            ease: "linear" 
-          }}
-          className="text-white text-sm font-medium tracking-wide flex items-center gap-4 px-4"
-        >
-          <Megaphone className="w-4 h-4 text-primary shrink-0" />
-          <span>{marqueeText}</span>
-          <span className="mx-4 text-primary/40">\u2022</span>
-          <span>{marqueeText}</span>
-        </motion.div>
-      </div>
-    </div>
-  );
-};
 
 export default function Home() {
   const { user } = useAuth();
@@ -248,15 +219,12 @@ export default function Home() {
         </div>
       </section>
 
-      {/* News Marquee */}
-      <NewsMarquee news={news} />
-
       {/* Events Section */}
       <section className="py-24 relative overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-primary/5 rounded-full blur-[120px] -z-10" />
         
-        <div className="w-full px-4">
-          <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-4 max-w-7xl mx-auto">
+        <div className="container mx-auto px-4">
+          <div className="flex flex-col md:flex-row justify-between items-end mb-16 gap-4">
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <div className="w-8 h-[2px] bg-primary" />
@@ -273,13 +241,13 @@ export default function Home() {
               <p className="text-muted-foreground animate-pulse">กำลังโหลดข้อมูลการแข่งขัน...</p>
             </div>
           ) : events.length === 0 ? (
-            <div className="text-center py-24 bg-card/20 rounded-[3rem] border border-dashed border-white/10 max-w-7xl mx-auto">
+            <div className="text-center py-24 bg-card/20 rounded-[3rem] border border-dashed border-white/10">
               <Trophy className="w-20 h-20 mx-auto text-white/5 mb-6" />
               <h3 className="text-2xl font-bold text-white/40">ยังไม่มีการแข่งขันในขณะนี้</h3>
               <p className="text-muted-foreground mt-2">โปรดติดตามข่าวสารประกาศเร็วๆ นี้</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10 max-w-7xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-10">
               {events.map((event, i) => (
                 <EventCard key={event.id} event={event} index={i} />
               ))}
@@ -288,7 +256,40 @@ export default function Home() {
         </div>
       </section>
 
+      {/* News Section */}
+      {news.length > 0 && (
+        <section className="py-24 bg-white/5 backdrop-blur-sm border-y border-white/5">
+          <div className="container mx-auto px-4">
+            <div className="flex items-center justify-between mb-12">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-2xl bg-primary/20 text-primary">
+                  <Megaphone className="w-6 h-6" />
+                </div>
+                <h2 className="text-3xl font-display font-bold text-white">ข่าวสารล่าสุด</h2>
+              </div>
+            </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {news.map((item) => (
+                <Card key={item.id} className="bg-card/40 border-white/10 p-6 rounded-3xl hover:border-primary/30 transition-all group">
+                  <div className="flex items-center gap-2 text-primary text-xs font-bold uppercase tracking-widest mb-4">
+                    <Clock className="w-3 h-3" />
+                    {item.createdAt?.toDate ? formatDate(item.createdAt.toDate().toISOString()) : "เมื่อเร็วๆ นี้"}
+                  </div>
+                  <h3 className="text-xl font-bold text-white mb-3 group-hover:text-primary transition-colors line-clamp-2">{item.title}</h3>
+                  <p className="text-muted-foreground text-sm line-clamp-3 mb-6">{item.content}</p>
+                  <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                    <span className="text-xs text-white/40">โดย {item.author || "Admin"}</span>
+                    <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80 hover:bg-primary/10 p-0 h-auto font-bold">
+                      อ่านต่อ <ArrowRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
