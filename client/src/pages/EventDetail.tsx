@@ -22,6 +22,7 @@ interface Event {
   bannerUrl?: string;
   status?: string;
   registrationDeadline?: string;
+  championTeamId?: string | null;
 }
 
 interface TeamMember {
@@ -497,13 +498,44 @@ export default function EventDetail() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-8">
-          {/* Event Details */}
-          <Card className="bg-card/50 border-white/10 p-8 rounded-3xl backdrop-blur-md">
+              {event.championTeamId && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="mb-8"
+            >
+              <Card className="bg-gradient-to-br from-yellow-500/20 via-yellow-500/5 to-transparent border-yellow-500/30 p-8 rounded-3xl text-center relative overflow-hidden group">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-yellow-500 to-transparent" />
+                <Trophy className="w-16 h-16 text-yellow-500 mx-auto mb-4 animate-bounce" />
+                <h2 className="text-3xl font-black text-white mb-2 tracking-tighter uppercase">
+                  👑 แชมป์เปี้ยน 👑
+                </h2>
+                <div className="flex flex-col items-center gap-4 mt-6">
+                  {registrations.find(r => r.id === event.championTeamId)?.logoUrl && (
+                    <div className="w-24 h-24 rounded-2xl overflow-hidden ring-4 ring-yellow-500/50 shadow-2xl shadow-yellow-500/20">
+                      <img 
+                        src={registrations.find(r => r.id === event.championTeamId)?.logoUrl} 
+                        alt="Champion Logo" 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                  <p className="text-4xl font-black text-yellow-500 drop-shadow-lg">
+                    {registrations.find(r => r.id === event.championTeamId)?.teamName || "ไม่พบข้อมูลทีม"}
+                  </p>
+                </div>
+                <div className="absolute -right-8 -bottom-8 opacity-10 group-hover:opacity-20 transition-opacity">
+                  <Trophy className="w-48 h-48 text-yellow-500 rotate-12" />
+                </div>
+              </Card>
+            </motion.div>
+          )}
+
+          <Card className="bg-card/50 border-white/10 p-8 rounded-3xl backdrop-blur-md shadow-2xl ring-1 ring-primary/20">
             <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
               <div className="w-1 h-6 bg-primary rounded-full" />
               รายละเอียดการแข่งขัน
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            </h2>       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
               <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5">
                 <Calendar className="w-6 h-6 text-primary" />
                 <div>

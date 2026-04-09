@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Match {
   id: string;
-  round: number;
+  round: string;
   teamA: string;
   teamB: string;
   scoreA: number;
@@ -29,6 +29,7 @@ interface Match {
   lossesB?: number;
   drawsA?: number;
   drawsB?: number;
+  createdAt?: any;
 }
 
 interface Tournament {
@@ -101,8 +102,12 @@ export default function Bracket() {
         ...doc.data(),
       } as any));
 
-      // Sort matches client-side by round
-      matchesData.sort((a, b) => a.round - b.round);
+      // Sort matches client-side by createdAt
+      matchesData.sort((a, b) => {
+        const timeA = a.createdAt?.seconds || 0;
+        const timeB = b.createdAt?.seconds || 0;
+        return timeA - timeB;
+      });
       
       // Fetch team names and logos from registrations collection
       const matchesWithLogos = await Promise.all(
@@ -210,16 +215,16 @@ export default function Bracket() {
               
               // Group matches by round for this group
               const matchesByRound = filteredMatches.reduce((acc, match) => {
-                if (!acc[match.round]) {
-                  acc[match.round] = [];
+                const roundKey = match.round || "1";
+                if (!acc[roundKey]) {
+                  acc[roundKey] = [];
                 }
-                acc[match.round].push(match);
+                acc[roundKey].push(match);
                 return acc;
-              }, {} as Record<number, Match[]>);
+              }, {} as Record<string, Match[]>);
 
-              const rounds = Object.keys(matchesByRound)
-                .map(Number)
-                .sort((a, b) => a - b);
+              // Get unique rounds in order of appearance
+              const rounds = Array.from(new Set(filteredMatches.map(m => m.round || "1")));
 
               return (
                 <TabsContent key={group} value={group} className="mt-0">
@@ -236,11 +241,7 @@ export default function Bracket() {
                             <div className="text-center mb-4">
                               <div className="inline-block px-4 py-1 rounded-lg bg-white/5 border border-white/10">
                                 <p className="text-xs font-black text-primary uppercase tracking-[0.2em]">
-                                  {roundIndex === rounds.length - 1
-                                    ? "Finals"
-                                    : roundIndex === rounds.length - 2
-                                    ? "Semi-Finals"
-                                    : `Round ${round}`}
+                                  {round}
                                 </p>
                               </div>
                             </div>

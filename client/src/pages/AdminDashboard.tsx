@@ -444,7 +444,7 @@ export default function AdminDashboard() {
     try {
       const matchData: any = {
         eventId: selectedEventId,
-        round: parseInt(newMatchRound),
+        round: newMatchRound,
         group: newMatchGroup,
         teamA: newMatchTeamA,
         teamB: newMatchTeamB,
@@ -469,6 +469,37 @@ export default function AdminDashboard() {
       setNewMatchTeamB("");
     } catch (error) {
       toast({ title: "ผิดพลาดในการสร้างแมตช์", variant: "destructive" });
+    }
+  };
+
+  const handleUndoMatchResult = async (matchId: string) => {
+    if (!confirm("ยืนยันการรีเซ็ตผลการแข่ง?")) return;
+    try {
+      const matchRef = doc(db, "matches", matchId);
+      const matchSnap = await getDoc(matchRef);
+      if (!matchSnap.exists()) return;
+
+      const updateData: any = {
+        status: "pending",
+        scoreA: 0,
+        scoreB: 0,
+        winner: null
+      };
+
+      const matchData = matchSnap.data();
+      if (matchData.winsA !== undefined) {
+        updateData.winsA = 0;
+        updateData.lossesA = 0;
+        updateData.drawsA = 0;
+        updateData.winsB = 0;
+        updateData.lossesB = 0;
+        updateData.drawsB = 0;
+      }
+
+      await updateDoc(matchRef, updateData);
+      toast({ title: "รีเซ็ตผลการแข่งเรียบร้อย" });
+    } catch (error) {
+      toast({ title: "ผิดพลาดในการรีเซ็ตผลการแข่ง", variant: "destructive" });
     }
   };
 
@@ -527,6 +558,30 @@ export default function AdminDashboard() {
       toast({ title: "ลบแมตช์เรียบร้อย" });
     } catch (error) {
       toast({ title: "ผิดพลาดในการลบแมตช์", variant: "destructive" });
+    }
+  };
+
+  const handleCrownChampion = async (eventId: string, teamId: string) => {
+    if (!confirm("ยืนยันการมอบมงกุฎแชมป์เปี้ยนให้ทีมนี้?")) return;
+    try {
+      await updateDoc(doc(db, "events", eventId), {
+        championTeamId: teamId
+      });
+      toast({ title: "ประกาศแชมป์เปี้ยนเรียบร้อย 👑" });
+    } catch (error) {
+      toast({ title: "ผิดพลาดในการประกาศแชมป์เปี้ยน", variant: "destructive" });
+    }
+  };
+
+  const handleRemoveChampion = async (eventId: string) => {
+    if (!confirm("ยืนยันการยกเลิกตำแหน่งแชมป์เปี้ยน?")) return;
+    try {
+      await updateDoc(doc(db, "events", eventId), {
+        championTeamId: null
+      });
+      toast({ title: "ยกเลิกตำแหน่งแชมป์เปี้ยนเรียบร้อย" });
+    } catch (error) {
+      toast({ title: "ผิดพลาดในการยกเลิกตำแหน่ง", variant: "destructive" });
     }
   };
 
@@ -649,14 +704,38 @@ export default function AdminDashboard() {
                           <p className="font-semibold text-lg">{event.title}</p>
                           <p className="text-sm text-muted-foreground">{event.game} | <Calendar className="inline-block h-4 w-4 mr-1" /> {event.date}</p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Button size="sm" variant="outline" onClick={() => {
-                            setLiveStreamEventId(event.id);
-                            setLiveStreamUrl(event.liveStreamUrl || "");
-                            setIsLiveStreamDialogOpen(true);
-                          }}><MonitorPlay className="h-4 w-4" /></Button>
-                          <Button variant="destructive" size="sm" onClick={() => handleDeleteEvent(event.id)}><Trash2 className="h-4 w-4" /></Button>
-                        </div>
+                          <div className="flex flex-col items-end gap-2">
+                            <div className="flex items-center gap-2">
+                              <Button size="sm" variant="outline" onClick={() => {
+                                setLiveStreamEventId(event.id);
+                                setLiveStreamUrl(event.liveStreamUrl || "");
+                                setIsLiveStreamDialogOpen(true);
+                              }}><MonitorPlay className="h-4 w-4" /></Button>
+                              <Button variant="destructive" size="sm" onClick={() => handleDeleteEvent(event.id)}><Trash2 className="h-4 w-4" /></Button>
+                            </div>
+                            {event.championTeamId ? (
+                              <div className="flex items-center gap-2">
+                                <Badge className="bg-yellow-500 text-black font-bold">
+                                  👑 {teams.find(t => t.id === event.championTeamId)?.name || "แชมป์เปี้ยน"}
+                                </Badge>
+                                <Button size="xs" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground hover:text-red-500" onClick={() => handleRemoveChampion(event.id)}>
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <Select onValueChange={(teamId) => handleCrownChampion(event.id, teamId)}>
+                                <SelectTrigger className="h-8 w-[140px] text-xs bg-yellow-500/10 border-yellow-500/30 text-yellow-500">
+                                  <Trophy className="mr-1 h-3 w-3" />
+                                  <SelectValue placeholder="มอบมงกุฎ" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {teams.filter(t => t.eventId === event.id).map(team => (
+                                    <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </div>
                       </CardContent>
                     </Card>
                   ))}
@@ -852,8 +931,8 @@ export default function AdminDashboard() {
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="newMatchRound">รอบ</Label>
-                      <Input id="newMatchRound" type="number" value={newMatchRound} onChange={(e) => setNewMatchRound(e.target.value)} placeholder="เช่น 1" required />
+                      <Label htmlFor="newMatchRound">ชื่อรอบ</Label>
+                      <Input id="newMatchRound" value={newMatchRound} onChange={(e) => setNewMatchRound(e.target.value)} placeholder="เช่น รอบแก้ตัว, รอบชิงชนะเลิศ" required />
                     </div>
                     <div>
                       <Label htmlFor="newMatchGroup">กลุ่ม</Label>
@@ -1035,6 +1114,9 @@ export default function AdminDashboard() {
                               </Button>
                               <Button size="sm" variant="outline" onClick={() => handleUpdateMatchStatus(match.id, "completed")} disabled={match.status === "completed"}>
                                 <Trophy className="h-4 w-4" />
+                              </Button>
+                              <Button size="sm" variant="outline" onClick={() => handleUndoMatchResult(match.id)} title="รีเซ็ตผลการแข่ง">
+                                <ArrowLeft className="h-4 w-4" />
                               </Button>
                               <Button variant="destructive" size="sm" onClick={() => handleDeleteMatch(match.id)}>
                                 <Trash2 className="h-4 w-4" />
