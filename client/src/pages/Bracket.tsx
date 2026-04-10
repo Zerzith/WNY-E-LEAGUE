@@ -401,11 +401,17 @@ function BracketMatch({ match, tournamentGame, registrations = [], onTeamClick }
                 )}
               </div>
             ) : (
-              <span className={`font-mono font-black text-lg ${winnerA ? "text-primary" : "text-white/20"}`}>
-                {match.scoreA}
-              </span>
+              <div className="flex items-center gap-2">
+                {isCompleted && match.scoreA === match.scoreB ? (
+                  <span className="text-yellow-400 px-2 py-1 bg-yellow-400/10 rounded border border-yellow-400/30 text-xs font-bold">=</span>
+                ) : (
+                  <span className={`font-mono font-black text-lg ${winnerA ? "text-primary" : "text-white/20"}`}>
+                    {match.scoreA}
+                  </span>
+                )}
+              </div>
             )}
-            {winnerB && (
+            {winnerA && (
               <div className="text-xs font-bold px-2 py-1 bg-primary/30 text-primary rounded border border-primary/50">👑</div>
             )}
           </div>
@@ -449,9 +455,15 @@ function BracketMatch({ match, tournamentGame, registrations = [], onTeamClick }
                 )}
               </div>
             ) : (
-              <span className={`font-mono font-black text-lg ${winnerB ? "text-primary" : "text-white/20"}`}>
-                {match.scoreB}
-              </span>
+              <div className="flex items-center gap-2">
+                {isCompleted && match.scoreA === match.scoreB ? (
+                  <span className="text-yellow-400 px-2 py-1 bg-yellow-400/10 rounded border border-yellow-400/30 text-xs font-bold">=</span>
+                ) : (
+                  <span className={`font-mono font-black text-lg ${winnerB ? "text-primary" : "text-white/20"}`}>
+                    {match.scoreB}
+                  </span>
+                )}
+              </div>
             )}
             {winnerB && (
               <div className="text-xs font-bold px-2 py-1 bg-primary/30 text-primary rounded border border-primary/50">👑</div>

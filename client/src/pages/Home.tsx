@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 import { collection, onSnapshot, query, where, orderBy, limit } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
-const HERO_BG = "https://images.unsplash.com/photo-1542751371-adc38448a05e?q=80&w=2070&auto=format&fit=crop";
+const HERO_BG = "https://images.unsplash.com/photo-1538481143235-5d8c9b52b70f?q=80&w=2070&auto=format&fit=crop";
 
 interface Event {
   id: string;
@@ -183,8 +183,8 @@ export default function Home() {
       {/* Hero Section */}
       <section className="relative py-20 overflow-hidden min-h-[80vh] flex items-center">
         <div className="absolute inset-0 z-0">
-          <img src={HERO_BG} alt="Esports Arena" className="w-full h-full object-cover opacity-30" />
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0a0e17]/60 via-[#0a0e17]/80 to-[#0a0e17]" />
+          <img src={HERO_BG} alt="Esports Arena" className="w-full h-full object-cover opacity-40" />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0a0e17]/50 via-[#0a0e17]/70 to-[#0a0e17]" />
         </div>
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl">
