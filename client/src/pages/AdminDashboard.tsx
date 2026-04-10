@@ -15,7 +15,8 @@ import { Badge } from "@/components/ui/badge";
 import {
   Loader2, Plus, Trash2, Calendar, Users, Trophy,
   Check, X, Swords, Megaphone, ShieldAlert,
-  UserCheck, UserX, Eye, EyeOff, LayoutGrid, MonitorPlay
+  UserCheck, UserX, Eye, EyeOff, LayoutGrid, MonitorPlay,
+  ArrowLeft
 } from "lucide-react";
 import { collection, onSnapshot, addDoc, deleteDoc, doc, updateDoc, query, orderBy, where, serverTimestamp, getDoc, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
