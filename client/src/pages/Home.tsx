@@ -181,13 +181,11 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#0a0e17]">
       {/* Hero Section */}
-      <section className="relative py-20 overflow-hidden min-h-[80vh] flex items-center" style={{
-        backgroundImage: `url('${HERO_BG}')`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundAttachment: 'fixed'
-      }}>
-        <div className="absolute inset-0 z-0 bg-gradient-to-b from-[#0a0e17]/60 via-[#0a0e17]/75 to-[#0a0e17]"></div>
+      <section className="relative py-20 overflow-hidden min-h-[80vh] flex items-center bg-gradient-to-br from-[#0a0e17] via-[#1a1f2e] to-[#0a0e17]">
+        <div className="absolute inset-0 z-0 bg-gradient-to-b from-primary/5 via-transparent to-primary/10 opacity-50"></div>
+        <div className="absolute inset-0 z-0" style={{
+          backgroundImage: `radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 50%), radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%)`
+        }}></div>
         <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-3xl">
             <motion.div
