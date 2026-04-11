@@ -68,7 +68,7 @@ const EventListItem = ({ item, index }: { item: Event, index: number }) => {
   
   // Improved logic: Only consider expired if status is not explicitly 'open'
   const isExpired = item.registrationDeadline ? new Date(item.registrationDeadline).setHours(23, 59, 59, 999) < Date.now() : false;
-  const isOpen = item.status === 'open' || (item.status !== 'closed' && !isExpired);
+  const isOpen = (item.status === 'open' || (item.status !== 'closed' && !isExpired)) && !isFull;
 
   return (
     <motion.div
@@ -91,13 +91,13 @@ const EventListItem = ({ item, index }: { item: Event, index: number }) => {
               </span>
             </div>
             <div className="absolute top-4 right-4 flex gap-2">
-              {!isOpen ? (
-                <span className="px-3 py-1 rounded-full bg-red-500/80 text-[10px] font-bold text-white uppercase tracking-wider">
-                  ปิดรับสมัคร
-                </span>
-              ) : isFull ? (
-                <span className="px-3 py-1 rounded-full bg-red-500 text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" /> เต็มแล้ว
+          {isFull ? (
+            <span className="px-3 py-1 rounded-full bg-red-500 text-[10px] font-bold text-white uppercase tracking-wider flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" /> เต็มแล้ว
+            </span>
+          ) : !isOpen ? (
+            <span className="px-3 py-1 rounded-full bg-red-500/80 text-[10px] font-bold text-white uppercase tracking-wider">
+              ปิดรับสมัคร
                 </span>
               ) : (
                 <span className="px-3 py-1 rounded-full bg-green-500 text-[10px] font-bold text-white uppercase tracking-wider">
@@ -445,7 +445,7 @@ export default function EventDetail() {
   
   // Improved logic: Only consider expired if status is not explicitly 'open'
   const isExpired = event.registrationDeadline ? new Date(event.registrationDeadline).setHours(23, 59, 59, 999) < Date.now() : false;
-  const isOpen = event.status === 'open' || (event.status !== 'closed' && !isExpired);
+  const isOpen = (event.status === 'open' || (event.status !== 'closed' && !isExpired)) && !isFull;
 
   return (
     <div className="container mx-auto px-4 py-12">

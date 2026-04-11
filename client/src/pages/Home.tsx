@@ -95,7 +95,7 @@ export default function Home() {
 
     const isFull = event.maxTeams ? registeredCount >= event.maxTeams : false;
     const isExpired = event.registrationDeadline ? new Date(event.registrationDeadline).setHours(23, 59, 59, 999) < Date.now() : false;
-    const isOpen = event.status === 'open' || (event.status !== 'closed' && !isExpired);
+    const isOpen = (event.status === 'open' || (event.status !== 'closed' && !isExpired)) && !isFull;
 
     return (
       <motion.div
