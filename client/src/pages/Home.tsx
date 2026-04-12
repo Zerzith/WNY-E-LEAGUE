@@ -94,7 +94,16 @@ export default function Home() {
     }, [event.id]);
 
     const isFull = event.maxTeams ? registeredCount >= event.maxTeams : false;
-    const isExpired = event.registrationDeadline ? new Date(event.registrationDeadline).setHours(23, 59, 59, 999) < Date.now() : false;
+    
+    // Check if registration deadline has passed
+    // Use registrationDeadline if available, otherwise use event date
+    const deadlineDate = event.registrationDeadline || event.date;
+    const isExpired = deadlineDate ? (() => {
+      const deadline = new Date(deadlineDate);
+      deadline.setHours(23, 59, 59, 999);
+      return deadline < new Date();
+    })() : false;
+    
     const isOpen = (event.status === 'open' || (event.status !== 'closed' && !isExpired)) && !isFull;
 
     return (

@@ -67,7 +67,13 @@ const EventListItem = ({ item, index }: { item: Event, index: number }) => {
   const isFull = item.maxTeams ? registeredCount >= item.maxTeams : false;
   
   // Improved logic: Only consider expired if status is not explicitly 'open'
-  const isExpired = item.registrationDeadline ? new Date(item.registrationDeadline).setHours(23, 59, 59, 999) < Date.now() : false;
+  // Use registrationDeadline if available, otherwise use event date
+  const deadlineDate = item.registrationDeadline || item.date;
+  const isExpired = deadlineDate ? (() => {
+    const deadline = new Date(deadlineDate);
+    deadline.setHours(23, 59, 59, 999);
+    return deadline < new Date();
+  })() : false;
   const isOpen = (item.status === 'open' || (item.status !== 'closed' && !isExpired)) && !isFull;
 
   return (
@@ -444,7 +450,13 @@ export default function EventDetail() {
   const isFull = event.maxTeams ? approvedCount >= event.maxTeams : false;
   
   // Improved logic: Only consider expired if status is not explicitly 'open'
-  const isExpired = event.registrationDeadline ? new Date(event.registrationDeadline).setHours(23, 59, 59, 999) < Date.now() : false;
+  // Use registrationDeadline if available, otherwise use event date
+  const deadlineDate = event.registrationDeadline || event.date;
+  const isExpired = deadlineDate ? (() => {
+    const deadline = new Date(deadlineDate);
+    deadline.setHours(23, 59, 59, 999);
+    return deadline < new Date();
+  })() : false;
   const isOpen = (event.status === 'open' || (event.status !== 'closed' && !isExpired)) && !isFull;
 
   return (
