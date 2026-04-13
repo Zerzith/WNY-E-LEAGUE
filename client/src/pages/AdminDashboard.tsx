@@ -58,6 +58,7 @@ export default function AdminDashboard() {
   const [newSubs, setNewSubs] = useState("1");
   const [newDate, setNewDate] = useState("");
   const [newRegDeadline, setNewRegDeadline] = useState("");
+  const [newRegDeadlineTime, setNewRegDeadlineTime] = useState("23:59"); // Default to 23:59
   const [newBannerUrl, setNewBannerUrl] = useState("");
   const [newBannerFile, setNewBannerFile] = useState<File | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
@@ -255,6 +256,9 @@ export default function AdminDashboard() {
       toast({ title: "ข้อมูลไม่ครบถ้วน", description: "กรุณากรอก ชื่องาน, วันที่เริ่ม, และวันปิดรับสมัคร", variant: "destructive" });
       return;
     }
+    
+    // Combine deadline date and time
+    const registrationDeadlineWithTime = `${newRegDeadline}T${newRegDeadlineTime}`;
     setIsCreatingEvent(true);
     try {
       let bannerUrlToSave = newBannerUrl;
@@ -286,7 +290,7 @@ export default function AdminDashboard() {
         membersPerTeam: parseInt(newMembers),
         maxSubstitutes: parseInt(newSubs),
         date: newDate,
-        registrationDeadline: newRegDeadline,
+        registrationDeadline: registrationDeadlineWithTime,
         bannerUrl: bannerUrlToSave,
         status: "upcoming",
         createdAt: serverTimestamp()
@@ -657,9 +661,13 @@ export default function AdminDashboard() {
                       <Input id="date" type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)} required />
                     </div>
                     <div>
-                      <Label htmlFor="deadline">ปิดรับสมัคร</Label>
+                      <Label htmlFor="deadline">ปิดรับสมัคร (วันที่)</Label>
                       <Input id="deadline" type="date" value={newRegDeadline} onChange={(e) => setNewRegDeadline(e.target.value)} required />
                     </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="deadlineTime">เวลาปิดรับสมัคร (HH:mm)</Label>
+                    <Input id="deadlineTime" type="time" value={newRegDeadlineTime} onChange={(e) => setNewRegDeadlineTime(e.target.value)} required />
                   </div>
                     <div>
                       <Label htmlFor="newBannerUrl">URL รูปภาพแบนเนอร์ (เลือกอย่างใดอย่างหนึ่ง)</Label>

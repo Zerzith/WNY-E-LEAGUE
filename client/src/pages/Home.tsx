@@ -96,11 +96,13 @@ export default function Home() {
     const isFull = event.maxTeams ? registeredCount >= event.maxTeams : false;
     
     // Check if registration deadline has passed
-    // Use registrationDeadline if available, otherwise use event date
-    const deadlineDate = event.registrationDeadline || event.date;
-    const isExpired = deadlineDate ? (() => {
-      const deadline = new Date(deadlineDate);
-      deadline.setHours(23, 59, 59, 999);
+    // registrationDeadline can be in format: YYYY-MM-DD or YYYY-MM-DDTHH:mm
+    const isExpired = event.registrationDeadline ? (() => {
+      const deadline = new Date(event.registrationDeadline);
+      // If time is not specified, set to end of day (23:59:59)
+      if (!event.registrationDeadline.includes('T')) {
+        deadline.setHours(23, 59, 59, 999);
+      }
       return deadline < new Date();
     })() : false;
     
