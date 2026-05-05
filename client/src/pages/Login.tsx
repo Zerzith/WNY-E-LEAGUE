@@ -109,7 +109,7 @@ export default function Login() {
                   <Input 
                     value={displayName} 
                     onChange={(e) => setDisplayName(e.target.value)} 
-                    placeholder="นายสมชาย ใจดี" 
+                    placeholder="นาย/นางสาวเกมเมอร์ วังน้ำเย็น" 
                     required 
                   />
                 </div>
@@ -118,7 +118,7 @@ export default function Login() {
                   <Input 
                     value={studentId} 
                     onChange={(e) => setStudentId(e.target.value)} 
-                    placeholder="6XXXXXXXXX" 
+                    placeholder="รหัสบัตรนักเรียน นักศึกษา" 
                     required 
                   />
                 </div>
@@ -130,7 +130,7 @@ export default function Login() {
                 type="email" 
                 value={email} 
                 onChange={(e) => setEmail(e.target.value)} 
-                placeholder="example@email.com" 
+                placeholder="noname@email.com" 
                 required 
               />
             </div>
