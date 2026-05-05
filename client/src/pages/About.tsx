@@ -1,6 +1,9 @@
 import { motion } from "framer-motion";
+import { Card } from "@/components/ui/card"; 
 
 export default function About() {
+  
+
   return (
     <div className="min-h-screen py-12 px-4">
       <div className="container mx-auto max-w-4xl">
@@ -13,16 +16,7 @@ export default function About() {
           <p className="text-xl text-muted-foreground">WNY Esports - วิทยาลัยเทคนิควังน้ำเย็น</p>
         </motion.div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-16">
-          {stats.map((stat, i) => (
-            <Card key={i} className="bg-card/50 border-white/10 text-center p-6">
-              <stat.icon className="w-8 h-8 text-primary mx-auto mb-2" />
-              <div className="text-2xl font-bold text-white">{stat.value}</div>
-              <div className="text-xs text-muted-foreground uppercase tracking-wider">{stat.label}</div>
-            </Card>
-          ))}
-        </div>
-
+      
         <div className="space-y-12 text-muted-foreground leading-relaxed">
           <section>
             <h2 className="text-2xl font-bold text-white mb-4">วิสัยทัศน์ของเรา</h2>
