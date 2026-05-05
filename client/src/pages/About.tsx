@@ -2,7 +2,8 @@ import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Trophy, Users, Target, Shield } from "lucide-react";
 
-
+export default function About() {
+  return (
     <div className="min-h-screen py-12 px-4">
       <div className="container mx-auto max-w-4xl">
         <motion.div 
