@@ -2,15 +2,7 @@ import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Trophy, Users, Target, Shield } from "lucide-react";
 
-export default function About() {
-  const stats = [
-    { label: "การแข่งขัน", value: "10+", icon: Trophy },
-    { label: "นักกีฬา", value: "200+", icon: Users },
-    { label: "เป้าหมาย", value: "Pro", icon: Target },
-    { label: "ความปลอดภัย", value: "100%", icon: Shield },
-  ];
 
-  return (
     <div className="min-h-screen py-12 px-4">
       <div className="container mx-auto max-w-4xl">
         <motion.div 
