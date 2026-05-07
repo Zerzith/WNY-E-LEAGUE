@@ -10,6 +10,19 @@ import { Card } from "@/components/ui/card";
 import { Loader2, Menu, X, Trophy, Upload, ImageIcon, User, Gamepad2, GraduationCap, BookOpen, Fingerprint, Users } from "lucide-react";
 import { motion } from "framer-motion";
 
+// Add global styles for select options
+const selectStyles = `
+  select option {
+    background-color: #1a2332;
+    color: white;
+  }
+  select option:checked {
+    background: linear-gradient(#06b6d4, #06b6d4);
+    background-color: #06b6d4;
+    color: white;
+  }
+`;
+
 interface Event {
   id: string;
   title: string;
@@ -42,6 +55,13 @@ interface Registration {
   logoUrl?: string;
   status: "pending" | "approved" | "rejected";
   createdAt: any;
+}
+
+// Inject styles
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style');
+  style.textContent = selectStyles;
+  document.head.appendChild(style);
 }
 
 export default function RegisterTeam() {
@@ -285,7 +305,12 @@ export default function RegisterTeam() {
           <select
             value={selectedEventId}
             onChange={(e) => setSelectedEventId(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:ring-primary focus:border-primary"
+            className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:ring-primary focus:border-primary [color-scheme:dark]"
+            style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              borderColor: 'rgba(255, 255, 255, 0.1)',
+              color: 'white'
+            }}
           >
             <option value="">-- เลือกรายการแข่งขัน --</option>
             {allEvents.map((e) => (
