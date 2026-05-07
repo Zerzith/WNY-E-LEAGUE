@@ -7,10 +7,9 @@ import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
-import { AvatarCustom } from "@/components/ui/avatar-custom";
-import { Loader2, Upload, Plus, Trash2, ShieldCheck, Users, Gamepad2, Camera, AlertCircle } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Loader2, Upload, Plus, Trash2, ShieldCheck, Users, Gamepad2, Camera, AlertCircle, Menu, X, ImageIcon, User, GraduationCap, BookOpen, Fingerprint } from "lucide-react";
+import { motion } from "framer-motion";
 
 const CLOUD_NAME = "djubsqri6";
 const UPLOAD_PRESET = "wangnamyenesport";
@@ -53,7 +52,10 @@ export default function RegisterTeam() {
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isLoadingTournaments, setIsLoadingTournaments] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [members, setMembers] = useState<Member[]>([
+    { name: "", gameName: "", grade: "", department: "", studentId: "", phone: "", email: "" },
+    { name: "", gameName: "", grade: "", department: "", studentId: "", phone: "", email: "" },
     { name: "", gameName: "", grade: "", department: "", studentId: "", phone: "", email: "" }
   ]);
 
@@ -64,6 +66,12 @@ export default function RegisterTeam() {
   };
 
   const currentGameRules = gameRules[game as keyof typeof gameRules] || { min: 1, max: 6, sub: 0 };
+
+  const userMenuItems = [
+    { href: "/my-teams", label: "ทีมของฉัน", icon: "Users" },
+    { href: "/match-management", label: "จัดการแมตช์", icon: "Swords" },
+    { href: "/register-team", label: "ลงทะเบียนทีม", icon: "Edit2" },
+  ];
 
   useEffect(() => {
     const q = query(collection(db, "events"), where("status", "in", ["upcoming", "ongoing"]));
@@ -142,15 +150,12 @@ export default function RegisterTeam() {
 
   const validateMembers = () => {
     for (const member of members) {
-      // Required fields: name, gameName, studentId, department, grade
       if (!member.name || !member.gameName || !member.studentId || !member.department || !member.grade) {
         return false;
       }
-      // Phone validation - only if provided
       if (member.phone && !/^[0-9]{10}$/.test(member.phone.replace(/[^0-9]/g, ""))) {
         return false;
       }
-      // Email validation - only if provided
       if (member.email && !member.email.includes("@")) {
         return false;
       }
@@ -229,219 +234,312 @@ export default function RegisterTeam() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-12 max-w-5xl">
-      <div className="flex items-center gap-3 mb-8">
-        <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
-          <ShieldCheck className="text-white w-7 h-7" />
+    <div className="min-h-screen">
+      <div className="container mx-auto px-4 py-12 max-w-5xl">
+        <div className="flex items-center gap-4 mb-8">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="w-10 h-10 text-muted-foreground hover:text-white"
+          >
+            <Menu className="w-5 h-5" />
+          </Button>
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+              <ShieldCheck className="text-white w-7 h-7" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold text-white font-display tracking-tight uppercase">ลงทะเบียนทีมแข่ง</h1>
+              <p className="text-muted-foreground">เข้าร่วมการแข่งขัน WNY Esports Tournament</p>
+            </div>
+          </div>
         </div>
-        <div>
-          <h1 className="text-3xl font-bold text-white font-display tracking-tight uppercase">ลงทะเบียนทีมแข่ง</h1>
-          <p className="text-muted-foreground">เข้าร่วมการแข่งขัน WNY Esports Tournament</p>
-        </div>
-      </div>
 
-      <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        <div className="lg:col-span-3 space-y-8">
-          <Card className="bg-card/50 border-white/10 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Gamepad2 className="w-5 h-5 text-primary" /> ข้อมูลการแข่งขัน</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <Label>เลือกรายการแข่งขัน <span className="text-red-500">*</span></Label>
-                <Select value={selectedTournament} onValueChange={setSelectedTournament}>
-                  <SelectTrigger className="bg-background/50 border-white/10">
-                    <SelectValue placeholder="เลือกรายการแข่งขัน" />
-                  </SelectTrigger>
-                  <SelectContent>
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          <div className="lg:col-span-3 space-y-8">
+            <Card className="bg-card/50 border-white/10 backdrop-blur-sm p-8 rounded-3xl">
+              <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+                <div className="w-1 h-6 bg-primary rounded-full" />
+                ข้อมูลการแข่งขัน
+              </h2>
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <Label className="text-sm font-bold text-white/60 uppercase tracking-wider">เลือกรายการแข่งขัน <span className="text-red-500">*</span></Label>
+                  <select 
+                    value={selectedTournament} 
+                    onChange={e => setSelectedTournament(e.target.value)}
+                    className="w-full bg-background/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-primary focus:border-primary"
+                  >
+                    <option value="">เลือกรายการแข่งขัน</option>
                     {tournaments.map((t) => (
-                      <SelectItem key={t.id} value={t.id}>{t.title} ({t.game})</SelectItem>
+                      <option key={t.id} value={t.id}>{t.title} ({t.game})</option>
                     ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>ชื่อทีม <span className="text-red-500">*</span></Label>
-                  <Input value={teamName} onChange={e => setTeamName(e.target.value)} placeholder="ชื่อทีมของคุณ" className="bg-background/50 border-white/10" />
+                  </select>
                 </div>
-                <div className="space-y-2">
-                  <Label>เกมที่ลงแข่ง <span className="text-red-500">*</span></Label>
-                  <Select value={game} onValueChange={setGame}>
-                    <SelectTrigger className="bg-background/50 border-white/10">
-                      <SelectValue placeholder="เลือกเกม" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Valorant">Valorant</SelectItem>
-                      <SelectItem value="RoV">RoV</SelectItem>
-                      <SelectItem value="Free Fire">Free Fire</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
-          <Card className="bg-card/50 border-white/10 backdrop-blur-sm">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2"><Users className="w-5 h-5 text-primary" /> รายชื่อสมาชิก</CardTitle>
-              <Button type="button" variant="outline" size="sm" onClick={handleAddMember} disabled={members.length >= currentGameRules.max}>
-                <Plus className="w-4 h-4 mr-2" /> เพิ่มสมาชิก
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 flex gap-2 text-sm text-blue-300">
-                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                <p>กรุณากรอกข้อมูลสมาชิกให้ครบถ้วน ต้องมีสมาชิกอย่างน้อย {currentGameRules.min} คน</p>
-              </div>
-              
-              {members.map((member, index) => (
-                <div key={index} className="p-4 rounded-lg bg-white/5 border border-white/5 space-y-4 relative group">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-semibold text-white">สมาชิกคนที่ {index + 1}</h4>
-                    {members.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="icon"
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => handleRemoveMember(index)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-xs">ชื่อ-นามสกุล <span className="text-red-500">*</span></Label>
-                      <Input 
-                        value={member.name} 
-                        onChange={e => handleMemberChange(index, 'name', e.target.value)} 
-                        placeholder="ชื่อจริง-นามสกุล" 
-                        className="bg-background/50 border-white/10 h-9" 
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">ชื่อในเกม (IGN) <span className="text-red-500">*</span></Label>
-                      <Input 
-                        value={member.gameName} 
-                        onChange={e => handleMemberChange(index, 'gameName', e.target.value)} 
-                        placeholder="In-game Name" 
-                        className="bg-background/50 border-white/10 h-9" 
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-xs">รหัสประจำตัวนักเรียน <span className="text-red-500">*</span></Label>
-                      <Input 
-                        value={member.studentId} 
-                        onChange={e => handleMemberChange(index, 'studentId', e.target.value)} 
-                        placeholder="เช่น 64001" 
-                        className="bg-background/50 border-white/10 h-9" 
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">เบอร์โทรศัพท์</Label>
-                      <Input 
-                        value={member.phone} 
-                        onChange={e => handleMemberChange(index, 'phone', e.target.value)} 
-                        placeholder="0xxxxxxxxx" 
-                        className="bg-background/50 border-white/10 h-9" 
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-xs">อีเมล</Label>
-                      <Input 
-                        value={member.email} 
-                        onChange={e => handleMemberChange(index, 'email', e.target.value)} 
-                        placeholder="email@example.com" 
-                        className="bg-background/50 border-white/10 h-9" 
-                        type="email"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">แผนกวิชา <span className="text-red-500">*</span></Label>
-                      <Input 
-                        value={member.department} 
-                        onChange={e => handleMemberChange(index, 'department', e.target.value)} 
-                        placeholder="เช่น คอมพิวเตอร์ธุรกิจ" 
-                        className="bg-background/50 border-white/10 h-9" 
-                      />
-                    </div>
-                  </div>
-
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label className="text-xs">ชั้นปี <span className="text-red-500">*</span></Label>
-                    <Input 
-                      value={member.grade} 
-                      onChange={e => handleMemberChange(index, 'grade', e.target.value)} 
-                      placeholder="เช่น ปวช.1" 
-                      className="bg-background/50 border-white/10 h-9" 
-                    />
+                    <Label className="text-sm font-bold text-white/60 uppercase tracking-wider">ชื่อทีม <span className="text-red-500">*</span></Label>
+                    <Input value={teamName} onChange={e => setTeamName(e.target.value)} placeholder="ชื่อทีมของคุณ" className="bg-background/50 border-white/10 h-11 rounded-xl" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-bold text-white/60 uppercase tracking-wider">เกมที่ลงแข่ง <span className="text-red-500">*</span></Label>
+                    <select value={game} onChange={e => setGame(e.target.value)} className="w-full bg-background/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-primary focus:border-primary h-11">
+                      <option value="">เลือกเกม</option>
+                      <option value="Valorant">Valorant</option>
+                      <option value="RoV">RoV</option>
+                      <option value="Free Fire">Free Fire</option>
+                    </select>
                   </div>
                 </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
+              </div>
+            </Card>
 
-        <div className="lg:col-span-1 space-y-8">
-          <Card className="bg-card/50 border-white/10 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Upload className="w-5 h-5 text-primary" /> โลโก้ทีม</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col items-center gap-6">
-              <div className="relative group">
-                <AvatarCustom 
-                  src={logoPreview} 
-                  name={teamName || "Team"} 
-                  size="xl" 
-                  className="ring-4 ring-primary/20"
-                />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading}
-                  className="absolute bottom-0 right-0 bg-primary p-3 rounded-full hover:bg-primary/80 transition-all shadow-lg disabled:opacity-50"
+            <Card className="bg-card/50 border-white/10 backdrop-blur-sm p-8 rounded-3xl">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                  <div className="w-1 h-6 bg-primary rounded-full" />
+                  รายชื่อสมาชิก
+                </h2>
+                <Button type="button" variant="outline" size="sm" onClick={handleAddMember} disabled={members.length >= currentGameRules.max}>
+                  <Plus className="w-4 h-4 mr-2" /> เพิ่มสมาชิก
+                </Button>
+              </div>
+              <div className="space-y-4">
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 flex gap-2 text-sm text-blue-300">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                  <p>กรุณากรอกข้อมูลสมาชิกให้ครบถ้วน ต้องมีสมาชิกอย่างน้อย {currentGameRules.min} คน</p>
+                </div>
+                
+                {members.map((member, index) => (
+                  <div key={index} className="p-6 rounded-2xl bg-white/5 border border-white/5 space-y-4 relative group">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="absolute -left-3 top-6 w-8 h-8 rounded-full bg-primary flex items-center justify-center text-xs font-bold text-white shadow-lg ring-4 ring-background">
+                        {index + 1}
+                      </div>
+                      <h4 className="font-semibold text-white ml-8">สมาชิกคนที่ {index + 1}</h4>
+                      {members.length > 1 && index >= 3 && (
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="icon"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => handleRemoveMember(index)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1 flex items-center gap-1">
+                          <User className="w-3 h-3" /> ชื่อจริง-นามสกุล <span className="text-red-500">*</span>
+                        </label>
+                        <Input 
+                          value={member.name} 
+                          onChange={e => handleMemberChange(index, 'name', e.target.value)} 
+                          placeholder="ชื่อจริง-นามสกุล" 
+                          className="bg-background/50 border-white/10 h-11 rounded-xl" 
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1 flex items-center gap-1">
+                          <Gamepad2 className="w-3 h-3" /> ชื่อในเกม (IGN) <span className="text-red-500">*</span>
+                        </label>
+                        <Input 
+                          value={member.gameName} 
+                          onChange={e => handleMemberChange(index, 'gameName', e.target.value)} 
+                          placeholder="In-game Name" 
+                          className="bg-background/50 border-white/10 h-11 rounded-xl" 
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1 flex items-center gap-1">
+                          <Fingerprint className="w-3 h-3" /> รหัสนักเรียน <span className="text-red-500">*</span>
+                        </label>
+                        <Input 
+                          value={member.studentId} 
+                          onChange={e => handleMemberChange(index, 'studentId', e.target.value)} 
+                          placeholder="เช่น 64001" 
+                          className="bg-background/50 border-white/10 h-11 rounded-xl" 
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1 flex items-center gap-1">
+                          <BookOpen className="w-3 h-3" /> แผนกวิชา <span className="text-red-500">*</span>
+                        </label>
+                        <Input 
+                          value={member.department} 
+                          onChange={e => handleMemberChange(index, 'department', e.target.value)} 
+                          placeholder="เช่น คอมพิวเตอร์" 
+                          className="bg-background/50 border-white/10 h-11 rounded-xl" 
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1 flex items-center gap-1">
+                          <GraduationCap className="w-3 h-3" /> ชั้นปี <span className="text-red-500">*</span>
+                        </label>
+                        <Input 
+                          value={member.grade} 
+                          onChange={e => handleMemberChange(index, 'grade', e.target.value)} 
+                          placeholder="เช่น ปวช.1" 
+                          className="bg-background/50 border-white/10 h-11 rounded-xl" 
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1">เบอร์โทรศัพท์</label>
+                        <Input 
+                          value={member.phone} 
+                          onChange={e => handleMemberChange(index, 'phone', e.target.value)} 
+                          placeholder="0xxxxxxxxx" 
+                          className="bg-background/50 border-white/10 h-11 rounded-xl" 
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1">อีเมล</label>
+                        <Input 
+                          value={member.email} 
+                          onChange={e => handleMemberChange(index, 'email', e.target.value)} 
+                          placeholder="email@example.com" 
+                          className="bg-background/50 border-white/10 h-11 rounded-xl" 
+                          type="email"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  size="sm" 
+                  className="mt-6 text-xs text-primary hover:text-primary/80 hover:bg-primary/5 rounded-xl border border-dashed border-primary/30 w-full py-6"
+                  onClick={() => setMembers([...members, { name: "", gameName: "", grade: "", department: "", studentId: "", phone: "", email: "" }])}
                 >
-                  {isUploading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <Camera className="w-5 h-5 text-white" />
-                  )}
-                </button>
+                  + เพิ่มสมาชิกสำรอง (Substitute)
+                </Button>
+              </div>
+            </Card>
+          </div>
+
+          <div className="lg:col-span-1 space-y-8">
+            <Card className="bg-card/50 border-white/10 backdrop-blur-sm p-8 rounded-3xl">
+              <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+                <div className="w-1 h-6 bg-primary rounded-full" />
+                โลโก้ทีม
+              </h2>
+              <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-white/10 rounded-2xl bg-white/5 hover:bg-white/10 transition-all group relative overflow-hidden">
                 <input
-                  ref={fileInputRef}
                   type="file"
-                  accept="image/*"
+                  ref={fileInputRef}
                   onChange={handleLogoChange}
-                  disabled={isUploading}
+                  accept="image/*"
                   className="hidden"
                 />
+                
+                {logoPreview ? (
+                  <div className="relative w-32 h-32 mb-4 group/logo">
+                    <img src={logoPreview} alt="Team Logo Preview" className="w-full h-full object-cover rounded-2xl ring-4 ring-primary/20" />
+                    <div 
+                      onClick={() => fileInputRef.current?.click()}
+                      className="absolute inset-0 bg-black/60 rounded-2xl flex items-center justify-center opacity-0 group-hover/logo:opacity-100 transition-opacity cursor-pointer"
+                    >
+                      <Upload className="w-8 h-8 text-white" />
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={() => setLogoPreview("")}
+                      className="absolute -top-2 -right-2 p-1.5 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex flex-col items-center cursor-pointer"
+                  >
+                    <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      {isUploading ? <Loader2 className="w-10 h-10 text-primary animate-spin" /> : <ImageIcon className="w-10 h-10 text-primary" />}
+                    </div>
+                    <p className="text-white font-bold">อัปโหลดโลโก้ทีม</p>
+                    <p className="text-xs text-muted-foreground mt-1">แนะนำขนาด 512x512px (PNG/JPG)</p>
+                  </div>
+                )}
               </div>
-              <p className="text-sm text-muted-foreground text-center">
+              <p className="text-sm text-muted-foreground text-center mt-4">
                 ขนาดไฟล์ไม่เกิน {MAX_FILE_SIZE_MB}MB
               </p>
-            </CardContent>
-          </Card>
+            </Card>
 
-          <Button type="submit" className="w-full h-12 text-base" disabled={isUploading || isLoadingTournaments}>
-            {isUploading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <ShieldCheck className="mr-2 h-4 w-4" />
-            )}
-            ลงทะเบียนทีม
-          </Button>
-        </div>
-      </form>
+            <Button type="submit" className="w-full h-12 text-base" disabled={isUploading || isLoadingTournaments}>
+              {isUploading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <ShieldCheck className="mr-2 h-4 w-4" />
+              )}
+              ลงทะเบียนทีม
+            </Button>
+          </div>
+        </form>
+      </div>
+
+      {/* Sidebar for User Menu */}
+      {sidebarOpen && (
+        <motion.div
+          initial={{ opacity: 0, x: -300 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -300 }}
+          className="fixed left-0 top-16 z-40 w-64 h-[calc(100vh-4rem)] bg-card/95 backdrop-blur-sm border-r border-white/10 shadow-2xl"
+        >
+          <div className="p-4 space-y-2">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-white">เมนู</h3>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSidebarOpen(false)}
+                className="w-8 h-8 text-muted-foreground hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              {userMenuItems.map((item) => (
+                <a key={item.href} href={item.href}>
+                  <button
+                    onClick={() => setSidebarOpen(false)}
+                    className={`
+                      w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all
+                      ${location === item.href 
+                        ? 'bg-primary/20 text-primary border border-primary/50' 
+                        : 'text-muted-foreground hover:text-white hover:bg-white/5'}
+                    `}
+                  >
+                    <span className="font-medium">{item.label}</span>
+                  </button>
+                </a>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm top-16"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
     </div>
   );
 }

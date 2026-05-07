@@ -7,10 +7,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Swords, Calendar, Trophy, Users, Check, X, ArrowLeft } from "lucide-react";
+import { Loader2, Swords, Calendar, Trophy, Users, Check, X, Menu } from "lucide-react";
 import { motion } from "framer-motion";
 import { TeamMembersModal } from "@/components/TeamMembersModal";
-import { useState, useEffect } from "react";
 
 interface Match {
   id: string;
@@ -42,7 +41,7 @@ interface ApprovedTeam {
 
 export default function MatchManagement() {
   const { user } = useAuth();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { toast } = useToast();
 
   const [approvedTeams, setApprovedTeams] = useState<ApprovedTeam[]>([]);
@@ -52,6 +51,13 @@ export default function MatchManagement() {
   const [loadingMatches, setLoadingMatches] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<any | null>(null);
   const [showTeamModal, setShowTeamModal] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const userMenuItems = [
+    { href: "/my-teams", label: "ทีมของฉัน", icon: "Users" },
+    { href: "/match-management", label: "จัดการแมตช์", icon: "Swords" },
+    { href: "/register-team", label: "ลงทะเบียนทีม", icon: "Edit2" },
+  ];
 
   // Fetch approved teams for current user
   useEffect(() => {
@@ -215,7 +221,7 @@ export default function MatchManagement() {
           variant="ghost"
           className="mb-6 text-muted-foreground hover:text-white"
         >
-          <ArrowLeft className="w-4 h-4 mr-2" />
+          <Menu className="w-4 h-4 mr-2" />
           กลับไปหน้าแรก
         </Button>
         <Card className="bg-card/50 border-white/10 text-center py-12">
@@ -228,179 +234,201 @@ export default function MatchManagement() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-12">
-      <Button
-        onClick={() => setLocation("/")}
-        variant="ghost"
-        className="mb-6 text-muted-foreground hover:text-white"
-      >
-        <ArrowLeft className="w-4 h-4 mr-2" />
-        กลับไปหน้าแรก
-      </Button>
-
-      <div className="mb-8">
-        <h1 className="text-4xl font-display font-bold text-white mb-4 flex items-center gap-3">
-          <Swords className="w-8 h-8 text-primary" />
-          จัดการแมตช์
-        </h1>
-        <p className="text-muted-foreground">ดูและจัดการแมตช์ของทีมของคุณ</p>
-      </div>
-
-      {/* Team Selection */}
-      <Card className="bg-card/50 border-white/10 p-6 rounded-3xl mb-8">
-        <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-          <Users className="w-5 h-5 text-primary" />
-          เลือกทีม
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {approvedTeams.map((team) => (
-            <motion.button
-              key={team.id}
-              whileHover={{ scale: 1.02 }}
-              onClick={() => setSelectedTeamId(team.id)}
-              className={`p-4 rounded-2xl border-2 transition-all text-left ${
-                selectedTeamId === team.id
-                  ? "border-primary bg-primary/10"
-                  : "border-white/10 bg-white/5 hover:border-white/20"
-              }`}
-            >
-              <p className="font-bold text-white">{team.teamName}</p>
-              <p className="text-sm text-muted-foreground">{team.game}</p>
-            </motion.button>
-          ))}
-        </div>
-      </Card>
-
-      {/* Matches List */}
-      <div className="space-y-6">
-        <h3 className="text-2xl font-bold text-white flex items-center gap-2">
-          <Trophy className="w-6 h-6 text-primary" />
-          แมตช์ของทีม
-        </h3>
-
-        {loadingMatches ? (
-          <div className="text-center py-12">
-            <Loader2 className="w-12 h-12 animate-spin mx-auto text-primary mb-4" />
-            <p className="text-muted-foreground">กำลังโหลดแมตช์...</p>
+    <div className="min-h-screen">
+      <div className="container mx-auto px-4 py-12">
+        <div className="flex items-center gap-4 mb-8">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="w-10 h-10 text-muted-foreground hover:text-white"
+          >
+            <Menu className="w-5 h-5" />
+          </Button>
+          <div>
+            <h1 className="text-4xl font-display font-bold text-white mb-2 flex items-center gap-3">
+              <Swords className="w-8 h-8 text-primary" />
+              จัดการแมตช์
+            </h1>
+            <p className="text-muted-foreground">ดูและจัดการแมตช์ของทีมของคุณ</p>
           </div>
-        ) : matches.length === 0 ? (
-          <Card className="bg-card/50 border-white/10 text-center py-12">
-            <Swords className="w-20 h-20 mx-auto text-white/20 mb-4" />
-            <h3 className="text-xl font-bold text-white/40 mb-2">ยังไม่มีแมตช์</h3>
-            <p className="text-muted-foreground">Admin จะสร้างแมตช์สำหรับทีมของคุณ</p>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 gap-4">
-            {matches.map((match, index) => (
-              <motion.div
-                key={match.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
+        </div>
+
+        {/* Team Selection */}
+        <Card className="bg-card/50 border-white/10 p-6 rounded-3xl mb-8">
+          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+            <Users className="w-5 h-5 text-primary" />
+            เลือกทีม
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {approvedTeams.map((team) => (
+              <motion.button
+                key={team.id}
+                whileHover={{ scale: 1.02 }}
+                onClick={() => setSelectedTeamId(team.id)}
+                className={`p-4 rounded-2xl border-2 transition-all text-left ${
+                  selectedTeamId === team.id
+                    ? "border-primary bg-primary/10"
+                    : "border-white/10 bg-white/5 hover:border-white/20"
+                }`}
               >
-                <Card className="bg-card/50 border-white/10 overflow-hidden hover:border-primary/30 transition-colors">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle className="text-lg">{match.eventTitle}</CardTitle>
-                        <CardDescription>
-                          รอบ {match.round} {match.group && `- กลุ่ม ${match.group}`}
-                        </CardDescription>
-                      </div>
-                      <Badge
-                        variant={
-                          match.status === "pending"
-                            ? "outline"
-                            : match.status === "ongoing"
-                            ? "default"
-                            : "secondary"
-                        }
-                      >
-                        {match.status === "pending"
-                          ? "รอดำเนินการ"
-                          : match.status === "ongoing"
-                          ? "กำลังดำเนินการ"
-                          : "เสร็จสิ้น"}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-3 gap-4 mb-6">
-                      <div className="text-center">
-                        <p className="font-bold text-white text-lg">{match.teamAName}</p>
-                        <p className="text-2xl font-bold text-primary mt-2">{match.scoreA}</p>
-                      </div>
-                      <div className="flex items-center justify-center">
-                        <p className="text-muted-foreground font-bold">VS</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="font-bold text-white text-lg">{match.teamBName}</p>
-                        <p className="text-2xl font-bold text-primary mt-2">{match.scoreB}</p>
-                      </div>
-                    </div>
-
-                    {/* RoV specific stats */}
-                    {match.winsA !== undefined && (
-                      <div className="grid grid-cols-3 gap-4 mb-6 text-sm">
-                        <div className="text-center">
-                          <p className="text-muted-foreground">ชนะ: {match.winsA}</p>
-                          <p className="text-muted-foreground">แพ้: {match.lossesA}</p>
-                          <p className="text-muted-foreground">เสมา: {match.drawsA}</p>
-                        </div>
-                        <div></div>
-                        <div className="text-center">
-                          <p className="text-muted-foreground">ชนะ: {match.winsB}</p>
-                          <p className="text-muted-foreground">แพ้: {match.lossesB}</p>
-                          <p className="text-muted-foreground">เสมา: {match.drawsB}</p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-2">
-                      {match.status === "pending" && (
-                        <Button
-                          onClick={() => handleConfirmMatch(match.id)}
-                          className="flex-1 bg-green-600 hover:bg-green-700"
-                        >
-                          <Check className="w-4 h-4 mr-2" />
-                          ยืนยันแมตช์
-                        </Button>
-                      )}
-                      {match.status === "ongoing" && (
-                        <Button
-                          onClick={() => handleCompleteMatch(match.id)}
-                          className="flex-1 bg-blue-600 hover:bg-blue-700"
-                        >
-                          <Check className="w-4 h-4 mr-2" />
-                          จบแมตช์
-                        </Button>
-                      )}
-                      {match.status === "completed" && (
-                        <Button disabled className="flex-1">
-                          <Check className="w-4 h-4 mr-2" />
-                          เสร็จสิ้น
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
+                <p className="font-bold text-white">{team.teamName}</p>
+                <p className="text-sm text-muted-foreground">{team.game}</p>
+              </motion.button>
             ))}
           </div>
-        )}
+        </Card>
 
-        {/* Team Members Modal */}
-        {selectedTeam && (
-          <TeamMembersModal
-            isOpen={showTeamModal}
-            onClose={() => setShowTeamModal(false)}
-            teamName={selectedTeam.teamName}
-            teamLogo={selectedTeam.logoUrl}
-            members={selectedTeam.members}
-          />
-        )}
+        {/* Matches List */}
+        <div className="space-y-6">
+          <h3 className="text-2xl font-bold text-white flex items-center gap-2">
+            <Trophy className="w-6 h-6 text-primary" />
+            แมตช์ของทีม
+          </h3>
+
+          {loadingMatches ? (
+            <div className="text-center py-12">
+              <Loader2 className="w-12 h-12 animate-spin mx-auto text-primary mb-4" />
+              <p className="text-muted-foreground">กำลังโหลดแมตช์...</p>
+            </div>
+          ) : matches.length === 0 ? (
+            <Card className="bg-card/50 border-white/10 text-center py-12">
+              <Swords className="w-20 h-20 mx-auto text-white/20 mb-4" />
+              <h3 className="text-xl font-bold text-white/40 mb-2">ยังไม่มีแมตช์</h3>
+              <p className="text-muted-foreground">Admin จะสร้างแมตช์สำหรับทีมของคุณ</p>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {matches.map((match, index) => (
+                <motion.div
+                  key={match.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <Card className="bg-card/50 border-white/10 overflow-hidden hover:border-primary/30 transition-colors">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="text-lg">{match.eventTitle}</CardTitle>
+                          <CardDescription>
+                            รอบ {match.round} {match.group && `- กลุ่ม ${match.group}`}
+                          </CardDescription>
+                        </div>
+                        <Badge
+                          variant={
+                            match.status === "pending"
+                              ? "outline"
+                              : match.status === "ongoing"
+                              ? "default"
+                              : "secondary"
+                          }
+                        >
+                          {match.status === "pending"
+                            ? "รอดำเนินการ"
+                            : match.status === "ongoing"
+                            ? "กำลังดำเนินการ"
+                            : "เสร็จสิ้น"}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/10">
+                        <div className="flex-1 text-center">
+                          <p className="text-sm text-muted-foreground mb-2">ทีม A</p>
+                          <p className="font-bold text-white">{match.teamAName}</p>
+                        </div>
+                        <div className="flex items-center gap-4 px-6">
+                          <div className="text-center">
+                            <p className="text-2xl font-bold text-primary">{match.scoreA}</p>
+                            <p className="text-xs text-muted-foreground">-</p>
+                            <p className="text-2xl font-bold text-primary">{match.scoreB}</p>
+                          </div>
+                        </div>
+                        <div className="flex-1 text-center">
+                          <p className="text-sm text-muted-foreground mb-2">ทีม B</p>
+                          <p className="font-bold text-white">{match.teamBName}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2">
+                        {match.status === "pending" && (
+                          <Button
+                            onClick={() => handleConfirmMatch(match.id)}
+                            className="flex-1 bg-primary hover:bg-primary/80"
+                          >
+                            <Check className="w-4 h-4 mr-2" />
+                            ยืนยันแมตช์
+                          </Button>
+                        )}
+                        {match.status === "ongoing" && (
+                          <Button
+                            onClick={() => handleCompleteMatch(match.id)}
+                            className="flex-1 bg-green-600 hover:bg-green-700"
+                          >
+                            <Check className="w-4 h-4 mr-2" />
+                            จบแมตช์
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Sidebar for User Menu */}
+      {sidebarOpen && (
+        <motion.div
+          initial={{ opacity: 0, x: -300 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -300 }}
+          className="fixed left-0 top-16 z-40 w-64 h-[calc(100vh-4rem)] bg-card/95 backdrop-blur-sm border-r border-white/10 shadow-2xl"
+        >
+          <div className="p-4 space-y-2">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-white">เมนู</h3>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSidebarOpen(false)}
+                className="w-8 h-8 text-muted-foreground hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              {userMenuItems.map((item) => (
+                <a key={item.href} href={item.href}>
+                  <button
+                    onClick={() => setSidebarOpen(false)}
+                    className={`
+                      w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all
+                      ${location === item.href 
+                        ? 'bg-primary/20 text-primary border border-primary/50' 
+                        : 'text-muted-foreground hover:text-white hover:bg-white/5'}
+                    `}
+                  >
+                    <span className="font-medium">{item.label}</span>
+                  </button>
+                </a>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm top-16"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
     </div>
   );
 }

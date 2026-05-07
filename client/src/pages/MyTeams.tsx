@@ -7,9 +7,10 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardHeader, CardContent, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AvatarCustom } from "@/components/ui/avatar-custom";
-import { Loader2, Upload, Edit2, Check, X, Trash2 } from "lucide-react";
+import { Loader2, Upload, Edit2, Check, X, Trash2, Menu, ArrowLeft } from "lucide-react";
 import axios from "axios";
 import { deleteDoc } from "firebase/firestore";
+import { motion } from "framer-motion";
 
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "djubsqri6";
 const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "wangnamyenesport";
@@ -28,7 +29,7 @@ interface TeamRegistration {
 
 export default function MyTeams() {
   const { user } = useAuth();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { toast } = useToast();
 
   const [teams, setTeams] = useState<TeamRegistration[]>([]);
@@ -37,6 +38,13 @@ export default function MyTeams() {
   const [uploadingTeamId, setUploadingTeamId] = useState<string | null>(null);
   const [logoPreview, setLogoPreview] = useState<Record<string, string>>({});
   const fileInputRefs = useRef<Record<string, HTMLInputElement>>({});
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const userMenuItems = [
+    { href: "/my-teams", label: "ทีมของฉัน", icon: "Users" },
+    { href: "/match-management", label: "จัดการแมตช์", icon: "Swords" },
+    { href: "/register-team", label: "ลงทะเบียนทีม", icon: "Edit2" },
+  ];
 
   useEffect(() => {
     if (!user) {
@@ -166,175 +174,237 @@ export default function MyTeams() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-12">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-white mb-2">ทีมของฉัน</h1>
-        <p className="text-muted-foreground">จัดการและแก้ไขข้อมูลทีมของคุณ</p>
-      </div>
-
-      {teams.length === 0 ? (
-        <Card className="bg-card/50 border-dashed border-white/10 py-12 text-center">
-          <p className="text-muted-foreground mb-4">คุณยังไม่ได้ลงทะเบียนทีมใด</p>
-          <Button onClick={() => setLocation("/register-team")} className="bg-primary">
-            ลงทะเบียนทีม
+    <div className="min-h-screen">
+      <div className="container mx-auto px-4 py-12">
+        <div className="flex items-center gap-4 mb-8">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="w-10 h-10 text-muted-foreground hover:text-white"
+          >
+            <Menu className="w-5 h-5" />
           </Button>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {teams.map(team => (
-            <Card key={team.id} className="bg-card/50 border-white/10 overflow-hidden">
-              <CardContent className="p-6">
-                {/* Logo Section */}
-                <div className="mb-4 relative">
-                  <div className="w-full aspect-square rounded-lg bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
-                    {editingTeamId === team.id && logoPreview[team.id] ? (
-                      <img 
-                        src={logoPreview[team.id]} 
-                        alt="Preview" 
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <AvatarCustom 
-                        src={team.logoUrl} 
-                        name={team.teamName} 
-                        size="lg"
-                      />
-                    )}
-                  </div>
+          <div>
+            <h1 className="text-4xl font-bold text-white">ทีมของฉัน</h1>
+            <p className="text-muted-foreground">จัดการและแก้ไขข้อมูลทีมของคุณ</p>
+          </div>
+        </div>
 
-                  {/* Edit Logo Button */}
-                  {editingTeamId === team.id ? (
-                    <div className="mt-3 flex gap-2">
-                      <input
-                        ref={(el) => {
-                          if (el) fileInputRefs.current[team.id] = el;
-                        }}
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleLogoChange(team.id, file);
-                        }}
-                        className="hidden"
-                      />
+        {teams.length === 0 ? (
+          <Card className="bg-card/50 border-dashed border-white/10 py-12 text-center">
+            <p className="text-muted-foreground mb-4">คุณยังไม่ได้ลงทะเบียนทีมใด</p>
+            <Button onClick={() => setLocation("/register-team")} className="bg-primary">
+              ลงทะเบียนทีม
+            </Button>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {teams.map(team => (
+              <Card key={team.id} className="bg-card/50 border-white/10 overflow-hidden">
+                <CardContent className="p-6">
+                  {/* Logo Section */}
+                  <div className="mb-4 relative">
+                    <div className="w-full aspect-square rounded-lg bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden">
+                      {editingTeamId === team.id && logoPreview[team.id] ? (
+                        <img 
+                          src={logoPreview[team.id]} 
+                          alt="Preview" 
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <AvatarCustom 
+                          src={team.logoUrl} 
+                          name={team.teamName} 
+                          size="lg"
+                        />
+                      )}
+                    </div>
+
+                    {/* Edit Logo Button */}
+                    {editingTeamId === team.id ? (
+                      <div className="mt-3 flex gap-2">
+                        <input
+                          ref={(el) => {
+                            if (el) fileInputRefs.current[team.id] = el;
+                          }}
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleLogoChange(team.id, file);
+                          }}
+                          className="hidden"
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => fileInputRefs.current[team.id]?.click()}
+                          className="flex-1"
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          เลือกรูป
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="bg-primary"
+                          onClick={() => {
+                            const file = fileInputRefs.current[team.id]?.files?.[0];
+                            if (file) {
+                              handleUploadLogo(team.id, file);
+                            }
+                          }}
+                          disabled={uploadingTeamId === team.id}
+                        >
+                          {uploadingTeamId === team.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Check className="w-4 h-4" />
+                          )}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setEditingTeamId(null);
+                            setLogoPreview(prev => {
+                              const newPreview = { ...prev };
+                              delete newPreview[team.id];
+                              return newPreview;
+                            });
+                          }}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ) : (
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => fileInputRefs.current[team.id]?.click()}
-                        className="flex-1"
+                        onClick={() => setEditingTeamId(team.id)}
+                        className="w-full mt-3"
                       >
-                        <Upload className="w-4 h-4 mr-2" />
-                        เลือกรูป
+                        <Edit2 className="w-4 h-4 mr-2" />
+                        แก้ไขโลโก้
                       </Button>
-                      <Button
-                        size="sm"
-                        className="bg-primary"
-                        onClick={() => {
-                          const file = fileInputRefs.current[team.id]?.files?.[0];
-                          if (file) {
-                            handleUploadLogo(team.id, file);
-                          }
-                        }}
-                        disabled={uploadingTeamId === team.id}
-                      >
-                        {uploadingTeamId === team.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Check className="w-4 h-4" />
-                        )}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => {
-                          setEditingTeamId(null);
-                          setLogoPreview(prev => {
-                            const newPreview = { ...prev };
-                            delete newPreview[team.id];
-                            return newPreview;
-                          });
-                        }}
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
+                    )}
+                  </div>
+
+                  {/* Team Info */}
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">ชื่อทีม</p>
+                      <p className="font-bold text-white">{team.teamName}</p>
                     </div>
-                  ) : (
+
+                    <div>
+                      <p className="text-xs text-muted-foreground">เกม</p>
+                      <p className="font-semibold text-white">{team.game}</p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-muted-foreground">การแข่งขัน</p>
+                      <p className="font-semibold text-white">{team.eventTitle}</p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-muted-foreground">จำนวนสมาชิก</p>
+                      <p className="font-semibold text-white">{team.members?.length || 0} คน</p>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-muted-foreground">สถานะ</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className={`w-2 h-2 rounded-full ${
+                          team.status === "approved" ? "bg-green-500" :
+                          team.status === "rejected" ? "bg-red-500" :
+                          "bg-yellow-500"
+                        }`} />
+                        <span className="text-sm font-semibold text-white">
+                          {team.status === "approved" ? "อนุมัติแล้ว" :
+                           team.status === "rejected" ? "ปฏิเสธ" :
+                           "รอการตรวจสอบ"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="mt-6 flex gap-2">
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => setEditingTeamId(team.id)}
-                      className="w-full mt-3"
+                      onClick={() => handleEditRegistration(team.id)}
+                      className="flex-1"
                     >
                       <Edit2 className="w-4 h-4 mr-2" />
-                      แก้ไขโลโก้
+                      แก้ไขข้อมูล
                     </Button>
-                  )}
-                </div>
-
-                {/* Team Info */}
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-xs text-muted-foreground">ชื่อทีม</p>
-                    <p className="font-bold text-white">{team.teamName}</p>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => handleDeleteRegistration(team.id)}
+                      className="flex-1"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      ยกเลิก
+                    </Button>
                   </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
 
-                  <div>
-                    <p className="text-xs text-muted-foreground">เกม</p>
-                    <p className="font-semibold text-white">{team.game}</p>
-                  </div>
+      {/* Sidebar for User Menu */}
+      {sidebarOpen && (
+        <motion.div
+          initial={{ opacity: 0, x: -300 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -300 }}
+          className="fixed left-0 top-16 z-40 w-64 h-[calc(100vh-4rem)] bg-card/95 backdrop-blur-sm border-r border-white/10 shadow-2xl"
+        >
+          <div className="p-4 space-y-2">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-white">เมนู</h3>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSidebarOpen(false)}
+                className="w-8 h-8 text-muted-foreground hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
 
-                  <div>
-                    <p className="text-xs text-muted-foreground">การแข่งขัน</p>
-                    <p className="font-semibold text-white">{team.eventTitle}</p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs text-muted-foreground">จำนวนสมาชิก</p>
-                    <p className="font-semibold text-white">{team.members?.length || 0} คน</p>
-                  </div>
-
-                  <div>
-                    <p className="text-xs text-muted-foreground">สถานะ</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <div className={`w-2 h-2 rounded-full ${
-                        team.status === "approved" ? "bg-green-500" :
-                        team.status === "rejected" ? "bg-red-500" :
-                        "bg-yellow-500"
-                      }`} />
-                      <span className="text-sm font-semibold text-white">
-                        {team.status === "approved" ? "อนุมัติแล้ว" :
-                         team.status === "rejected" ? "ปฏิเสธ" :
-                         "รอการตรวจสอบ"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="mt-6 flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleEditRegistration(team.id)}
-                    className="flex-1"
+            <div className="space-y-2">
+              {userMenuItems.map((item) => (
+                <a key={item.href} href={item.href}>
+                  <button
+                    onClick={() => setSidebarOpen(false)}
+                    className={`
+                      w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all
+                      ${location === item.href 
+                        ? 'bg-primary/20 text-primary border border-primary/50' 
+                        : 'text-muted-foreground hover:text-white hover:bg-white/5'}
+                    `}
                   >
-                    <Edit2 className="w-4 h-4 mr-2" />
-                    แก้ไขข้อมูล
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => handleDeleteRegistration(team.id)}
-                    className="flex-1"
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    ยกเลิก
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                    <span className="font-medium">{item.label}</span>
+                  </button>
+                </a>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm top-16"
+          onClick={() => setSidebarOpen(false)}
+        />
       )}
     </div>
   );
