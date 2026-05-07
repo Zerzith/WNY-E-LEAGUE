@@ -12,14 +12,23 @@ import { motion } from "framer-motion";
 
 // Add global styles for select options
 const selectStyles = `
+  select {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    color: white !important;
+  }
   select option {
-    background-color: #1a2332;
+    background-color: #0f172a;
     color: white;
+    padding: 8px;
   }
   select option:checked {
-    background: linear-gradient(#06b6d4, #06b6d4);
-    background-color: #06b6d4;
+    background: #06b6d4;
+    background-color: #06b6d4 !important;
     color: white;
+  }
+  select option:hover {
+    background-color: #1e293b;
   }
 `;
 
@@ -306,13 +315,8 @@ export default function RegisterTeam() {
             value={selectedEventId}
             onChange={(e) => setSelectedEventId(e.target.value)}
             className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:ring-primary focus:border-primary [color-scheme:dark]"
-            style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
-              borderColor: 'rgba(255, 255, 255, 0.1)',
-              color: 'white'
-            }}
           >
-            <option value="">-- เลือกรายการแข่งขัน --</option>
+            <option value="" style={{ backgroundColor: '#0f172a', color: 'white' }}>-- เลือกรายการแข่งขัน --</option>
             {allEvents.map((e) => (
               <option key={e.id} value={e.id}>
                 {e.title} ({e.game}) - {e.date}
