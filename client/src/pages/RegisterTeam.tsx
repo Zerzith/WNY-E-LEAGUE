@@ -2,23 +2,29 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { collection, query, where, onSnapshot, addDoc, serverTimestamp, updateDoc, doc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, addDoc, serverTimestamp, getDocs, orderBy } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Loader2, Upload, Plus, Trash2, ShieldCheck, Users, Gamepad2, Camera, AlertCircle, Menu, X, ImageIcon, User, GraduationCap, BookOpen, Fingerprint } from "lucide-react";
+import { Loader2, Menu, X, Trophy, Upload, ImageIcon, User, Gamepad2, GraduationCap, BookOpen, Fingerprint, Users } from "lucide-react";
 import { motion } from "framer-motion";
 
-const CLOUD_NAME = "djubsqri6";
-const UPLOAD_PRESET = "wangnamyenesport";
-const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
+interface Event {
+  id: string;
+  title: string;
+  game: string;
+  date: string;
+  description?: string;
+  maxTeams?: number;
+  registeredTeams?: number;
+  bannerUrl?: string;
+  status?: string;
+  registrationDeadline?: string;
+  championTeamId?: string | null;
+}
 
-const MAX_FILE_SIZE_MB = 5;
-const ALLOWED_FILE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
-
-interface Member {
+interface TeamMember {
   name: string;
   gameName: string;
   grade: string;
@@ -28,44 +34,48 @@ interface Member {
   email: string;
 }
 
-interface Tournament {
+interface Registration {
   id: string;
-  title: string;
-  game: string;
-  date: string;
-  maxTeams?: number;
-  status?: string;
+  userId: string;
+  teamName: string;
+  members: TeamMember[];
+  logoUrl?: string;
+  status: "pending" | "approved" | "rejected";
+  createdAt: any;
 }
 
 export default function RegisterTeam() {
-  const { user } = useAuth();
+  const { user } = useLocation();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const authUser = useAuth();
 
-  const [tournaments, setTournaments] = useState<Tournament[]>([]);
-  const [selectedTournament, setSelectedTournament] = useState("");
-  const [teamName, setTeamName] = useState("");
-  const [game, setGame] = useState("");
-  const [gameMode, setGameMode] = useState("");
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [logoPreview, setLogoPreview] = useState<string>("");
-  const [isUploading, setIsUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isLoadingTournaments, setIsLoadingTournaments] = useState(true);
+  const [event, setEvent] = useState<Event | null>(null);
+  const [allEvents, setAllEvents] = useState<Event[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState("");
+  const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [userRegistration, setUserRegistration] = useState<Registration | null>(null);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [showRegistrationForm, setShowRegistrationForm] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [members, setMembers] = useState<Member[]>([
-    { name: "", gameName: "", grade: "", department: "", studentId: "", phone: "", email: "" },
-    { name: "", gameName: "", grade: "", department: "", studentId: "", phone: "", email: "" },
-    { name: "", gameName: "", grade: "", department: "", studentId: "", phone: "", email: "" }
-  ]);
 
-  const gameRules = {
-    "Valorant": { min: 5, max: 6, sub: 1 },
-    "RoV": { min: 5, max: 6, sub: 1 },
-    "Free Fire": { min: 4, max: 5, sub: 1 }
-  };
+  const initialMember = { name: "", gameName: "", grade: "", department: "", studentId: "", phone: "", email: "" };
 
-  const currentGameRules = gameRules[game as keyof typeof gameRules] || { min: 1, max: 6, sub: 0 };
+  const [formData, setFormData] = useState({
+    teamName: "",
+    members: [
+      { ...initialMember },
+      { ...initialMember },
+      { ...initialMember }
+    ],
+    logoUrl: "",
+  });
+
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
 
   const userMenuItems = [
     { href: "/my-teams", label: "ทีมของฉัน", icon: "Users" },
@@ -73,169 +83,168 @@ export default function RegisterTeam() {
     { href: "/register-team", label: "ลงทะเบียนทีม", icon: "Edit2" },
   ];
 
+  // Load all events
   useEffect(() => {
-    const q = query(collection(db, "events"), where("status", "in", ["upcoming", "ongoing"]));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const tournamentsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tournament));
-      
-      tournamentsData.forEach(async (tournament) => {
-        const registrationsQuery = query(
-          collection(db, "registrations"),
-          where("eventId", "==", tournament.id),
-          where("status", "==", "approved")
-        );
-        
-        const registrationsSnapshot = await new Promise<any>((resolve) => {
-          onSnapshot(registrationsQuery, resolve);
-        });
-        
-        const teamCount = registrationsSnapshot.docs.length;
-        if (tournament.maxTeams && teamCount >= tournament.maxTeams && tournament.status === "ongoing") {
-          await updateDoc(doc(db, "events", tournament.id), {
-            status: "closed"
-          });
-        }
-      });
-      
-      setTournaments(tournamentsData);
-      setIsLoadingTournaments(false);
-    });
-    return () => unsubscribe();
+    const loadEvents = async () => {
+      try {
+        const eventsQuery = query(collection(db, "events"), orderBy("createdAt", "desc"));
+        const eventsSnapshot = await getDocs(eventsQuery);
+        const events = eventsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Event));
+        setAllEvents(events);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error loading events:", error);
+        setLoading(false);
+      }
+    };
+    loadEvents();
   }, []);
 
-  if (!user) {
+  // Load event details when selected
+  useEffect(() => {
+    if (!selectedEventId) return;
+
+    const eventDoc = allEvents.find(e => e.id === selectedEventId);
+    if (eventDoc) {
+      setEvent(eventDoc);
+    }
+  }, [selectedEventId, allEvents]);
+
+  // Load registrations for selected event
+  useEffect(() => {
+    if (!selectedEventId || !authUser.user) return;
+
+    const q = query(
+      collection(db, "registrations"),
+      where("eventId", "==", selectedEventId)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const regs = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Registration[];
+      setRegistrations(regs);
+
+      // Check if current user has registered
+      const userReg = regs.find((reg) => reg.userId === authUser.user?.uid);
+      setUserRegistration(userReg || null);
+    });
+
+    return () => unsubscribe();
+  }, [selectedEventId, authUser.user]);
+
+  if (!authUser.user) {
     setLocation("/login");
     return null;
   }
 
-  const handleAddMember = () => {
-    if (members.length < currentGameRules.max) {
-      setMembers([...members, { name: "", gameName: "", grade: "", department: "", studentId: "", phone: "", email: "" }]);
-    }
-  };
-
-  const handleRemoveMember = (index: number) => {
-    if (members.length > 1) {
-      setMembers(members.filter((_, i) => i !== index));
-    }
-  };
-
-  const handleMemberChange = (index: number, field: keyof Member, value: string) => {
-    const newMembers = [...members];
-    (newMembers[index] as any)[field] = value;
-    setMembers(newMembers);
-  };
-
-  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-      toast({ title: `ขนาดไฟล์โลโก้ต้องไม่เกิน ${MAX_FILE_SIZE_MB} MB`, variant: "destructive" });
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setMessage({ type: "error", text: "กรุณาอัปโหลดไฟล์รูปภาพเท่านั้น" });
       return;
     }
 
-    if (!ALLOWED_FILE_TYPES.includes(file.type)) {
-      toast({ title: "รองรับเฉพาะไฟล์รูปภาพ JPG, PNG, GIF, WEBP เท่านั้น", variant: "destructive" });
-      return;
-    }
-
-    setLogoFile(file);
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setLogoPreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const validateMembers = () => {
-    for (const member of members) {
-      if (!member.name || !member.gameName || !member.studentId || !member.department || !member.grade) {
-        return false;
-      }
-      if (member.phone && !/^[0-9]{10}$/.test(member.phone.replace(/[^0-9]/g, ""))) {
-        return false;
-      }
-      if (member.email && !member.email.includes("@")) {
-        return false;
-      }
-    }
-    return true;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!teamName || !game || !selectedTournament) {
-      toast({ title: "กรุณากรอกข้อมูลการแข่งขันให้ครบถ้วน", variant: "destructive" });
-      return;
-    }
-
-    const validMembers = members.filter(m => m.name && m.gameName && m.studentId && m.department && m.grade);
-    if (validMembers.length < currentGameRules.min) {
-      toast({ title: `กรุณาเพิ่มสมาชิกอย่างน้อย ${currentGameRules.min} คน พร้อมข้อมูลที่ครบถ้วน`, variant: "destructive" });
-      return;
-    }
-
-    if (!validateMembers()) {
-      toast({ title: "กรุณากรอกข้อมูลสมาชิกให้ครบถ้วนและถูกต้อง", variant: "destructive" });
-      return;
-    }
-
-    let logoUrl = logoPreview;
+    setUploading(true);
     try {
-      setIsUploading(true);
-      
-      if (logoFile) {
-        try {
-          const formData = new FormData();
-          formData.append("file", logoFile);
-          formData.append("upload_preset", UPLOAD_PRESET);
-          const response = await fetch(CLOUDINARY_URL, {
-            method: "POST",
-            body: formData,
-          });
-
-          if (!response.ok) {
-            throw new Error(`Upload failed with status ${response.status}`);
-          }
-
-          const data = await response.json();
-          if (data?.secure_url) {
-            logoUrl = data.secure_url;
-          }
-        } catch (uploadError: any) {
-          console.error("Logo upload error:", uploadError);
-          toast({ title: "ไม่สามารถอัปโหลดโลโก้ได้ แต่จะลงทะเบียนโดยไม่มีโลโก้", variant: "default" });
-          setIsUploading(false);
-          return;
-        }
-      }
-
-      await addDoc(collection(db, "registrations"), {
-        eventId: selectedTournament,
-        userId: user.uid,
-        teamName,
-        game,
-        gameMode,
-        logoUrl: logoUrl || "",
-        members: validMembers,
-        status: "pending",
-        createdAt: serverTimestamp(),
-      });
-
-      toast({ title: "ลงทะเบียนทีมสำเร็จ รอการตรวจสอบ" });
-      setLocation("/");
-    } catch (error: any) {
-      console.error("Registration error:", error);
-      toast({ title: error.message || "เกิดข้อผิดพลาดในการลงทะเบียน", variant: "destructive" });
-    } finally {
-      setIsUploading(false);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({ ...prev, logoUrl: reader.result as string }));
+        setUploading(false);
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      setMessage({ type: "error", text: "เกิดข้อผิดพลาดในการอัปโหลด" });
+      setUploading(false);
     }
   };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!authUser.user || !selectedEventId || !formData.teamName.trim()) return;
+
+    setIsRegistering(true);
+    try {
+      const filteredMembers = formData.members.filter((m) => m.name.trim());
+
+      if (isEditing && userRegistration) {
+        // Update existing registration
+        const { updateDoc, doc } = await import("firebase/firestore");
+        await updateDoc(doc(db, "registrations", userRegistration.id), {
+          teamName: formData.teamName,
+          members: filteredMembers,
+          logoUrl: formData.logoUrl,
+          updatedAt: serverTimestamp(),
+        });
+        setMessage({ type: "success", text: "แก้ไขข้อมูลทีมเรียบร้อยแล้ว!" });
+      } else {
+        // Create new registration
+        await addDoc(collection(db, "registrations"), {
+          eventId: selectedEventId,
+          userId: authUser.user.uid,
+          teamName: formData.teamName,
+          members: filteredMembers,
+          logoUrl: formData.logoUrl,
+          status: "pending",
+          createdAt: serverTimestamp(),
+        });
+        setMessage({ type: "success", text: "ลงสมัครเข้าแข่งขันเรียบร้อยแล้ว!" });
+      }
+      setShowRegistrationForm(false);
+      setIsEditing(false);
+      setTimeout(() => setMessage(null), 3000);
+    } catch (error) {
+      console.error("Error registering/updating:", error);
+      setMessage({ type: "error", text: "ไม่สามารถดำเนินการได้" });
+    } finally {
+      setIsRegistering(false);
+    }
+  };
+
+  const handleEditRegistration = () => {
+    if (!userRegistration) return;
+
+    // Map existing members to the correct format with all fields
+    const currentMembers = userRegistration.members.map(m => {
+      if (typeof m === 'string') {
+        return { ...initialMember, name: m };
+      }
+      return { ...initialMember, ...m };
+    });
+
+    // Ensure we have at least 3 members fields
+    while (currentMembers.length < 3) {
+      currentMembers.push({ ...initialMember });
+    }
+
+    setFormData({
+      teamName: userRegistration.teamName,
+      members: currentMembers,
+      logoUrl: userRegistration.logoUrl || "",
+    });
+    setIsEditing(true);
+    setShowRegistrationForm(true);
+  };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-24">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin mx-auto text-primary mb-4" />
+          <p className="text-muted-foreground text-lg">กำลังโหลดข้อมูลการแข่งขัน...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen">
-      <div className="container mx-auto px-4 py-12 max-w-5xl">
+      <div className="container mx-auto px-4 py-12">
         <div className="flex items-center gap-4 mb-8">
           <Button
             variant="ghost"
@@ -245,250 +254,339 @@ export default function RegisterTeam() {
           >
             <Menu className="w-5 h-5" />
           </Button>
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
-              <ShieldCheck className="text-white w-7 h-7" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-white font-display tracking-tight uppercase">ลงทะเบียนทีมแข่ง</h1>
-              <p className="text-muted-foreground">เข้าร่วมการแข่งขัน WNY Esports Tournament</p>
-            </div>
+          <div>
+            <h1 className="text-4xl font-display font-bold text-white mb-2">ลงทะเบียนทีมแข่ง</h1>
+            <p className="text-muted-foreground">เข้าร่วมการแข่งขัน WNY Esports Tournament</p>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          <div className="lg:col-span-3 space-y-8">
-            <Card className="bg-card/50 border-white/10 backdrop-blur-sm p-8 rounded-3xl">
+        {/* Message Alert */}
+        {message && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className={`mb-6 p-4 rounded-2xl ${
+              message.type === "success"
+                ? "bg-green-500/10 border border-green-500/20 text-green-400"
+                : "bg-red-500/10 border border-red-500/20 text-red-400"
+            }`}
+          >
+            {message.text}
+          </motion.div>
+        )}
+
+        {/* Event Selection */}
+        <Card className="bg-card/50 border-white/10 p-8 rounded-3xl mb-8 backdrop-blur-md">
+          <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
+            <div className="w-1 h-6 bg-primary rounded-full" />
+            เลือกรายการแข่งขัน
+          </h2>
+          <select
+            value={selectedEventId}
+            onChange={(e) => setSelectedEventId(e.target.value)}
+            className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:ring-primary focus:border-primary"
+          >
+            <option value="">-- เลือกรายการแข่งขัน --</option>
+            {allEvents.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.title} ({e.game}) - {e.date}
+              </option>
+            ))}
+          </select>
+        </Card>
+
+        {selectedEventId && event && (
+          <div className="space-y-8">
+            {/* Event Details */}
+            <Card className="bg-card/50 border-white/10 p-8 rounded-3xl backdrop-blur-md shadow-2xl ring-1 ring-primary/20">
               <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
                 <div className="w-1 h-6 bg-primary rounded-full" />
-                ข้อมูลการแข่งขัน
+                รายละเอียดการแข่งขัน
               </h2>
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <Label className="text-sm font-bold text-white/60 uppercase tracking-wider">เลือกรายการแข่งขัน <span className="text-red-500">*</span></Label>
-                  <select 
-                    value={selectedTournament} 
-                    onChange={e => setSelectedTournament(e.target.value)}
-                    className="w-full bg-background/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-primary focus:border-primary"
-                  >
-                    <option value="">เลือกรายการแข่งขัน</option>
-                    {tournaments.map((t) => (
-                      <option key={t.id} value={t.id}>{t.title} ({t.game})</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-bold text-white/60 uppercase tracking-wider">ชื่อทีม <span className="text-red-500">*</span></Label>
-                    <Input value={teamName} onChange={e => setTeamName(e.target.value)} placeholder="ชื่อทีมของคุณ" className="bg-background/50 border-white/10 h-11 rounded-xl" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5">
+                  <Trophy className="w-6 h-6 text-primary" />
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">ชื่อการแข่งขัน</p>
+                    <p className="text-white font-medium">{event.title}</p>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-bold text-white/60 uppercase tracking-wider">เกมที่ลงแข่ง <span className="text-red-500">*</span></Label>
-                    <select value={game} onChange={e => setGame(e.target.value)} className="w-full bg-background/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-primary focus:border-primary h-11">
-                      <option value="">เลือกเกม</option>
-                      <option value="Valorant">Valorant</option>
-                      <option value="RoV">RoV</option>
-                      <option value="Free Fire">Free Fire</option>
-                    </select>
+                </div>
+                <div className="flex items-center gap-4 p-4 rounded-2xl bg-white/5 border border-white/5">
+                  <Gamepad2 className="w-6 h-6 text-primary" />
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">เกม</p>
+                    <p className="text-white font-medium">{event.game}</p>
                   </div>
                 </div>
               </div>
+              {event.description && (
+                <div className="pt-6 border-t border-white/10">
+                  <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{event.description}</p>
+                </div>
+              )}
             </Card>
 
-            <Card className="bg-card/50 border-white/10 backdrop-blur-sm p-8 rounded-3xl">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                  <div className="w-1 h-6 bg-primary rounded-full" />
-                  รายชื่อสมาชิก
-                </h2>
-                <Button type="button" variant="outline" size="sm" onClick={handleAddMember} disabled={members.length >= currentGameRules.max}>
-                  <Plus className="w-4 h-4 mr-2" /> เพิ่มสมาชิก
-                </Button>
-              </div>
-              <div className="space-y-4">
-                <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 flex gap-2 text-sm text-blue-300">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
-                  <p>กรุณากรอกข้อมูลสมาชิกให้ครบถ้วน ต้องมีสมาชิกอย่างน้อย {currentGameRules.min} คน</p>
-                </div>
-                
-                {members.map((member, index) => (
-                  <div key={index} className="p-6 rounded-2xl bg-white/5 border border-white/5 space-y-4 relative group">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="absolute -left-3 top-6 w-8 h-8 rounded-full bg-primary flex items-center justify-center text-xs font-bold text-white shadow-lg ring-4 ring-background">
-                        {index + 1}
-                      </div>
-                      <h4 className="font-semibold text-white ml-8">สมาชิกคนที่ {index + 1}</h4>
-                      {members.length > 1 && index >= 3 && (
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="icon"
-                          className="opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={() => handleRemoveMember(index)}
+            {/* Registration Section */}
+            {!userRegistration ? (
+              showRegistrationForm ? (
+                <Card className="bg-card/50 border-white/10 p-8 rounded-3xl backdrop-blur-md shadow-2xl ring-1 ring-primary/20">
+                  <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                    <Trophy className="w-6 h-6 text-primary" /> ฟอร์มลงสมัครเข้าแข่งขัน
+                  </h2>
+                  <form onSubmit={handleRegister} className="space-y-8">
+                    {/* Logo Upload Section */}
+                    <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-white/10 rounded-[2rem] bg-white/5 hover:bg-white/10 transition-all group relative overflow-hidden">
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={handleFileUpload}
+                        accept="image/*"
+                        className="hidden"
+                      />
+
+                      {formData.logoUrl ? (
+                        <div className="relative w-32 h-32 mb-4 group/logo">
+                          <img src={formData.logoUrl} alt="Team Logo Preview" className="w-full h-full object-cover rounded-3xl ring-4 ring-primary/20" />
+                          <div
+                            onClick={() => fileInputRef.current?.click()}
+                            className="absolute inset-0 bg-black/60 rounded-3xl flex items-center justify-center opacity-0 group-hover/logo:opacity-100 transition-opacity cursor-pointer"
+                          >
+                            <Upload className="w-8 h-8 text-white" />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setFormData(prev => ({ ...prev, logoUrl: "" }))}
+                            className="absolute -top-2 -right-2 p-1.5 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition-colors"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          onClick={() => fileInputRef.current?.click()}
+                          className="flex flex-col items-center cursor-pointer"
                         >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                          <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                            {uploading ? <Loader2 className="w-10 h-10 text-primary animate-spin" /> : <ImageIcon className="w-10 h-10 text-primary" />}
+                          </div>
+                          <p className="text-white font-bold">อัปโหลดโลโก้ทีม</p>
+                          <p className="text-xs text-muted-foreground mt-1">แนะนำขนาด 512x512px (PNG/JPG)</p>
+                        </div>
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1 flex items-center gap-1">
-                          <User className="w-3 h-3" /> ชื่อจริง-นามสกุล <span className="text-red-500">*</span>
-                        </label>
-                        <Input 
-                          value={member.name} 
-                          onChange={e => handleMemberChange(index, 'name', e.target.value)} 
-                          placeholder="ชื่อจริง-นามสกุล" 
-                          className="bg-background/50 border-white/10 h-11 rounded-xl" 
+                    <div className="grid grid-cols-1 gap-6">
+                      <div>
+                        <label className="block text-sm font-bold text-white/60 uppercase tracking-wider mb-2">ชื่อทีม (Team Name)</label>
+                        <Input
+                          value={formData.teamName}
+                          onChange={(e) => setFormData({ ...formData, teamName: e.target.value })}
+                          placeholder="ระบุชื่อทีมของคุณ"
+                          className="bg-white/5 border-white/10 h-14 rounded-2xl focus:ring-primary text-lg"
+                          required
                         />
                       </div>
-                      <div className="space-y-2">
-                        <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1 flex items-center gap-1">
-                          <Gamepad2 className="w-3 h-3" /> ชื่อในเกม (IGN) <span className="text-red-500">*</span>
+
+                      <div>
+                        <label className="block text-sm font-bold text-white/60 uppercase tracking-wider mb-4 flex items-center gap-2">
+                          <Users className="w-4 h-4 text-primary" /> รายชื่อสมาชิกทีม
                         </label>
-                        <Input 
-                          value={member.gameName} 
-                          onChange={e => handleMemberChange(index, 'gameName', e.target.value)} 
-                          placeholder="In-game Name" 
-                          className="bg-background/50 border-white/10 h-11 rounded-xl" 
-                        />
+                        <div className="space-y-6">
+                          {formData.members.map((member, index) => (
+                            <div key={index} className="p-6 rounded-2xl bg-white/5 border border-white/5 relative group space-y-4">
+                              <div className="absolute -left-3 top-6 w-8 h-8 rounded-full bg-primary flex items-center justify-center text-xs font-bold text-white shadow-lg ring-4 ring-background">
+                                {index + 1}
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                  <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1 flex items-center gap-1">
+                                    <User className="w-3 h-3" /> ชื่อจริง-นามสกุล
+                                  </label>
+                                  <Input
+                                    value={member.name}
+                                    onChange={(e) => {
+                                      const newMembers = [...formData.members];
+                                      newMembers[index] = { ...newMembers[index], name: e.target.value };
+                                      setFormData({ ...formData, members: newMembers });
+                                    }}
+                                    placeholder="ระบุชื่อ-นามสกุลจริง"
+                                    className="bg-white/5 border-white/10 h-11 rounded-xl focus:ring-primary"
+                                    required={index < 3}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1 flex items-center gap-1">
+                                    <Gamepad2 className="w-3 h-3" /> ชื่อในเกม (IGN)
+                                  </label>
+                                  <Input
+                                    value={member.gameName}
+                                    onChange={e => {
+                                      const newMembers = [...formData.members];
+                                      newMembers[index] = { ...newMembers[index], gameName: e.target.value };
+                                      setFormData({ ...formData, members: newMembers });
+                                    }}
+                                    placeholder="ระบุชื่อที่ใช้ในเกม"
+                                    className="bg-white/5 border-white/10 h-11 rounded-xl focus:ring-primary"
+                                    required={index < 3}
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div>
+                                  <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1 flex items-center gap-1">
+                                    <Fingerprint className="w-3 h-3" /> รหัสนักเรียน
+                                  </label>
+                                  <Input
+                                    value={member.studentId}
+                                    onChange={(e) => {
+                                      const newMembers = [...formData.members];
+                                      newMembers[index] = { ...newMembers[index], studentId: e.target.value };
+                                      setFormData({ ...formData, members: newMembers });
+                                    }}
+                                    placeholder="รหัส 10 หลัก"
+                                    className="bg-white/5 border-white/10 h-11 rounded-xl focus:ring-primary"
+                                    required={index < 3}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1 flex items-center gap-1">
+                                    <BookOpen className="w-3 h-3" /> แผนกวิชา
+                                  </label>
+                                  <Input
+                                    value={member.department}
+                                    onChange={e => {
+                                      const newMembers = [...formData.members];
+                                      newMembers[index] = { ...newMembers[index], department: e.target.value };
+                                      setFormData({ ...formData, members: newMembers });
+                                    }}
+                                    placeholder="เช่น คอมพิวเตอร์"
+                                    className="bg-white/5 border-white/10 h-11 rounded-xl focus:ring-primary"
+                                    required={index < 3}
+                                  />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1 flex items-center gap-1">
+                                    <GraduationCap className="w-3 h-3" /> ชั้นปี
+                                  </label>
+                                  <Input
+                                    value={member.grade}
+                                    onChange={e => {
+                                      const newMembers = [...formData.members];
+                                      newMembers[index] = { ...newMembers[index], grade: e.target.value };
+                                      setFormData({ ...formData, members: newMembers });
+                                    }}
+                                    placeholder="เช่น ปวช. 1"
+                                    className="bg-white/5 border-white/10 h-11 rounded-xl focus:ring-primary"
+                                    required={index < 3}
+                                  />
+                                </div>
+                              </div>
+
+                              {index >= 3 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newMembers = formData.members.filter((_, i) => i !== index);
+                                    setFormData({ ...formData, members: newMembers });
+                                  }}
+                                  className="absolute -right-2 -top-2 w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="mt-6 text-xs text-primary hover:text-primary/80 hover:bg-primary/5 rounded-xl border border-dashed border-primary/30 w-full py-6"
+                          onClick={() => setFormData({ ...formData, members: [...formData.members, { ...initialMember }] })}
+                        >
+                          + เพิ่มสมาชิกสำรอง (Substitute)
+                        </Button>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      <div className="space-y-2">
-                        <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1 flex items-center gap-1">
-                          <Fingerprint className="w-3 h-3" /> รหัสนักเรียน <span className="text-red-500">*</span>
-                        </label>
-                        <Input 
-                          value={member.studentId} 
-                          onChange={e => handleMemberChange(index, 'studentId', e.target.value)} 
-                          placeholder="เช่น 64001" 
-                          className="bg-background/50 border-white/10 h-11 rounded-xl" 
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1 flex items-center gap-1">
-                          <BookOpen className="w-3 h-3" /> แผนกวิชา <span className="text-red-500">*</span>
-                        </label>
-                        <Input 
-                          value={member.department} 
-                          onChange={e => handleMemberChange(index, 'department', e.target.value)} 
-                          placeholder="เช่น คอมพิวเตอร์" 
-                          className="bg-background/50 border-white/10 h-11 rounded-xl" 
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1 flex items-center gap-1">
-                          <GraduationCap className="w-3 h-3" /> ชั้นปี <span className="text-red-500">*</span>
-                        </label>
-                        <Input 
-                          value={member.grade} 
-                          onChange={e => handleMemberChange(index, 'grade', e.target.value)} 
-                          placeholder="เช่น ปวช.1" 
-                          className="bg-background/50 border-white/10 h-11 rounded-xl" 
-                        />
-                      </div>
+                    <div className="flex flex-col sm:flex-row justify-end gap-4 pt-6 border-t border-white/5">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => {
+                          setShowRegistrationForm(false);
+                          setFormData({
+                            teamName: "",
+                            members: [
+                              { ...initialMember },
+                              { ...initialMember },
+                              { ...initialMember }
+                            ],
+                            logoUrl: ""
+                          });
+                        }}
+                        className="h-14 px-8 rounded-2xl text-muted-foreground hover:text-white"
+                      >
+                        ยกเลิก
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={isRegistering || uploading}
+                        className="bg-primary hover:bg-primary/80 h-14 px-10 rounded-2xl font-bold shadow-lg shadow-primary/20 text-lg"
+                      >
+                        {isRegistering && <Loader2 className="w-5 h-5 mr-2 animate-spin" />}
+                        ยืนยันการลงสมัครแข่งขัน
+                      </Button>
                     </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1">เบอร์โทรศัพท์</label>
-                        <Input 
-                          value={member.phone} 
-                          onChange={e => handleMemberChange(index, 'phone', e.target.value)} 
-                          placeholder="0xxxxxxxxx" 
-                          className="bg-background/50 border-white/10 h-11 rounded-xl" 
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="block text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1 ml-1">อีเมล</label>
-                        <Input 
-                          value={member.email} 
-                          onChange={e => handleMemberChange(index, 'email', e.target.value)} 
-                          placeholder="email@example.com" 
-                          className="bg-background/50 border-white/10 h-11 rounded-xl" 
-                          type="email"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                <Button 
-                  type="button" 
-                  variant="ghost" 
-                  size="sm" 
-                  className="mt-6 text-xs text-primary hover:text-primary/80 hover:bg-primary/5 rounded-xl border border-dashed border-primary/30 w-full py-6"
-                  onClick={() => setMembers([...members, { name: "", gameName: "", grade: "", department: "", studentId: "", phone: "", email: "" }])}
-                >
-                  + เพิ่มสมาชิกสำรอง (Substitute)
-                </Button>
-              </div>
-            </Card>
-          </div>
-
-          <div className="lg:col-span-1 space-y-8">
-            <Card className="bg-card/50 border-white/10 backdrop-blur-sm p-8 rounded-3xl">
-              <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
-                <div className="w-1 h-6 bg-primary rounded-full" />
-                โลโก้ทีม
-              </h2>
-              <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-white/10 rounded-2xl bg-white/5 hover:bg-white/10 transition-all group relative overflow-hidden">
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleLogoChange}
-                  accept="image/*"
-                  className="hidden"
-                />
-                
-                {logoPreview ? (
-                  <div className="relative w-32 h-32 mb-4 group/logo">
-                    <img src={logoPreview} alt="Team Logo Preview" className="w-full h-full object-cover rounded-2xl ring-4 ring-primary/20" />
-                    <div 
-                      onClick={() => fileInputRef.current?.click()}
-                      className="absolute inset-0 bg-black/60 rounded-2xl flex items-center justify-center opacity-0 group-hover/logo:opacity-100 transition-opacity cursor-pointer"
-                    >
-                      <Upload className="w-8 h-8 text-white" />
-                    </div>
-                    <button 
-                      type="button"
-                      onClick={() => setLogoPreview("")}
-                      className="absolute -top-2 -right-2 p-1.5 bg-red-500 text-white rounded-full shadow-lg hover:bg-red-600 transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <div 
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex flex-col items-center cursor-pointer"
-                  >
-                    <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                      {isUploading ? <Loader2 className="w-10 h-10 text-primary animate-spin" /> : <ImageIcon className="w-10 h-10 text-primary" />}
-                    </div>
-                    <p className="text-white font-bold">อัปโหลดโลโก้ทีม</p>
-                    <p className="text-xs text-muted-foreground mt-1">แนะนำขนาด 512x512px (PNG/JPG)</p>
-                  </div>
-                )}
-              </div>
-              <p className="text-sm text-muted-foreground text-center mt-4">
-                ขนาดไฟล์ไม่เกิน {MAX_FILE_SIZE_MB}MB
-              </p>
-            </Card>
-
-            <Button type="submit" className="w-full h-12 text-base" disabled={isUploading || isLoadingTournaments}>
-              {isUploading ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  </form>
+                </Card>
               ) : (
-                <ShieldCheck className="mr-2 h-4 w-4" />
-              )}
-              ลงทะเบียนทีม
-            </Button>
+                <Button
+                  onClick={() => setShowRegistrationForm(true)}
+                  className="w-full bg-primary hover:bg-primary/80 py-8 text-xl font-bold rounded-2xl shadow-lg shadow-primary/20 transition-all hover:scale-[1.02]"
+                >
+                  ลงสมัครเข้าแข่งขันตอนนี้
+                </Button>
+              )
+            ) : !showRegistrationForm && (
+              <Card className="bg-card/50 border-white/10 p-8 rounded-3xl border-primary/20 bg-primary/5 backdrop-blur-md">
+                <div className="flex flex-col md:flex-row items-center gap-6">
+                  <div className="w-20 h-20 bg-primary/20 rounded-2xl flex items-center justify-center shrink-0 overflow-hidden ring-2 ring-primary/30">
+                    {userRegistration.logoUrl ? (
+                      <img src={userRegistration.logoUrl} alt={userRegistration.teamName} className="w-full h-full object-cover" />
+                    ) : (
+                      <Check className="w-10 h-10 text-primary" />
+                    )}
+                  </div>
+                  <div className="flex-grow text-center md:text-left">
+                    <h2 className="text-2xl font-bold text-white mb-1">คุณได้ลงสมัครแล้ว</h2>
+                    <p className="text-muted-foreground mb-3">ทีมของคุณ: <span className="text-white font-bold">{userRegistration.teamName}</span></p>
+                    <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-white/5 border border-white/10">
+                      <span className="text-xs text-muted-foreground mr-2">สถานะ:</span>
+                      <span className={`text-xs font-black uppercase tracking-widest ${
+                        userRegistration.status === 'approved' ? 'text-green-400' :
+                        userRegistration.status === 'pending' ? 'text-yellow-400' :
+                        'text-red-400'
+                      }`}>{userRegistration.status === 'approved' ? 'อนุมัติแล้ว' : userRegistration.status === 'pending' ? 'รอการตรวจสอบ' : 'ไม่ผ่านการคัดเลือก'}</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2 shrink-0 w-full md:w-auto">
+                    <Button
+                      variant="outline"
+                      className="border-white/10 hover:bg-white/5 text-white gap-2 rounded-xl h-11"
+                      onClick={handleEditRegistration}
+                    >
+                      <Trophy className="w-4 h-4" /> แก้ไขข้อมูล
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            )}
           </div>
-        </form>
+        )}
       </div>
 
       {/* Sidebar for User Menu */}
@@ -519,8 +617,8 @@ export default function RegisterTeam() {
                     onClick={() => setSidebarOpen(false)}
                     className={`
                       w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all
-                      ${location === item.href 
-                        ? 'bg-primary/20 text-primary border border-primary/50' 
+                      ${location === item.href
+                        ? 'bg-primary/20 text-primary border border-primary/50'
                         : 'text-muted-foreground hover:text-white hover:bg-white/5'}
                     `}
                   >
