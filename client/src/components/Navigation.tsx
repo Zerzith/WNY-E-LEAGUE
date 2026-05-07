@@ -34,11 +34,12 @@ export function Navigation() {
 
   const adminItem = { href: "/admin", label: "จัดการระบบ", icon: ShieldCheck };
 
-  const userMenuItems = [
-    { href: "/my-teams", label: "ทีมของฉัน", icon: Users },
-    { href: "/match-management", label: "จัดการแมตช์", icon: Swords },
-    { href: "/register-team", label: "ลงทะเบียนทีม", icon: Edit2 },
-  ];
+const userMenuItems = [];
+const userMenuItems = [
+  { href: "/my-teams", label: "ทีมของฉัน", icon: Users },
+  { href: "/match-management", label: "จัดการแมตช์", icon: Swords },
+  { href: "/register-team", label: "ลงทะเบียนทีม", icon: Edit2 },
+];
 
   return (
     <>
